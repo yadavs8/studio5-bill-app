@@ -444,6 +444,22 @@
     width: 100%; border: 1px solid var(--line); border-radius: 4px; padding: 10px;
     font-family: inherit; font-size: 13px; resize: vertical; min-height: 60px; margin-bottom: 8px;
   }
+
+  .vendor-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .vendor-name { width: 150px; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--walnut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vendor-bar-track { flex: 1; background: var(--line); border-radius: 3px; height: 20px; overflow: hidden; }
+  .vendor-bar-fill { background: linear-gradient(90deg, var(--brass), var(--brass-dark)); height: 100%; border-radius: 3px; }
+  .vendor-amount { width: 90px; flex-shrink: 0; text-align: right; font-size: 12.5px; font-weight: 700; color: var(--walnut-light); }
+
+  .thumb {
+    width: 44px; height: 44px; object-fit: cover; border-radius: 3px;
+    border: 1px solid var(--line); display: block; cursor: pointer;
+  }
+  .thumb-fallback {
+    width: 44px; height: 44px; border-radius: 3px; border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; color: #a0917d; background: #f1e9db;
+  }
+  .overdue-tag { background: var(--danger); color: #fff; font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 3px; margin-left: 6px; text-transform: uppercase; }
 </style>
 
 <div class="pin-overlay" id="bossPinOverlay" style="display:none; z-index:10000;">
@@ -490,6 +506,11 @@
         <div class="dash-value" id="dashPendingCount">–</div>
         <div class="dash-sub">Tap to review</div>
       </div>
+      <div class="dash-card" id="overdueCard">
+        <div class="dash-label">Overdue Unpaid Bills</div>
+        <div class="dash-value" id="dashOverdueCount">–</div>
+        <div class="dash-sub">Unpaid, over 30 days old</div>
+      </div>
       <div class="dash-card">
         <div class="dash-label">This Month · Spend</div>
         <div class="dash-value" id="dashMonthSpend">–</div>
@@ -505,6 +526,16 @@
         <div class="dash-value" id="dashTotalBills">–</div>
         <div class="dash-sub">Approved entries</div>
       </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:20px;">
+      <h2 style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin-bottom:16px;">Spend — Last 6 Months</h2>
+      <canvas id="trendChart" height="90"></canvas>
+    </div>
+
+    <div class="panel">
+      <h2 style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin-bottom:16px;">Top Vendors This Month</h2>
+      <div id="topVendorsArea"><div class="empty-state">No spend recorded this month yet.</div></div>
     </div>
   </div>
 
@@ -548,6 +579,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script>
 (function() {
   // Simple shared access code — keeps casual/uninvited visitors out of the ledger.
@@ -931,13 +963,18 @@
     }
     const headers = fields.map(([,label]) => `<th>${label}</th>`).join('');
     const rows = filtered.map(r => {
+      const overdue = isOverdue(r);
       const cells = fields.map(([key]) => {
-        if (key === 'photo_link' && r[key]) {
-          return `<td><a href="${r[key]}" target="_blank" rel="noopener" style="color:var(--teal); font-weight:600;">View</a></td>`;
+        if (key === 'photo_link') {
+          return `<td>${r[key] ? photoThumbHtml(r[key]) : '-'}</td>`;
+        }
+        if (key === 'payment_status') {
+          const label = r[key] === 'paid' ? 'Paid' : r[key] === 'unpaid' ? 'Not Paid' : '-';
+          return `<td>${label}${overdue ? '<span class="overdue-tag">Overdue</span>' : ''}</td>`;
         }
         return `<td>${r[key] ?? ''}</td>`;
       }).join('');
-      return `<tr>${cells}</tr>`;
+      return `<tr style="${overdue ? 'background:#fbeee9;' : ''}">${cells}</tr>`;
     }).join('');
     tableArea.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
   }
@@ -1003,11 +1040,55 @@
     return isNaN(n) ? 0 : n;
   }
 
+  // Extracts the file ID from a Drive "view" link and builds a thumbnail-serving URL.
+  // Google Drive's own /view URL renders a full viewer page, not a raw image — this
+  // separate endpoint is the one that actually works as an <img> src.
+  function driveThumbnailUrl(viewUrl) {
+    if (!viewUrl || typeof viewUrl !== 'string') return null;
+    const match = viewUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (!match) return null;
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w150`;
+  }
+
+  function photoThumbHtml(photoLink) {
+    const thumbUrl = driveThumbnailUrl(photoLink);
+    if (!thumbUrl) return `<div class="thumb-fallback">🧾</div>`;
+    return `<a href="${photoLink}" target="_blank" rel="noopener"><img class="thumb" src="${thumbUrl}" alt="Bill photo" loading="lazy" onerror="this.parentElement.innerHTML='<div class=&quot;thumb-fallback&quot;>🧾</div>'"></a>`;
+  }
+
+  // Parses a DD/MM/YYYY-style invoice date into a real Date object for age comparisons.
+  function parseInvoiceDate(dateStr) {
+    if (!dateStr) return null;
+    const parts = String(dateStr).split('/');
+    if (parts.length !== 3) return null;
+    const day = parseInt(parts[0], 10), month = parseInt(parts[1], 10), year = parseInt(parts[2], 10);
+    if (!day || !month || !year) return null;
+    return new Date(year, month - 1, day);
+  }
+
+  function isOverdue(record) {
+    if (record.payment_status !== 'unpaid') return false;
+    const invDate = parseInvoiceDate(record.date);
+    if (!invDate) return false;
+    const daysOld = (Date.now() - invDate.getTime()) / (1000 * 60 * 60 * 24);
+    return daysOld > 30;
+  }
+
+  function getMonthKey(record) {
+    let d = parseUploadedOnDate(record.uploaded_on);
+    if (!d) d = parseUploadedOnDate(record.date);
+    if (!d) return null;
+    return `${d.year}-${String(d.month).padStart(2,'0')}`;
+  }
+
+  let trendChartInstance = null;
+
   async function refreshDashboard() {
     document.getElementById('dashPendingCount').textContent = '…';
     document.getElementById('dashMonthSpend').textContent = '…';
     document.getElementById('dashMonthGst').textContent = '…';
     document.getElementById('dashTotalBills').textContent = '…';
+    document.getElementById('dashOverdueCount').textContent = '…';
 
     try {
       if (recordsCache.gst.length === 0 && recordsCache.non_gst.length === 0) {
@@ -1027,7 +1108,72 @@
     document.getElementById('dashMonthGst').textContent = '₹' + monthGst.toLocaleString('en-IN');
     document.getElementById('dashTotalBills').textContent = all.length;
 
+    const overdueCount = all.filter(isOverdue).length;
+    const overdueCard = document.getElementById('overdueCard');
+    document.getElementById('dashOverdueCount').textContent = overdueCount;
+    overdueCard.classList.toggle('alert', overdueCount > 0);
+
+    renderTrendChart(all);
+    renderTopVendors(thisMonth);
     await refreshPendingCount();
+  }
+
+  function renderTrendChart(allRecords) {
+    const months = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`, label: d.toLocaleString('en-IN', { month: 'short', year: '2-digit' }) });
+    }
+    const totals = months.map(m => allRecords
+      .filter(r => getMonthKey(r) === m.key)
+      .reduce((sum, r) => sum + toNum(r.invoice_value), 0));
+
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    if (trendChartInstance) trendChartInstance.destroy();
+    trendChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: months.map(m => m.label),
+        datasets: [{
+          label: 'Spend (₹)',
+          data: totals,
+          backgroundColor: '#b8894f',
+          borderRadius: 3,
+          maxBarThickness: 46
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString('en-IN') }, grid: { color: '#e3d7c4' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  function renderTopVendors(thisMonthRecords) {
+    const area = document.getElementById('topVendorsArea');
+    const byVendor = {};
+    thisMonthRecords.forEach(r => {
+      const name = r.vendor_name || 'Unknown';
+      byVendor[name] = (byVendor[name] || 0) + toNum(r.invoice_value);
+    });
+    const sorted = Object.entries(byVendor).sort((a,b) => b[1]-a[1]).slice(0,5);
+    if (sorted.length === 0) {
+      area.innerHTML = `<div class="empty-state">No spend recorded this month yet.</div>`;
+      return;
+    }
+    const max = sorted[0][1];
+    area.innerHTML = sorted.map(([name, amount]) => `
+      <div class="vendor-row">
+        <div class="vendor-name" title="${name}">${name}</div>
+        <div class="vendor-bar-track"><div class="vendor-bar-fill" style="width:${Math.max(4, (amount/max)*100)}%"></div></div>
+        <div class="vendor-amount">₹${amount.toLocaleString('en-IN')}</div>
+      </div>
+    `).join('');
   }
 
   async function refreshPendingCount() {
@@ -1113,7 +1259,7 @@
           <div><b>Amount</b>₹${item.invoice_value || '-'}</div>
           ${isGst ? `<div><b>GSTIN</b>${item.gstin || '-'}</div>` : ''}
           <div><b>Submitted by</b>${item.purchased_by || '-'}</div>
-          <div><b>Photo</b>${item.photo_link ? `<a href="${item.photo_link}" target="_blank" style="color:var(--teal);">View</a>` : '-'}</div>
+          <div><b>Photo</b>${item.photo_link ? photoThumbHtml(item.photo_link) : '-'}</div>
         </div>
         <div class="approval-actions">
           <button class="btn-primary" data-action="approve">Approve</button>
