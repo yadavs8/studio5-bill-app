@@ -987,8 +987,12 @@
     return { day: parseInt(parts[0],10), month: parseInt(parts[1],10), year: parseInt(parts[2],10) };
   }
 
-  function isThisMonth(str) {
-    const d = parseUploadedOnDate(str);
+  function isThisMonth(record) {
+    let d = parseUploadedOnDate(record.uploaded_on);
+    if (!d) {
+      // Older entries saved before "Uploaded On" existed — fall back to the bill's own invoice date.
+      d = parseUploadedOnDate(record.date);
+    }
     if (!d) return false;
     const now = new Date();
     return d.month === (now.getMonth() + 1) && d.year === now.getFullYear();
@@ -1013,7 +1017,7 @@
     } catch (e) { /* dashboard still shows what it can */ }
 
     const all = [...recordsCache.gst, ...recordsCache.non_gst];
-    const thisMonth = all.filter(r => isThisMonth(r.uploaded_on));
+    const thisMonth = all.filter(r => isThisMonth(r));
     const monthSpend = thisMonth.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
     const monthGst = thisMonth
       .filter(r => r.bill_type === 'gst')
