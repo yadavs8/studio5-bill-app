@@ -370,8 +370,14 @@
     min-width: 18px;
     text-align: center;
   }
-  .view { display: none; }
-  .view.active { display: block; }
+  .view-viewport { overflow: hidden; position: relative; }
+  .view-track {
+    display: flex;
+    width: 100%;
+    transition: transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1), height 0.32s ease;
+  }
+  .view-track.dragging { transition: none; }
+  .view { flex: 0 0 100%; max-width: 100%; box-sizing: border-box; min-width: 0; }
 
   .dash-grid {
     display: grid;
@@ -546,81 +552,87 @@
     <button class="nav-btn" data-view="approvals">Approvals <span class="nav-badge" id="approvalsBadge" style="display:none;">0</span></button>
   </div>
 
-  <div class="view active" id="view-dashboard">
-    <div class="dash-grid">
-      <div class="dash-card alert" id="pendingCard">
-        <div class="dash-label">Pending Your Approval</div>
-        <div class="dash-value" id="dashPendingCount">–</div>
-        <div class="dash-sub">Tap to review</div>
-      </div>
-      <div class="dash-card" id="overdueCard">
-        <div class="dash-label">Overdue Unpaid Bills</div>
-        <div class="dash-value" id="dashOverdueCount">–</div>
-        <div class="dash-sub">Unpaid, over 30 days old</div>
-      </div>
-      <div class="dash-card">
-        <div class="dash-label">This Month · Spend</div>
-        <div class="dash-value" id="dashMonthSpend">–</div>
-        <div class="dash-sub">GST + Non-GST combined</div>
-      </div>
-      <div class="dash-card">
-        <div class="dash-label">This Month · GST Paid</div>
-        <div class="dash-value" id="dashMonthGst">–</div>
-        <div class="dash-sub">IGST + CGST + SGST</div>
-      </div>
-      <div class="dash-card">
-        <div class="dash-label">Total Bills in Ledger</div>
-        <div class="dash-value" id="dashTotalBills">–</div>
-        <div class="dash-sub">Approved entries</div>
-      </div>
-    </div>
+  <div class="view-viewport">
+    <div class="view-track" id="viewTrack">
 
-    <div class="panel" style="margin-bottom:20px;">
-      <h2 style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin-bottom:16px;">Spend — Last 6 Months</h2>
-      <canvas id="trendChart" height="90"></canvas>
-    </div>
+      <div class="view" id="view-dashboard">
+        <div class="dash-grid">
+          <div class="dash-card alert" id="pendingCard">
+            <div class="dash-label">Pending Your Approval</div>
+            <div class="dash-value" id="dashPendingCount">–</div>
+            <div class="dash-sub">Tap to review</div>
+          </div>
+          <div class="dash-card" id="overdueCard">
+            <div class="dash-label">Overdue Unpaid Bills</div>
+            <div class="dash-value" id="dashOverdueCount">–</div>
+            <div class="dash-sub">Unpaid, over 30 days old</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">This Month · Spend</div>
+            <div class="dash-value" id="dashMonthSpend">–</div>
+            <div class="dash-sub">GST + Non-GST combined</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">This Month · GST Paid</div>
+            <div class="dash-value" id="dashMonthGst">–</div>
+            <div class="dash-sub">IGST + CGST + SGST</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">Total Bills in Ledger</div>
+            <div class="dash-value" id="dashTotalBills">–</div>
+            <div class="dash-sub">Approved entries</div>
+          </div>
+        </div>
 
-    <div class="panel">
-      <h2 style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin-bottom:16px;">Top Vendors This Month</h2>
-      <div id="topVendorsArea"><div class="empty-state">No spend recorded this month yet.</div></div>
-    </div>
-  </div>
+        <div class="panel" style="margin-bottom:20px;">
+          <h2 style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin-bottom:16px;">Spend — Last 6 Months</h2>
+          <canvas id="trendChart" height="90"></canvas>
+        </div>
 
-  <div class="view" id="view-upload">
-    <div class="panel">
-      <div class="upload-zone" id="dropZone">
-        <input type="file" id="fileInput" accept="image/*,application/pdf" multiple />
-        <div class="upload-icon">🧾</div>
-        <div class="upload-label" id="uploadLabel">Click to upload up to 5 bill photos or PDFs</div>
-        <div class="upload-hint">JPG, PNG, or PDF · select multiple files to batch-upload · works for both GST invoices and plain vendor bills</div>
-      </div>
-      <div id="statusArea"></div>
-      <div id="reviewArea"></div>
-    </div>
-  </div>
-
-  <div class="view" id="view-ledger">
-    <div class="panel">
-      <div class="table-toolbar">
-        <h2>Ledger <span class="count-pill" id="countPill">0 entries</span></h2>
-        <div style="display:flex; gap:8px;">
-          <button class="btn-ghost" id="exportBtn">Export to Excel</button>
+        <div class="panel">
+          <h2 style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin-bottom:16px;">Top Vendors This Month</h2>
+          <div id="topVendorsArea"><div class="empty-state">No spend recorded this month yet.</div></div>
         </div>
       </div>
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="gst" id="tabGst">GST Bills</button>
-        <button class="tab-btn" data-tab="non_gst" id="tabNonGst">Non-GST Bills</button>
-      </div>
-      <div class="table-scroll" id="tableArea"></div>
-    </div>
-  </div>
 
-  <div class="view" id="view-approvals">
-    <div class="panel">
-      <div class="table-toolbar">
-        <h2>Pending Approvals</h2>
+      <div class="view" id="view-upload">
+        <div class="panel">
+          <div class="upload-zone" id="dropZone">
+            <input type="file" id="fileInput" accept="image/*,application/pdf" multiple />
+            <div class="upload-icon">🧾</div>
+            <div class="upload-label" id="uploadLabel">Click to upload up to 5 bill photos or PDFs</div>
+            <div class="upload-hint">JPG, PNG, or PDF · select multiple files to batch-upload · works for both GST invoices and plain vendor bills</div>
+          </div>
+          <div id="statusArea"></div>
+          <div id="reviewArea"></div>
+        </div>
       </div>
-      <div id="approvalsArea"><div class="empty-state">Enter the manager PIN to view pending bills.</div></div>
+
+      <div class="view" id="view-ledger">
+        <div class="panel">
+          <div class="table-toolbar">
+            <h2>Ledger <span class="count-pill" id="countPill">0 entries</span></h2>
+            <div style="display:flex; gap:8px;">
+              <button class="btn-ghost" id="exportBtn">Export to Excel</button>
+            </div>
+          </div>
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="gst" id="tabGst">GST Bills</button>
+            <button class="tab-btn" data-tab="non_gst" id="tabNonGst">Non-GST Bills</button>
+          </div>
+          <div class="table-scroll" id="tableArea"></div>
+        </div>
+      </div>
+
+      <div class="view" id="view-approvals">
+        <div class="panel">
+          <div class="table-toolbar">
+            <h2>Pending Approvals</h2>
+          </div>
+          <div id="approvalsArea"><div class="empty-state">Enter the manager PIN to view pending bills.</div></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1067,52 +1079,94 @@
   document.getElementById('pendingCard').addEventListener('click', () => switchView('approvals'));
 
   function switchView(viewName) {
+    const index = VIEW_ORDER.indexOf(viewName);
+    if (index === -1) return;
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewName));
-    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === `view-${viewName}`));
+    currentViewIndex = index;
+    settleTrackToIndex(index, true);
     if (viewName === 'dashboard') refreshDashboard();
     if (viewName === 'approvals') openApprovals();
   }
 
-  // ---------- Swipe navigation (mobile) ----------
+  function settleTrackToIndex(index, animate) {
+    viewTrack.classList.toggle('dragging', !animate);
+    viewTrack.style.transform = `translateX(-${index * 100}%)`;
+    const targetView = viewTrack.children[index];
+    if (targetView) viewport.style.height = targetView.offsetHeight + 'px';
+  }
+
+  // ---------- Swipe navigation (mobile) — real-time drag-following with snap ----------
   const VIEW_ORDER = ['dashboard', 'upload', 'ledger', 'approvals'];
-  let swipeStartX = null, swipeStartY = null, swipeIgnored = false;
+  const viewport = document.querySelector('.view-viewport');
+  const viewTrack = document.getElementById('viewTrack');
+  let currentViewIndex = 0;
+  let swipeStartX = null, swipeStartY = null, swipeIgnored = false, viewportWidth = 0;
 
   mainApp.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
     swipeStartX = touch.clientX;
     swipeStartY = touch.clientY;
     swipeIgnored = false;
+    viewportWidth = viewport.getBoundingClientRect().width;
 
     const target = e.target;
-    // Don't hijack: text fields (typing/selecting text), the horizontally-scrollable
-    // ledger table, or either PIN overlay.
     if (target.closest('input, textarea, .table-scroll') ||
         pinOverlay.style.display !== 'none' ||
         bossPinOverlay.style.display !== 'none') {
       swipeIgnored = true;
+      return;
     }
+    viewTrack.classList.add('dragging'); // disable CSS transition while actively dragging
+  }, { passive: true });
+
+  mainApp.addEventListener('touchmove', (e) => {
+    if (swipeIgnored || swipeStartX === null || viewportWidth === 0) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - swipeStartX;
+    const deltaY = touch.clientY - swipeStartY;
+    if (Math.abs(deltaY) > Math.abs(deltaX) * 1.2) return; // looks like vertical scroll, don't drag horizontally
+
+    // Resist dragging past the first/last view instead of allowing empty space to show.
+    let resistedDelta = deltaX;
+    if ((currentViewIndex === 0 && deltaX > 0) || (currentViewIndex === VIEW_ORDER.length - 1 && deltaX < 0)) {
+      resistedDelta = deltaX * 0.25;
+    }
+    const percentOffset = (resistedDelta / viewportWidth) * 100;
+    viewTrack.style.transform = `translateX(calc(-${currentViewIndex * 100}% + ${percentOffset}%))`;
   }, { passive: true });
 
   mainApp.addEventListener('touchend', (e) => {
-    if (swipeIgnored || swipeStartX === null) return;
+    if (swipeIgnored || swipeStartX === null) {
+      swipeStartX = null;
+      return;
+    }
     const touch = e.changedTouches[0];
     const deltaX = touch.clientX - swipeStartX;
     const deltaY = touch.clientY - swipeStartY;
     swipeStartX = null;
 
-    const SWIPE_THRESHOLD = 60;
-    if (Math.abs(deltaX) < SWIPE_THRESHOLD || Math.abs(deltaY) > Math.abs(deltaX) * 0.6) return; // not a clean horizontal swipe
+    const SWIPE_THRESHOLD = viewportWidth * 0.22; // drag past ~22% of screen width to change section
+    let targetIndex = currentViewIndex;
 
-    const activeBtn = document.querySelector('.nav-btn.active');
-    const currentIndex = VIEW_ORDER.indexOf(activeBtn ? activeBtn.dataset.view : 'dashboard');
-    if (currentIndex === -1) return;
+    if (Math.abs(deltaY) <= Math.abs(deltaX) * 1.2) {
+      if (deltaX < -SWIPE_THRESHOLD && currentViewIndex < VIEW_ORDER.length - 1) targetIndex = currentViewIndex + 1;
+      else if (deltaX > SWIPE_THRESHOLD && currentViewIndex > 0) targetIndex = currentViewIndex - 1;
+    }
 
-    if (deltaX < 0 && currentIndex < VIEW_ORDER.length - 1) {
-      switchView(VIEW_ORDER[currentIndex + 1]); // swipe left -> next section
-    } else if (deltaX > 0 && currentIndex > 0) {
-      switchView(VIEW_ORDER[currentIndex - 1]); // swipe right -> previous section
+    viewTrack.classList.remove('dragging'); // re-enable smooth transition for the settle animation
+    if (targetIndex !== currentViewIndex) {
+      const viewName = VIEW_ORDER[targetIndex];
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewName));
+      currentViewIndex = targetIndex;
+      settleTrackToIndex(targetIndex, true);
+      if (viewName === 'dashboard') refreshDashboard();
+      if (viewName === 'approvals') openApprovals();
+    } else {
+      settleTrackToIndex(currentViewIndex, true); // snap back to where we started
     }
   }, { passive: true });
+
+  window.addEventListener('resize', () => settleTrackToIndex(currentViewIndex, false));
 
   // ---------- Dashboard ----------
   function parseUploadedOnDate(str) {
@@ -1437,6 +1491,7 @@
 
   loadRecords();
   refreshDashboard();
+  settleTrackToIndex(0, false);
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service worker registration failed:', err));
