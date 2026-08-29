@@ -1073,6 +1073,47 @@
     if (viewName === 'approvals') openApprovals();
   }
 
+  // ---------- Swipe navigation (mobile) ----------
+  const VIEW_ORDER = ['dashboard', 'upload', 'ledger', 'approvals'];
+  let swipeStartX = null, swipeStartY = null, swipeIgnored = false;
+
+  mainApp.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    swipeStartX = touch.clientX;
+    swipeStartY = touch.clientY;
+    swipeIgnored = false;
+
+    const target = e.target;
+    // Don't hijack: text fields (typing/selecting text), the horizontally-scrollable
+    // ledger table, or either PIN overlay.
+    if (target.closest('input, textarea, .table-scroll') ||
+        pinOverlay.style.display !== 'none' ||
+        bossPinOverlay.style.display !== 'none') {
+      swipeIgnored = true;
+    }
+  }, { passive: true });
+
+  mainApp.addEventListener('touchend', (e) => {
+    if (swipeIgnored || swipeStartX === null) return;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - swipeStartX;
+    const deltaY = touch.clientY - swipeStartY;
+    swipeStartX = null;
+
+    const SWIPE_THRESHOLD = 60;
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD || Math.abs(deltaY) > Math.abs(deltaX) * 0.6) return; // not a clean horizontal swipe
+
+    const activeBtn = document.querySelector('.nav-btn.active');
+    const currentIndex = VIEW_ORDER.indexOf(activeBtn ? activeBtn.dataset.view : 'dashboard');
+    if (currentIndex === -1) return;
+
+    if (deltaX < 0 && currentIndex < VIEW_ORDER.length - 1) {
+      switchView(VIEW_ORDER[currentIndex + 1]); // swipe left -> next section
+    } else if (deltaX > 0 && currentIndex > 0) {
+      switchView(VIEW_ORDER[currentIndex - 1]); // swipe right -> previous section
+    }
+  }, { passive: true });
+
   // ---------- Dashboard ----------
   function parseUploadedOnDate(str) {
     // Expects "DD/MM/YYYY, hh:mm am/pm" from toLocaleString('en-IN', ...)
