@@ -338,7 +338,124 @@
     margin-bottom: 10px;
     min-height: 16px;
   }
+
+  .navbar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-btn {
+    background: none;
+    border: none;
+    padding: 11px 18px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--walnut-light);
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .nav-btn.active { color: var(--walnut); border-bottom: 2px solid var(--brass); }
+  .nav-badge {
+    background: var(--danger);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+  }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .dash-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .dash-card {
+    background: #fffdf9;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 22px;
+  }
+  .dash-card.alert {
+    background: #fbeee9;
+    border-color: #e3b9a8;
+    cursor: pointer;
+  }
+  .dash-card .dash-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--brass-dark);
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .dash-card.alert .dash-label { color: var(--danger); }
+  .dash-card .dash-value {
+    font-family: Georgia, serif;
+    font-size: 30px;
+    color: var(--walnut);
+  }
+  .dash-card .dash-sub { font-size: 12px; color: var(--walnut-light); margin-top: 6px; }
+
+  .payment-choice { display: flex; gap: 10px; margin: 14px 16px 0; }
+  .payment-btn {
+    flex: 1;
+    padding: 14px;
+    border-radius: 4px;
+    border: 2px solid var(--line);
+    background: #fffdf9;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--walnut-light);
+    cursor: pointer;
+    text-align: center;
+  }
+  .payment-btn.selected.paid { border-color: var(--good); color: var(--good); background: #eaf3ec; }
+  .payment-btn.selected.unpaid { border-color: var(--brass-dark); color: var(--brass-dark); background: #fbf3e6; }
+
+  .approval-card {
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fffdf9;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .approval-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .approval-head h3 { font-family: Georgia, serif; color: var(--walnut); font-size: 17px; }
+  .approval-meta { font-size: 12.5px; color: var(--walnut-light); margin-top: 3px; }
+  .pay-tag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 3px; text-transform: uppercase; }
+  .pay-tag.paid { background: #e2eee3; color: var(--good); }
+  .pay-tag.unpaid { background: #f1e6d3; color: var(--brass-dark); }
+  .approval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 8px 16px; font-size: 13px; margin-bottom: 14px; }
+  .approval-grid div b { display:block; font-size:10.5px; text-transform:uppercase; color:#a0917d; font-weight:600; }
+  .approval-actions { display: flex; gap: 10px; }
+  .reject-box { margin-top: 12px; display: none; }
+  .reject-box.open { display: block; }
+  .reject-box textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 4px; padding: 10px;
+    font-family: inherit; font-size: 13px; resize: vertical; min-height: 60px; margin-bottom: 8px;
+  }
 </style>
+
+<div class="pin-overlay" id="bossPinOverlay" style="display:none; z-index:10000;">
+  <div class="pin-card">
+    <h2>Manager Access</h2>
+    <p>Enter the approval PIN to continue</p>
+    <input type="password" inputmode="numeric" id="bossPinInput" maxlength="8" placeholder="••••" />
+    <div class="pin-error" id="bossPinError"></div>
+    <button class="btn-primary" id="bossPinSubmit" style="width:100%;">Unlock</button>
+    <button class="btn-ghost" id="bossPinCancel" style="width:100%; margin-top:8px;">Cancel</button>
+  </div>
+</div>
 
 <div class="pin-overlay" id="pinOverlay">
   <div class="pin-card">
@@ -359,29 +476,74 @@
     <div class="subhead">Upload a vendor bill photo. The app tells GST bills and non-GST bills apart, pulls the right fields for each, and checks for duplicates before saving.</div>
   </div>
 
-  <div class="panel">
-    <div class="upload-zone" id="dropZone">
-      <input type="file" id="fileInput" accept="image/*,application/pdf" multiple />
-      <div class="upload-icon">🧾</div>
-      <div class="upload-label" id="uploadLabel">Click to upload up to 5 bill photos or PDFs</div>
-      <div class="upload-hint">JPG, PNG, or PDF · select multiple files to batch-upload · works for both GST invoices and plain vendor bills</div>
-    </div>
-    <div id="statusArea"></div>
-    <div id="reviewArea"></div>
+  <div class="navbar">
+    <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+    <button class="nav-btn" data-view="upload">Upload</button>
+    <button class="nav-btn" data-view="ledger">Ledger</button>
+    <button class="nav-btn" data-view="approvals">Approvals <span class="nav-badge" id="approvalsBadge" style="display:none;">0</span></button>
   </div>
 
-  <div class="panel">
-    <div class="table-toolbar">
-      <h2>Ledger <span class="count-pill" id="countPill">0 entries</span></h2>
-      <div style="display:flex; gap:8px;">
-        <button class="btn-ghost" id="exportBtn">Export to Excel</button>
+  <div class="view active" id="view-dashboard">
+    <div class="dash-grid">
+      <div class="dash-card alert" id="pendingCard">
+        <div class="dash-label">Pending Your Approval</div>
+        <div class="dash-value" id="dashPendingCount">–</div>
+        <div class="dash-sub">Tap to review</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-label">This Month · Spend</div>
+        <div class="dash-value" id="dashMonthSpend">–</div>
+        <div class="dash-sub">GST + Non-GST combined</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-label">This Month · GST Paid</div>
+        <div class="dash-value" id="dashMonthGst">–</div>
+        <div class="dash-sub">IGST + CGST + SGST</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-label">Total Bills in Ledger</div>
+        <div class="dash-value" id="dashTotalBills">–</div>
+        <div class="dash-sub">Approved entries</div>
       </div>
     </div>
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="gst" id="tabGst">GST Bills</button>
-      <button class="tab-btn" data-tab="non_gst" id="tabNonGst">Non-GST Bills</button>
+  </div>
+
+  <div class="view" id="view-upload">
+    <div class="panel">
+      <div class="upload-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*,application/pdf" multiple />
+        <div class="upload-icon">🧾</div>
+        <div class="upload-label" id="uploadLabel">Click to upload up to 5 bill photos or PDFs</div>
+        <div class="upload-hint">JPG, PNG, or PDF · select multiple files to batch-upload · works for both GST invoices and plain vendor bills</div>
+      </div>
+      <div id="statusArea"></div>
+      <div id="reviewArea"></div>
     </div>
-    <div class="table-scroll" id="tableArea"></div>
+  </div>
+
+  <div class="view" id="view-ledger">
+    <div class="panel">
+      <div class="table-toolbar">
+        <h2>Ledger <span class="count-pill" id="countPill">0 entries</span></h2>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-ghost" id="exportBtn">Export to Excel</button>
+        </div>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="gst" id="tabGst">GST Bills</button>
+        <button class="tab-btn" data-tab="non_gst" id="tabNonGst">Non-GST Bills</button>
+      </div>
+      <div class="table-scroll" id="tableArea"></div>
+    </div>
+  </div>
+
+  <div class="view" id="view-approvals">
+    <div class="panel">
+      <div class="table-toolbar">
+        <h2>Pending Approvals</h2>
+      </div>
+      <div id="approvalsArea"><div class="empty-state">Enter the manager PIN to view pending bills.</div></div>
+    </div>
   </div>
 </div>
 
@@ -458,7 +620,8 @@
     ['cess','Cess'],
     ['invoice_value','Invoice Value'],
     ['uploaded_on','Uploaded On'],
-    ['photo_link','Photo']
+    ['photo_link','Photo'],
+    ['payment_status','Payment']
   ];
 
   // Fields shown for non-GST bills (mirrors GSTR-2B "Manual" tab)
@@ -472,7 +635,8 @@
     ['purchased_by','Submitted By'],
     ['invoice_value','Invoice Value'],
     ['uploaded_on','Uploaded On'],
-    ['photo_link','Photo']
+    ['photo_link','Photo'],
+    ['payment_status','Payment']
   ];
 
   // All fields the model can fill, used in the review form (GST-only ones dimmed for non-GST bills)
@@ -636,6 +800,7 @@
   async function renderReview(extracted) {
     const dup = await checkDuplicate(extracted);
     const isGst = extracted.bill_type === 'gst';
+    extracted.payment_status = ''; // must be explicitly chosen before submitting
 
     let fieldsHtml = ALL_FIELDS.map(([key, label, scope]) => {
       const dimmed = scope === 'gst' && !isGst;
@@ -649,49 +814,69 @@
     reviewArea.innerHTML = `
       <div class="review-card">
         <div class="review-card-head">
-          <span>Review before saving <span class="type-tag ${extracted.bill_type}" style="margin-left:8px;">${isGst ? 'GST Bill' : 'Non-GST Bill'}</span></span>
+          <span>Review before sending <span class="type-tag ${extracted.bill_type}" style="margin-left:8px;">${isGst ? 'GST Bill' : 'Non-GST Bill'}</span></span>
           <span>${dup ? '<span class="dup-tag">Possible duplicate</span>' : ''}</span>
         </div>
-        ${dup ? `<div class="banner warn" style="margin:12px 16px 0;">A bill with this ${isGst ? 'GSTIN + invoice number' : 'vendor + invoice number + date'} is already in the sheet. Saving is blocked by default — this is almost always the same bill uploaded twice.</div>` : ''}
+        ${dup ? `<div class="banner warn" style="margin:12px 16px 0;">A bill with this ${isGst ? 'GSTIN + invoice number' : 'vendor + invoice number + date'} is already in the sheet. Sending is blocked by default — this is almost always the same bill uploaded twice.</div>` : ''}
         <div class="review-grid">${fieldsHtml}</div>
+        <div style="padding: 4px 16px 0;">
+          <label style="font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; color:#a0917d; font-weight:600;">Has this bill been paid?</label>
+          <div class="payment-choice">
+            <button type="button" class="payment-btn" data-pay="paid">Already Paid</button>
+            <button type="button" class="payment-btn" data-pay="unpaid">Not Paid Yet</button>
+          </div>
+        </div>
         ${dup ? `
-        <div style="padding: 12px 16px 0; font-size: 13px;">
+        <div style="padding: 14px 16px 0; font-size: 13px;">
           <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; color: var(--danger); font-weight:600;">
             <input type="checkbox" id="dupConfirmCheck" style="margin-top:2px;">
             I've checked the original bill and confirm this is genuinely a different bill, not a re-upload.
           </label>
         </div>` : ''}
         <div class="review-actions">
-          <button class="btn-primary" id="saveBtn" ${dup ? 'disabled' : ''}>${dup ? 'Save anyway' : 'Save to ledger'}</button>
+          <button class="btn-primary" id="saveBtn" disabled>${dup ? 'Send anyway' : 'Send for Approval'}</button>
           <button class="btn-ghost" id="discardBtn">Discard</button>
         </div>
       </div>
     `;
 
-    document.getElementById('saveBtn').onclick = () => saveCurrentReview(extracted.bill_type);
+    const saveBtn = document.getElementById('saveBtn');
+    const checkbox = document.getElementById('dupConfirmCheck');
+
+    function refreshSaveEnabled() {
+      const paymentOk = !!extracted.payment_status;
+      const dupOk = !dup || (checkbox && checkbox.checked);
+      saveBtn.disabled = !(paymentOk && dupOk);
+    }
+
+    reviewArea.querySelectorAll('.payment-btn').forEach(btn => {
+      btn.onclick = () => {
+        extracted.payment_status = btn.dataset.pay;
+        reviewArea.querySelectorAll('.payment-btn').forEach(b => b.classList.remove('selected','paid','unpaid'));
+        btn.classList.add('selected', btn.dataset.pay);
+        refreshSaveEnabled();
+      };
+    });
+
+    if (checkbox) checkbox.addEventListener('change', refreshSaveEnabled);
+
+    saveBtn.onclick = () => submitForApproval(extracted.bill_type, extracted.payment_status);
     document.getElementById('discardBtn').onclick = () => {
       reviewArea.innerHTML = '';
       statusArea.innerHTML = '';
       queueIndex++;
       processNextInQueue();
     };
-
-    if (dup) {
-      const checkbox = document.getElementById('dupConfirmCheck');
-      const saveBtn = document.getElementById('saveBtn');
-      checkbox.addEventListener('change', () => {
-        saveBtn.disabled = !checkbox.checked;
-      });
-    }
   }
 
 
-  async function saveCurrentReview(billType) {
+  async function submitForApproval(billType, paymentStatus) {
     const inputs = reviewArea.querySelectorAll('.field input');
     const record = {
       uploaded_at: new Date().toISOString(),
       uploaded_on: new Date().toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      bill_type: billType
+      bill_type: billType,
+      payment_status: paymentStatus
     };
     inputs.forEach(inp => record[inp.dataset.key] = inp.disabled ? '' : inp.value.trim());
     if (currentFileBase64) {
@@ -700,27 +885,24 @@
     }
 
     try {
-      const saveResponse = await fetch(`${BACKEND_URL}/save`, {
+      const saveResponse = await fetch(`${BACKEND_URL}/submit-for-approval`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
         body: JSON.stringify(record)
       });
       const saveResult = await saveResponse.json();
       if (!saveResponse.ok || saveResult.error) {
-        statusArea.innerHTML = `<div class="banner warn">Couldn't push to the Google Sheet (${saveResult.error || 'unknown error'}). Nothing was saved — try again.</div>`;
+        statusArea.innerHTML = `<div class="banner warn">Couldn't send for approval (${saveResult.error || 'unknown error'}). Try again.</div>`;
         return;
       }
 
       const progressNote = fileQueue.length > 1 ? ` (${queueIndex + 1} of ${fileQueue.length} done)` : '';
-      statusArea.innerHTML = `<div class="banner ok">Saved to the ${billType === 'gst' ? 'GST Bills' : 'Non-GST Bills'} tab in your Google Sheet.${progressNote}</div>`;
+      statusArea.innerHTML = `<div class="banner ok">Sent to your manager for approval.${progressNote}</div>`;
       reviewArea.innerHTML = '';
-      activeTab = billType;
-      setActiveTab();
-      await loadRecords();
       queueIndex++;
-      setTimeout(processNextInQueue, 900); // brief pause so the "Saved" message is visible before the next bill starts
+      setTimeout(processNextInQueue, 900);
     } catch (e) {
-      statusArea.innerHTML = `<div class="banner warn">Couldn't reach the backend to save. Check your connection and try again.</div>`;
+      statusArea.innerHTML = `<div class="banner warn">Couldn't reach the backend. Check your connection and try again.</div>`;
     }
   }
 
@@ -779,7 +961,223 @@
     XLSX.writeFile(wb, 'studio5-bill-ledger.xlsx');
   });
 
+  // ---------- Navigation ----------
+  const BOSS_PIN = '5719';
+  let approvalsCache = [];
+
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchView(btn.dataset.view));
+  });
+  document.getElementById('pendingCard').addEventListener('click', () => switchView('approvals'));
+
+  function switchView(viewName) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewName));
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === `view-${viewName}`));
+    if (viewName === 'dashboard') refreshDashboard();
+    if (viewName === 'approvals') openApprovals();
+  }
+
+  // ---------- Dashboard ----------
+  function parseUploadedOnDate(str) {
+    // Expects "DD/MM/YYYY, hh:mm am/pm" from toLocaleString('en-IN', ...)
+    if (!str) return null;
+    const datePart = str.split(',')[0].trim();
+    const parts = datePart.split('/');
+    if (parts.length !== 3) return null;
+    return { day: parseInt(parts[0],10), month: parseInt(parts[1],10), year: parseInt(parts[2],10) };
+  }
+
+  function isThisMonth(str) {
+    const d = parseUploadedOnDate(str);
+    if (!d) return false;
+    const now = new Date();
+    return d.month === (now.getMonth() + 1) && d.year === now.getFullYear();
+  }
+
+  function toNum(v) {
+    const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
+    return isNaN(n) ? 0 : n;
+  }
+
+  async function refreshDashboard() {
+    document.getElementById('dashPendingCount').textContent = '…';
+    document.getElementById('dashMonthSpend').textContent = '…';
+    document.getElementById('dashMonthGst').textContent = '…';
+    document.getElementById('dashTotalBills').textContent = '…';
+
+    try {
+      if (recordsCache.gst.length === 0 && recordsCache.non_gst.length === 0) {
+        recordsCache.gst = await fetchRecords('gst');
+        recordsCache.non_gst = await fetchRecords('non_gst');
+      }
+    } catch (e) { /* dashboard still shows what it can */ }
+
+    const all = [...recordsCache.gst, ...recordsCache.non_gst];
+    const thisMonth = all.filter(r => isThisMonth(r.uploaded_on));
+    const monthSpend = thisMonth.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
+    const monthGst = thisMonth
+      .filter(r => r.bill_type === 'gst')
+      .reduce((sum, r) => sum + toNum(r.igst) + toNum(r.cgst) + toNum(r.sgst), 0);
+
+    document.getElementById('dashMonthSpend').textContent = '₹' + monthSpend.toLocaleString('en-IN');
+    document.getElementById('dashMonthGst').textContent = '₹' + monthGst.toLocaleString('en-IN');
+    document.getElementById('dashTotalBills').textContent = all.length;
+
+    await refreshPendingCount();
+  }
+
+  async function refreshPendingCount() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/pending-approvals`, { headers: { 'x-app-secret': APP_SECRET } });
+      const data = await res.json();
+      const count = (data.pending || []).length;
+      document.getElementById('dashPendingCount').textContent = count;
+      const badge = document.getElementById('approvalsBadge');
+      if (count > 0) { badge.style.display = 'inline-block'; badge.textContent = count; }
+      else { badge.style.display = 'none'; }
+      approvalsCache = data.pending || [];
+    } catch (e) {
+      document.getElementById('dashPendingCount').textContent = '?';
+    }
+  }
+
+  // ---------- Boss PIN gate for Approvals ----------
+  const bossPinOverlay = document.getElementById('bossPinOverlay');
+  const bossPinInput = document.getElementById('bossPinInput');
+  const bossPinError = document.getElementById('bossPinError');
+
+  function openApprovals() {
+    if (sessionStorage.getItem('boss_unlocked') === 'yes') {
+      renderApprovals();
+    } else {
+      bossPinOverlay.style.display = 'flex';
+      bossPinInput.value = '';
+      bossPinError.textContent = '';
+      bossPinInput.focus();
+    }
+  }
+
+  function tryBossUnlock() {
+    if (bossPinInput.value.trim() === BOSS_PIN) {
+      sessionStorage.setItem('boss_unlocked', 'yes');
+      bossPinOverlay.style.display = 'none';
+      renderApprovals();
+    } else {
+      bossPinError.textContent = 'Incorrect PIN.';
+      bossPinInput.value = '';
+    }
+  }
+  document.getElementById('bossPinSubmit').addEventListener('click', tryBossUnlock);
+  bossPinInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryBossUnlock(); });
+  document.getElementById('bossPinCancel').addEventListener('click', () => {
+    bossPinOverlay.style.display = 'none';
+    switchView('dashboard');
+  });
+
+  async function renderApprovals() {
+    const area = document.getElementById('approvalsArea');
+    area.innerHTML = `<div class="empty-state">Loading pending bills…</div>`;
+    try {
+      const res = await fetch(`${BACKEND_URL}/pending-approvals`, { headers: { 'x-app-secret': APP_SECRET } });
+      const data = await res.json();
+      approvalsCache = data.pending || [];
+    } catch (e) {
+      area.innerHTML = `<div class="empty-state">Couldn't load pending approvals. Check your connection.</div>`;
+      return;
+    }
+
+    if (approvalsCache.length === 0) {
+      area.innerHTML = `<div class="empty-state">Nothing waiting for approval right now.</div>`;
+      return;
+    }
+
+    area.innerHTML = approvalsCache.map(item => {
+      const isGst = item.bill_type === 'gst';
+      const payTag = item.payment_status === 'paid'
+        ? '<span class="pay-tag paid">Paid</span>'
+        : '<span class="pay-tag unpaid">Not Paid</span>';
+      return `
+      <div class="approval-card" data-id="${item.submission_id}">
+        <div class="approval-head">
+          <div>
+            <h3>${item.vendor_name || 'Unknown vendor'}</h3>
+            <div class="approval-meta">${isGst ? 'GST Bill' : 'Non-GST Bill'} · Invoice ${item.bill_no || '-'} · ${item.date || '-'}</div>
+          </div>
+          ${payTag}
+        </div>
+        <div class="approval-grid">
+          <div><b>Amount</b>₹${item.invoice_value || '-'}</div>
+          ${isGst ? `<div><b>GSTIN</b>${item.gstin || '-'}</div>` : ''}
+          <div><b>Submitted by</b>${item.purchased_by || '-'}</div>
+          <div><b>Photo</b>${item.photo_link ? `<a href="${item.photo_link}" target="_blank" style="color:var(--teal);">View</a>` : '-'}</div>
+        </div>
+        <div class="approval-actions">
+          <button class="btn-primary" data-action="approve">Approve</button>
+          <button class="btn-danger" data-action="reject">Reject</button>
+        </div>
+        <div class="reject-box" id="rejectBox-${item.submission_id}">
+          <textarea placeholder="Reason for rejecting (e.g. wrong amount, blurry photo)"></textarea>
+          <button class="btn-danger" data-action="confirm-reject">Confirm Rejection</button>
+          <button class="btn-ghost" data-action="cancel-reject">Cancel</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    area.querySelectorAll('.approval-card').forEach(card => {
+      const id = card.dataset.id;
+      card.querySelector('[data-action="approve"]').onclick = () => approveBill(id, card);
+      card.querySelector('[data-action="reject"]').onclick = () => {
+        document.getElementById(`rejectBox-${id}`).classList.add('open');
+      };
+      card.querySelector('[data-action="cancel-reject"]').onclick = () => {
+        document.getElementById(`rejectBox-${id}`).classList.remove('open');
+      };
+      card.querySelector('[data-action="confirm-reject"]').onclick = () => {
+        const reason = card.querySelector('.reject-box textarea').value.trim();
+        rejectBill(id, reason, card);
+      };
+    });
+  }
+
+  async function approveBill(submissionId, cardEl) {
+    cardEl.style.opacity = '0.5';
+    try {
+      const res = await fetch(`${BACKEND_URL}/approve-bill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+        body: JSON.stringify({ submission_id: submissionId })
+      });
+      const result = await res.json();
+      if (!res.ok || result.error) throw new Error(result.error || 'Approve failed');
+      cardEl.remove();
+      await refreshPendingCount();
+      recordsCache.gst = []; recordsCache.non_gst = []; // force refresh next time ledger is viewed
+    } catch (e) {
+      cardEl.style.opacity = '1';
+      alert('Could not approve this bill — please try again.');
+    }
+  }
+
+  async function rejectBill(submissionId, reason, cardEl) {
+    cardEl.style.opacity = '0.5';
+    try {
+      const res = await fetch(`${BACKEND_URL}/reject-bill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+        body: JSON.stringify({ submission_id: submissionId, reason })
+      });
+      const result = await res.json();
+      if (!res.ok || result.error) throw new Error(result.error || 'Reject failed');
+      cardEl.remove();
+      await refreshPendingCount();
+    } catch (e) {
+      cardEl.style.opacity = '1';
+      alert('Could not reject this bill — please try again.');
+    }
+  }
+
   loadRecords();
+  refreshPendingCount();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service worker registration failed:', err));
