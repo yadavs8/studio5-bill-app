@@ -579,7 +579,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 (function() {
   // Simple shared access code — keeps casual/uninvited visitors out of the ledger.
@@ -1119,6 +1119,15 @@
   }
 
   function renderTrendChart(allRecords) {
+    const canvas = document.getElementById('trendChart');
+    if (typeof Chart === 'undefined') {
+      canvas.replaceWith(Object.assign(document.createElement('div'), {
+        className: 'empty-state',
+        textContent: "Couldn't load the chart library — the rest of the dashboard still works normally."
+      }));
+      return;
+    }
+
     const months = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
@@ -1129,7 +1138,7 @@
       .filter(r => getMonthKey(r) === m.key)
       .reduce((sum, r) => sum + toNum(r.invoice_value), 0));
 
-    const ctx = document.getElementById('trendChart').getContext('2d');
+    const ctx = canvas.getContext('2d');
     if (trendChartInstance) trendChartInstance.destroy();
     trendChartInstance = new Chart(ctx, {
       type: 'bar',
@@ -1327,7 +1336,7 @@
   }
 
   loadRecords();
-  refreshPendingCount();
+  refreshDashboard();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service worker registration failed:', err));
