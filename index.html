@@ -460,6 +460,50 @@
     display: flex; align-items: center; justify-content: center; font-size: 18px; color: #a0917d; background: #f1e9db;
   }
   .overdue-tag { background: var(--danger); color: #fff; font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 3px; margin-left: 6px; text-transform: uppercase; }
+
+  .logo-build {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .logo-panel {
+    font-family: Georgia, serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--walnut);
+    letter-spacing: 0.01em;
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(-16px) scaleY(0.4);
+    transform-origin: top;
+    animation: panelDrop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    background: linear-gradient(180deg, #fffdf9 0%, var(--cream) 100%);
+    padding: 2px 3px;
+    border-radius: 2px;
+    box-shadow: 0 1px 0 var(--line);
+  }
+  .logo-panel.accent { color: var(--brass-dark); }
+  .logo-panel:nth-child(1) { animation-delay: 0.05s; }
+  .logo-panel:nth-child(2) { animation-delay: 0.11s; }
+  .logo-panel:nth-child(3) { animation-delay: 0.17s; }
+  .logo-panel:nth-child(4) { animation-delay: 0.23s; }
+  .logo-panel:nth-child(5) { animation-delay: 0.29s; }
+  .logo-panel:nth-child(6) { animation-delay: 0.35s; }
+  .logo-panel:nth-child(7) { animation-delay: 0.44s; }
+  @keyframes panelDrop {
+    0% { opacity: 0; transform: translateY(-16px) scaleY(0.4); }
+    60% { opacity: 1; transform: translateY(2px) scaleY(1.05); }
+    100% { opacity: 1; transform: translateY(0) scaleY(1); }
+  }
+  .logo-panel.idle {
+    animation: panelBob 2.6s ease-in-out infinite;
+  }
+  @keyframes panelBob {
+    0%, 100% { transform: translateY(0) scaleY(1); }
+    50% { transform: translateY(-3px) scaleY(1.02); }
+  }
 </style>
 
 <div class="pin-overlay" id="bossPinOverlay" style="display:none; z-index:10000;">
@@ -486,6 +530,9 @@
 <div class="app" id="mainApp" style="display:none;">
   <div class="header">
     <div>
+      <div class="logo-build" aria-label="Studio5">
+        <span class="logo-panel">S</span><span class="logo-panel">T</span><span class="logo-panel">U</span><span class="logo-panel">D</span><span class="logo-panel">I</span><span class="logo-panel">O</span><span class="logo-panel accent">5</span>
+      </div>
       <div class="brand-eyebrow">Studio5 Interiors · Internal Tool</div>
       <h1>Purchase Bill Ledger</h1>
     </div>
@@ -598,6 +645,18 @@
     pinOverlay.style.display = 'none';
     mainApp.style.display = '';
     sessionStorage.setItem('bill_app_unlocked', 'yes');
+    startLogoIdleLoop();
+  }
+
+  function startLogoIdleLoop() {
+    document.querySelectorAll('.logo-panel').forEach((panel, i) => {
+      panel.addEventListener('animationend', function onDropEnd(e) {
+        if (e.animationName !== 'panelDrop') return; // ignore the idle animation's own end events
+        panel.removeEventListener('animationend', onDropEnd);
+        panel.style.animationDelay = `${i * 0.12}s`; // rolling stagger for the ongoing wave
+        panel.classList.add('idle');
+      }, { once: false });
+    });
   }
 
   function tryUnlock() {
