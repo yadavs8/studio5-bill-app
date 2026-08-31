@@ -523,6 +523,16 @@
   </div>
 </div>
 
+<div class="pin-overlay" id="nameCaptureOverlay" style="display:none; z-index:10000;">
+  <div class="pin-card">
+    <h2>One quick thing</h2>
+    <p>What's your name? This is saved on this device so it shows up automatically next time.</p>
+    <input type="text" id="nameCaptureInput" placeholder="Your name" style="letter-spacing:normal; text-align:left; font-size:16px;" />
+    <div class="pin-error" id="nameCaptureError"></div>
+    <button class="btn-primary" id="nameCaptureSubmit" style="width:100%;">Continue</button>
+  </div>
+</div>
+
 <div class="pin-overlay" id="pinOverlay">
   <div class="pin-card">
     <h2>Studio5 Bill Ledger</h2>
@@ -727,7 +737,8 @@
     ['invoice_value','Invoice Value'],
     ['uploaded_on','Uploaded On'],
     ['photo_link','Photo'],
-    ['payment_status','Payment']
+    ['payment_status','Payment'],
+    ['submitted_by_employee','Submitted By (Employee)']
   ];
 
   // Fields shown for non-GST bills (mirrors GSTR-2B "Manual" tab)
@@ -742,7 +753,8 @@
     ['invoice_value','Invoice Value'],
     ['uploaded_on','Uploaded On'],
     ['photo_link','Photo'],
-    ['payment_status','Payment']
+    ['payment_status','Payment'],
+    ['submitted_by_employee','Submitted By (Employee)']
   ];
 
   // All fields the model can fill, used in the review form (GST-only ones dimmed for non-GST bills)
@@ -966,13 +978,45 @@
 
     if (checkbox) checkbox.addEventListener('change', refreshSaveEnabled);
 
-    saveBtn.onclick = () => submitForApproval(extracted.bill_type, extracted.payment_status);
+    saveBtn.onclick = () => ensureEmployeeNameThenRun(() => submitForApproval(extracted.bill_type, extracted.payment_status));
     document.getElementById('discardBtn').onclick = () => {
       reviewArea.innerHTML = '';
       statusArea.innerHTML = '';
       queueIndex++;
       processNextInQueue();
     };
+  }
+
+  function getEmployeeName() {
+    return localStorage.getItem('studio5_employee_name');
+  }
+
+  // Asks for the employee's name exactly once per device, then remembers it —
+  // every later submission on this device attaches automatically, no re-asking.
+  function ensureEmployeeNameThenRun(callback) {
+    if (getEmployeeName()) { callback(); return; }
+
+    const overlay = document.getElementById('nameCaptureOverlay');
+    const input = document.getElementById('nameCaptureInput');
+    const errorEl = document.getElementById('nameCaptureError');
+    overlay.style.display = 'flex';
+    input.value = '';
+    errorEl.textContent = '';
+    input.focus();
+
+    const submitBtn = document.getElementById('nameCaptureSubmit');
+    function handleSubmit() {
+      const val = input.value.trim();
+      if (!val) { errorEl.textContent = 'Please enter your name.'; return; }
+      localStorage.setItem('studio5_employee_name', val);
+      overlay.style.display = 'none';
+      submitBtn.removeEventListener('click', handleSubmit);
+      input.removeEventListener('keydown', handleKeydown);
+      callback();
+    }
+    function handleKeydown(e) { if (e.key === 'Enter') handleSubmit(); }
+    submitBtn.addEventListener('click', handleSubmit);
+    input.addEventListener('keydown', handleKeydown);
   }
 
 
@@ -982,7 +1026,8 @@
       uploaded_at: new Date().toISOString(),
       uploaded_on: new Date().toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
       bill_type: billType,
-      payment_status: paymentStatus
+      payment_status: paymentStatus,
+      submitted_by_employee: getEmployeeName() || 'Unknown'
     };
     inputs.forEach(inp => record[inp.dataset.key] = inp.disabled ? '' : inp.value.trim());
     if (currentFileBase64) {
@@ -1015,8 +1060,10 @@
   async function loadRecords() {
     tableArea.innerHTML = `<div class="empty-state">Loading ledger from Google Sheets…</div>`;
     try {
-      recordsCache.gst = await fetchRecords('gst');
-      recordsCache.non_gst = await fetchRecords('non_gst');
+      [recordsCache.gst, recordsCache.non_gst] = await Promise.all([
+        fetchRecords('gst'),
+        fetchRecords('non_gst')
+      ]);
     } catch (e) {
       tableArea.innerHTML = `<div class="empty-state">Couldn't load the ledger (${e.message}). Check the backend is awake and the Sheet tab names are correct.</div>`;
       return;
@@ -1240,20 +1287,7 @@
 
   let trendChartInstance = null;
 
-  async function refreshDashboard() {
-    document.getElementById('dashPendingCount').textContent = '…';
-    document.getElementById('dashMonthSpend').textContent = '…';
-    document.getElementById('dashMonthGst').textContent = '…';
-    document.getElementById('dashTotalBills').textContent = '…';
-    document.getElementById('dashOverdueCount').textContent = '…';
-
-    try {
-      if (recordsCache.gst.length === 0 && recordsCache.non_gst.length === 0) {
-        recordsCache.gst = await fetchRecords('gst');
-        recordsCache.non_gst = await fetchRecords('non_gst');
-      }
-    } catch (e) { /* dashboard still shows what it can */ }
-
+  function paintDashboardStats() {
     const all = [...recordsCache.gst, ...recordsCache.non_gst];
     const thisMonth = all.filter(r => isThisMonth(r));
     const monthSpend = thisMonth.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
@@ -1272,7 +1306,37 @@
 
     renderTrendChart(all);
     renderTopVendors(thisMonth);
-    await refreshPendingCount();
+  }
+
+  async function refreshDashboard() {
+    const hasCache = recordsCache.gst.length > 0 || recordsCache.non_gst.length > 0;
+
+    if (hasCache) {
+      paintDashboardStats(); // instant, from what we already have — no placeholder flash
+    } else {
+      document.getElementById('dashPendingCount').textContent = '…';
+      document.getElementById('dashMonthSpend').textContent = '…';
+      document.getElementById('dashMonthGst').textContent = '…';
+      document.getElementById('dashTotalBills').textContent = '…';
+      document.getElementById('dashOverdueCount').textContent = '…';
+    }
+
+    // Always refresh in the background too, even with cache present — approvals can
+    // happen via WhatsApp outside this browser, so a long session shouldn't go stale.
+    const pendingCountPromise = refreshPendingCount();
+    try {
+      [recordsCache.gst, recordsCache.non_gst] = await Promise.all([
+        fetchRecords('gst'),
+        fetchRecords('non_gst')
+      ]);
+    } catch (e) {
+      if (!hasCache) { /* nothing to show yet and the fetch failed — leave placeholders */ }
+      await pendingCountPromise;
+      return;
+    }
+
+    paintDashboardStats();
+    await pendingCountPromise;
   }
 
   function renderTrendChart(allRecords) {
@@ -1352,6 +1416,7 @@
       if (count > 0) { badge.style.display = 'inline-block'; badge.textContent = count; }
       else { badge.style.display = 'none'; }
       approvalsCache = data.pending || [];
+      approvalsLoaded = true;
     } catch (e) {
       document.getElementById('dashPendingCount').textContent = '?';
     }
@@ -1393,17 +1458,37 @@
     switchView('dashboard');
   });
 
+  let approvalsLoaded = false; // distinguishes "never fetched" from "fetched, zero pending"
+
   async function renderApprovals() {
     const area = document.getElementById('approvalsArea');
-    area.innerHTML = `<div class="empty-state">Loading pending bills…</div>`;
+
+    // Show what we already have instantly — no blank "Loading..." wipe on repeat visits.
+    if (approvalsLoaded) {
+      renderApprovalCards();
+    } else {
+      area.innerHTML = `<div class="empty-state">Loading pending bills…</div>`;
+    }
+
+    // Refresh quietly in the background either way, so WhatsApp-side approvals/rejections
+    // (which happen outside this browser) still show up without a jarring reload.
     try {
       const res = await fetch(`${BACKEND_URL}/pending-approvals`, { headers: { 'x-app-secret': APP_SECRET } });
       const data = await res.json();
       approvalsCache = data.pending || [];
+      approvalsLoaded = true;
     } catch (e) {
-      area.innerHTML = `<div class="empty-state">Couldn't load pending approvals. Check your connection.</div>`;
-      return;
+      if (!approvalsLoaded) {
+        area.innerHTML = `<div class="empty-state">Couldn't load pending approvals. Check your connection.</div>`;
+      }
+      return; // keep showing whatever we already had rather than erroring over good cached data
     }
+
+    renderApprovalCards();
+  }
+
+  function renderApprovalCards() {
+    const area = document.getElementById('approvalsArea');
 
     if (approvalsCache.length === 0) {
       area.innerHTML = `<div class="empty-state">Nothing waiting for approval right now.</div>`;
@@ -1427,7 +1512,7 @@
         <div class="approval-grid">
           <div><b>Amount</b>₹${item.invoice_value || '-'}</div>
           ${isGst ? `<div><b>GSTIN</b>${item.gstin || '-'}</div>` : ''}
-          <div><b>Submitted by</b>${item.purchased_by || '-'}</div>
+          <div><b>Submitted by</b>${item.submitted_by_employee || '-'}</div>
           <div><b>Photo</b>${item.photo_link ? photoThumbHtml(item.photo_link) : '-'}</div>
         </div>
         <div class="approval-actions">
