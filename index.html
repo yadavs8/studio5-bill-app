@@ -466,6 +466,18 @@
     display: flex; align-items: center; justify-content: center; font-size: 18px; color: #4a7a94; background: #e0f2fe;
   }
   .overdue-tag { background: var(--danger); color: #fff; font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 3px; margin-left: 6px; text-transform: uppercase; }
+  .gstin-warning {
+    font-size: 11.5px;
+    color: var(--danger);
+    font-weight: 600;
+    margin-top: 3px;
+    display: none;
+  }
+  .field.gstin-invalid input {
+    color: var(--danger);
+    border-bottom: 1px solid var(--danger) !important;
+  }
+  .field.gstin-invalid .gstin-warning { display: block; }
 
   .logo-build {
     display: flex;
@@ -915,6 +927,26 @@
     return null;
   }
 
+  // GSTIN has a real, verifiable checksum digit (like a credit card) — this catches
+  // the vast majority of single-character OCR slips (0/O, 1/I, 5/S, 8/B, etc.)
+  // before a wrong GSTIN ever reaches your books.
+  function isValidGSTINChecksum(gstin) {
+    if (!gstin || gstin.length !== 15) return false;
+    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const g = gstin.toUpperCase();
+    let total = 0;
+    for (let i = 0; i < 14; i++) {
+      const code = charset.indexOf(g[i]);
+      if (code === -1) return false;
+      const factor = (i % 2 === 0) ? 1 : 2;
+      let digit = factor * code;
+      digit = Math.floor(digit / 36) + (digit % 36);
+      total += digit;
+    }
+    const checksum = (36 - (total % 36)) % 36;
+    return charset[checksum] === g[14];
+  }
+
   async function renderReview(extracted) {
     const dup = await checkDuplicate(extracted);
     const isGst = extracted.bill_type === 'gst';
@@ -922,10 +954,13 @@
 
     let fieldsHtml = ALL_FIELDS.map(([key, label, scope]) => {
       const dimmed = scope === 'gst' && !isGst;
+      const isGstinField = key === 'gstin';
+      const gstinBad = isGstinField && isGst && extracted.gstin && !isValidGSTINChecksum(extracted.gstin);
       return `
-      <div class="field ${dimmed ? 'dimmed' : ''}">
+      <div class="field ${dimmed ? 'dimmed' : ''} ${gstinBad ? 'gstin-invalid' : ''}" ${isGstinField ? 'id="gstinFieldWrap"' : ''}>
         <label>${label}</label>
         <input data-key="${key}" ${dimmed ? 'disabled' : ''} value="${(extracted[key] ?? '').toString().replace(/"/g,'&quot;')}" />
+        ${isGstinField ? '<div class="gstin-warning" id="gstinWarningText">⚠ Checksum doesn\'t match — this GSTIN likely has a typo. Please compare it character-by-character against the photo.</div>' : ''}
       </div>`;
     }).join('');
 
@@ -965,6 +1000,15 @@
       const paymentOk = !!extracted.payment_status;
       const dupOk = !dup || (checkbox && checkbox.checked);
       saveBtn.disabled = !(paymentOk && dupOk);
+    }
+
+    const gstinWrap = document.getElementById('gstinFieldWrap');
+    if (gstinWrap && isGst) {
+      const gstinInput = gstinWrap.querySelector('input');
+      gstinInput.addEventListener('input', () => {
+        const stillBad = gstinInput.value && !isValidGSTINChecksum(gstinInput.value);
+        gstinWrap.classList.toggle('gstin-invalid', !!stillBad);
+      });
     }
 
     reviewArea.querySelectorAll('.payment-btn').forEach(btn => {
