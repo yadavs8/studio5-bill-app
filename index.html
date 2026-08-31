@@ -1,5 +1,5 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#3d2b1f">
+<meta name="theme-color" content="#0c4a6e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Bill Ledger">
@@ -7,16 +7,16 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root {
-    --walnut: #3d2b1f;
-    --walnut-light: #6b4a35;
-    --cream: #f6efe4;
-    --brass: #b8894f;
-    --brass-dark: #96693a;
-    --teal: #2f5754;
-    --ink: #241a12;
-    --line: #e3d7c4;
-    --danger: #9a3324;
-    --good: #2f6b45;
+    --walnut: #0c4a6e;
+    --walnut-light: #0369a1;
+    --cream: #f0f9ff;
+    --brass: #f59e0b;
+    --brass-dark: #d97706;
+    --teal: #0ea5e9;
+    --ink: #0c2d48;
+    --line: #bae6fd;
+    --danger: #dc2626;
+    --good: #16a34a;
     font-family: 'Inter', -apple-system, system-ui, sans-serif;
   }
 
@@ -65,7 +65,7 @@
   }
 
   .panel {
-    background: #fffdf9;
+    background: #ffffff;
     border: 1px solid var(--line);
     border-radius: 4px;
     padding: 24px;
@@ -82,13 +82,13 @@
     position: relative;
   }
   .upload-zone:hover, .upload-zone.dragover {
-    background: #fbf3e6;
+    background: #e0f2fe;
     border-color: var(--brass-dark);
   }
   .upload-zone input { display: none; }
   .upload-icon { font-size: 28px; margin-bottom: 8px; }
   .upload-label { font-weight: 600; color: var(--walnut); font-size: 14.5px; }
-  .upload-hint { font-size: 12px; color: #8a7a68; margin-top: 4px; }
+  .upload-hint { font-size: 12px; color: #4a7a94; margin-top: 4px; }
 
   .status-row {
     display: flex;
@@ -113,7 +113,7 @@
     margin-top: 14px;
     line-height: 1.5;
   }
-  .banner.warn { background: #fbeee9; border: 1px solid #e3b9a8; color: var(--danger); }
+  .banner.warn { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); }
   .banner.ok { background: #eaf3ec; border: 1px solid #b9d9c2; color: var(--good); }
   .banner.info { background: #eef3f2; border: 1px solid #bcd3d0; color: var(--teal); }
 
@@ -153,7 +153,7 @@
     background: var(--line);
   }
   .field {
-    background: #fffdf9;
+    background: #ffffff;
     padding: 10px 14px;
   }
   .field.dimmed { opacity: 0.45; }
@@ -162,7 +162,7 @@
     font-size: 10.5px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #a0917d;
+    color: #4a7a94;
     margin-bottom: 3px;
   }
   .field input, .field select {
@@ -185,7 +185,7 @@
     display: flex;
     gap: 10px;
     padding: 14px 16px;
-    background: #fbf6ec;
+    background: #e0f2fe;
   }
 
   button {
@@ -268,11 +268,11 @@
     border-bottom: 1px solid var(--line);
     white-space: nowrap;
   }
-  tbody tr:hover { background: #fbf6ec; }
+  tbody tr:hover { background: #e0f2fe; }
   .empty-state {
     text-align: center;
     padding: 40px 20px;
-    color: #a0917d;
+    color: #4a7a94;
     font-size: 13.5px;
   }
   .dup-tag {
@@ -286,7 +286,7 @@
   .del-btn {
     background: none;
     border: none;
-    color: #c0947a;
+    color: #82a8c2;
     font-size: 15px;
     padding: 0 4px;
   }
@@ -386,14 +386,14 @@
     margin-bottom: 28px;
   }
   .dash-card {
-    background: #fffdf9;
+    background: #ffffff;
     border: 1px solid var(--line);
     border-radius: 5px;
     padding: 22px;
   }
   .dash-card.alert {
-    background: #fbeee9;
-    border-color: #e3b9a8;
+    background: #fef2f2;
+    border-color: #fecaca;
     cursor: pointer;
   }
   .dash-card .dash-label {
@@ -418,7 +418,7 @@
     padding: 14px;
     border-radius: 4px;
     border: 2px solid var(--line);
-    background: #fffdf9;
+    background: #ffffff;
     font-weight: 700;
     font-size: 14px;
     color: var(--walnut-light);
@@ -426,12 +426,12 @@
     text-align: center;
   }
   .payment-btn.selected.paid { border-color: var(--good); color: var(--good); background: #eaf3ec; }
-  .payment-btn.selected.unpaid { border-color: var(--brass-dark); color: var(--brass-dark); background: #fbf3e6; }
+  .payment-btn.selected.unpaid { border-color: var(--brass-dark); color: var(--brass-dark); background: #e0f2fe; }
 
   .approval-card {
     border: 1px solid var(--line);
     border-radius: 5px;
-    background: #fffdf9;
+    background: #ffffff;
     padding: 18px;
     margin-bottom: 14px;
   }
@@ -442,7 +442,7 @@
   .pay-tag.paid { background: #e2eee3; color: var(--good); }
   .pay-tag.unpaid { background: #f1e6d3; color: var(--brass-dark); }
   .approval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 8px 16px; font-size: 13px; margin-bottom: 14px; }
-  .approval-grid div b { display:block; font-size:10.5px; text-transform:uppercase; color:#a0917d; font-weight:600; }
+  .approval-grid div b { display:block; font-size:10.5px; text-transform:uppercase; color:#4a7a94; font-weight:600; }
   .approval-actions { display: flex; gap: 10px; }
   .reject-box { margin-top: 12px; display: none; }
   .reject-box.open { display: block; }
@@ -463,7 +463,7 @@
   }
   .thumb-fallback {
     width: 44px; height: 44px; border-radius: 3px; border: 1px solid var(--line);
-    display: flex; align-items: center; justify-content: center; font-size: 18px; color: #a0917d; background: #f1e9db;
+    display: flex; align-items: center; justify-content: center; font-size: 18px; color: #4a7a94; background: #e0f2fe;
   }
   .overdue-tag { background: var(--danger); color: #fff; font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 3px; margin-left: 6px; text-transform: uppercase; }
 
@@ -485,7 +485,7 @@
     transform: translateY(-16px) scaleY(0.4);
     transform-origin: top;
     animation: panelDrop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-    background: linear-gradient(180deg, #fffdf9 0%, var(--cream) 100%);
+    background: linear-gradient(180deg, #ffffff 0%, var(--cream) 100%);
     padding: 2px 3px;
     border-radius: 2px;
     box-shadow: 0 1px 0 var(--line);
@@ -687,6 +687,9 @@
 
   pinSubmit.addEventListener('click', tryUnlock);
   pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+  pinInput.addEventListener('input', () => {
+    if (pinInput.value.length === ACCESS_PIN.length) tryUnlock();
+  });
 })();
 
 (function(){
@@ -923,7 +926,7 @@
         ${dup ? `<div class="banner warn" style="margin:12px 16px 0;">A bill with this ${isGst ? 'GSTIN + invoice number' : 'vendor + invoice number + date'} is already in the sheet. Sending is blocked by default — this is almost always the same bill uploaded twice.</div>` : ''}
         <div class="review-grid">${fieldsHtml}</div>
         <div style="padding: 4px 16px 0;">
-          <label style="font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; color:#a0917d; font-weight:600;">Has this bill been paid?</label>
+          <label style="font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; color:#4a7a94; font-weight:600;">Has this bill been paid?</label>
           <div class="payment-choice">
             <button type="button" class="payment-btn" data-pay="paid">Already Paid</button>
             <button type="button" class="payment-btn" data-pay="unpaid">Not Paid Yet</button>
@@ -1045,7 +1048,7 @@
         }
         return `<td>${r[key] ?? ''}</td>`;
       }).join('');
-      return `<tr style="${overdue ? 'background:#fbeee9;' : ''}">${cells}</tr>`;
+      return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}</tr>`;
     }).join('');
     tableArea.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
   }
@@ -1301,7 +1304,7 @@
         datasets: [{
           label: 'Spend (₹)',
           data: totals,
-          backgroundColor: '#b8894f',
+          backgroundColor: '#f59e0b',
           borderRadius: 3,
           maxBarThickness: 46
         }]
@@ -1310,7 +1313,7 @@
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString('en-IN') }, grid: { color: '#e3d7c4' } },
+          y: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString('en-IN') }, grid: { color: '#bae6fd' } },
           x: { grid: { display: false } }
         }
       }
@@ -1382,6 +1385,9 @@
   }
   document.getElementById('bossPinSubmit').addEventListener('click', tryBossUnlock);
   bossPinInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryBossUnlock(); });
+  bossPinInput.addEventListener('input', () => {
+    if (bossPinInput.value.length === BOSS_PIN.length) tryBossUnlock();
+  });
   document.getElementById('bossPinCancel').addEventListener('click', () => {
     bossPinOverlay.style.display = 'none';
     switchView('dashboard');
