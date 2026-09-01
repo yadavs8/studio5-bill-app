@@ -946,7 +946,7 @@
   }
 
   async function fetchRecords(billType) {
-    const res = await fetch(`${BACKEND_URL}/records?bill_type=${billType}`, {
+    const res = await fetch(`${BACKEND_URL}/records?bill_type=${billType}&_t=${Date.now()}`, {
       headers: { 'x-app-secret': APP_SECRET }
     });
     const data = await res.json();
@@ -1684,7 +1684,7 @@
 
   async function refreshPendingCount() {
     try {
-      const res = await fetch(`${BACKEND_URL}/pending-approvals`, { headers: { 'x-app-secret': APP_SECRET } });
+      const res = await fetch(`${BACKEND_URL}/pending-approvals?_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } });
       const data = await res.json();
       const count = (data.pending || []).length;
       document.getElementById('dashPendingCount').textContent = count;
@@ -1758,7 +1758,7 @@
     // Refresh quietly in the background either way, so WhatsApp-side approvals/rejections
     // (which happen outside this browser) still show up without a jarring reload.
     try {
-      const res = await fetch(`${BACKEND_URL}/pending-approvals`, { headers: { 'x-app-secret': APP_SECRET } });
+      const res = await fetch(`${BACKEND_URL}/pending-approvals?_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } });
       const data = await res.json();
       approvalsCache = data.pending || [];
       approvalsLoaded = true;
@@ -1868,6 +1868,35 @@
   loadRecords();
   refreshDashboard();
   settleTrackToIndex(0, false);
+
+  // Keeps whichever tab you're looking at reasonably current without manual refreshing,
+  // while respecting Google Apps Script's daily usage quota — pauses entirely when the
+  // tab isn't visible (phone locked, app backgrounded, browser tab switched away).
+  const AUTO_REFRESH_INTERVAL_MS = 20000;
+  let autoRefreshTimer = null;
+
+  function silentlyRefreshActiveView() {
+    const activeBtn = document.querySelector('.nav-btn.active');
+    const activeView = activeBtn ? activeBtn.dataset.view : 'dashboard';
+    if (activeView === 'dashboard') refreshDashboard();
+    else if (activeView === 'ledger') loadRecords();
+    else if (activeView === 'approvals' && sessionStorage.getItem('boss_unlocked') === 'yes') renderApprovals();
+    // Upload view is intentionally left alone — don't disturb an in-progress review/upload.
+  }
+
+  function startAutoRefresh() {
+    if (autoRefreshTimer) return;
+    autoRefreshTimer = setInterval(silentlyRefreshActiveView, AUTO_REFRESH_INTERVAL_MS);
+  }
+  function stopAutoRefresh() {
+    if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') startAutoRefresh();
+    else stopAutoRefresh();
+  });
+  if (document.visibilityState === 'visible') startAutoRefresh();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service worker registration failed:', err));
