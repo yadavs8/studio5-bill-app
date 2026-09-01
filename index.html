@@ -1455,11 +1455,9 @@
   }
 
   function isThisMonth(record) {
-    let d = parseUploadedOnDate(record.uploaded_on);
-    if (!d) {
-      // Older entries saved before "Uploaded On" existed — fall back to the bill's own invoice date.
-      d = parseUploadedOnDate(record.date);
-    }
+    // Prioritize the bill's own date (its accounting period), matching getMonthKey.
+    let d = parseUploadedOnDate(record.date);
+    if (!d) d = parseUploadedOnDate(record.uploaded_on);
     if (!d) return false;
     const now = new Date();
     return d.month === (now.getMonth() + 1) && d.year === now.getFullYear();
@@ -1502,8 +1500,11 @@
   }
 
   function getMonthKey(record) {
-    let d = parseUploadedOnDate(record.uploaded_on);
-    if (!d) d = parseUploadedOnDate(record.date);
+    // Group by the bill's OWN date (its accounting period) — a bill dated 25 Aug but
+    // uploaded 1 Sep belongs to August, not September. Fall back to the upload date only
+    // if the bill's own date is genuinely unreadable.
+    let d = parseUploadedOnDate(record.date);
+    if (!d) d = parseUploadedOnDate(record.uploaded_on);
     if (!d) return null;
     return `${d.year}-${String(d.month).padStart(2,'0')}`;
   }
