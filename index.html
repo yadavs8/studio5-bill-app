@@ -1437,10 +1437,21 @@
   // date that fails to parse here silently vanishes from every month-based total.
   function parseAnyDate(str) {
     if (!str) return null;
-    // Grab just the date portion, stripping any trailing time — which can be separated
-    // by a comma ("..., 01:06 am") OR a plain space ("1/9/2026 13:28:00"). We take the
-    // first whitespace/comma-delimited token, which is always the date itself.
-    const datePart = String(str).trim().split(/[,\s]+/)[0];
+    const raw = String(str).trim();
+
+    // Google Sheets sometimes auto-converts a typed date into an ISO timestamp like
+    // "2026-08-25T18:30:00.000Z". That's UTC — for an India-entered date it represents
+    // the *next* day at midnight IST, so we shift by +5:30 before reading the calendar date.
+    const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}:\d{2}/);
+    if (isoMatch) {
+      const utc = new Date(raw);
+      if (!isNaN(utc.getTime())) {
+        const ist = new Date(utc.getTime() + (5 * 60 + 30) * 60 * 1000);
+        return { day: ist.getUTCDate(), month: ist.getUTCMonth() + 1, year: ist.getUTCFullYear() };
+      }
+    }
+
+    const datePart = raw.split(/[,\s]+/)[0];
     const match = datePart.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
     if (!match) return null;
     let day, month, year;
