@@ -1544,6 +1544,27 @@
     const isCurrent = selectedMonthKey === currentKey;
     const selectedRecords = isAllTime ? all : all.filter(r => getMonthKey(r) === selectedMonthKey);
 
+    // ---- TEMPORARY DIAGNOSTIC (remove after debugging) ----
+    // Shows, for every bill, the raw date fields and the month the app assigns it.
+    try {
+      const diag = all.map(r => {
+        const mk = getMonthKey(r);
+        return `${r.bill_type} | date="${r.date}" | uploaded="${r.uploaded_on}" | -> ${mk || 'NO MONTH'} | ₹${r.invoice_value}`;
+      }).join('\n');
+      let diagBox = document.getElementById('diagBox');
+      if (!diagBox) {
+        diagBox = document.createElement('pre');
+        diagBox.id = 'diagBox';
+        diagBox.style.cssText = 'background:#fff;border:1px solid #ccc;padding:10px;font-size:10px;max-height:240px;overflow:auto;white-space:pre-wrap;margin:12px 0;border-radius:4px;';
+        const dashView = document.getElementById('view-dashboard');
+        if (dashView) dashView.insertBefore(diagBox, dashView.firstChild);
+      }
+      const counts = {};
+      all.forEach(r => { const k = getMonthKey(r) || 'NONE'; counts[k] = (counts[k]||0)+1; });
+      diagBox.textContent = 'MONTH COUNTS: ' + JSON.stringify(counts) + '\n\n' + diag;
+    } catch(e) { console.error('diag error', e); }
+    // ---- END DIAGNOSTIC ----
+
     const spend = selectedRecords.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
     const gstPaid = selectedRecords
       .filter(r => r.bill_type === 'gst')
