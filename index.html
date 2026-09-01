@@ -1555,7 +1555,7 @@
     const isCurrent = selectedMonthKey === currentKey;
     const selectedRecords = isAllTime ? all : all.filter(r => getMonthKey(r) === selectedMonthKey);
 
-    // ---- TEMPORARY DIAGNOSTIC (remove after debugging) ----
+    /* ---- TEMPORARY DIAGNOSTIC (remove after debugging) ----
     // Shows, for every bill, the raw date fields and the month the app assigns it.
     try {
       const diag = all.map(r => {
@@ -1574,7 +1574,7 @@
       all.forEach(r => { const k = getMonthKey(r) || 'NONE'; counts[k] = (counts[k]||0)+1; });
       diagBox.textContent = 'MONTH COUNTS: ' + JSON.stringify(counts) + '\n\n' + diag;
     } catch(e) { console.error('diag error', e); }
-    // ---- END DIAGNOSTIC ----
+    // ---- END DIAGNOSTIC ----*/
 
     const spend = selectedRecords.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
     const gstPaid = selectedRecords
