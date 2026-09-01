@@ -1437,7 +1437,10 @@
   // date that fails to parse here silently vanishes from every month-based total.
   function parseAnyDate(str) {
     if (!str) return null;
-    const datePart = String(str).split(',')[0].trim(); // strips a trailing time, e.g. "..., 01:06 am"
+    // Grab just the date portion, stripping any trailing time — which can be separated
+    // by a comma ("..., 01:06 am") OR a plain space ("1/9/2026 13:28:00"). We take the
+    // first whitespace/comma-delimited token, which is always the date itself.
+    const datePart = String(str).trim().split(/[,\s]+/)[0];
     const match = datePart.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
     if (!match) return null;
     let day, month, year;
