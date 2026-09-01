@@ -921,6 +921,27 @@
 
   const EMPLOYEE_HEADER_ALIASES = ['Submitted By (Employee)', 'Submitted by', 'Submitted By Employee', 'Employee', 'Employee Name'];
 
+  const FIELD_HEADER_ALIASES = {
+    invoice_value: ['Invoice Value', 'Amount', 'Total', 'Total Amount', 'Bill Amount'],
+    taxable_value: ['Taxable Value', 'Taxable Amount'],
+    igst: ['IGST'],
+    cgst: ['CGST'],
+    sgst: ['SGST'],
+    cess: ['Cess']
+  };
+
+  function readWithAliases(headerRow, row, key) {
+    const aliases = FIELD_HEADER_ALIASES[key];
+    if (!aliases) return null;
+    for (const alias of aliases) {
+      const idx = headerRow.indexOf(alias);
+      if (idx >= 0 && row[idx] !== '' && row[idx] !== null && row[idx] !== undefined) {
+        return String(row[idx]);
+      }
+    }
+    return null;
+  }
+
   async function fetchRecords(billType) {
     const res = await fetch(`${BACKEND_URL}/records?bill_type=${billType}`, {
       headers: { 'x-app-secret': APP_SECRET }
@@ -938,6 +959,14 @@
         fields.forEach(([key, label]) => {
           const idx = headerRow.indexOf(label);
           rec[key] = idx >= 0 ? String(r[idx] ?? '') : '';
+        });
+        // For fields where an exact-name match came back empty, try known alternate spellings
+        // before accepting zero — this is what was causing the Dashboard/Sheet mismatch.
+        Object.keys(FIELD_HEADER_ALIASES).forEach(key => {
+          if (!rec[key]) {
+            const found = readWithAliases(headerRow, r, key);
+            if (found !== null) rec[key] = found;
+          }
         });
         if (!rec.submitted_by_employee) {
           for (const alias of EMPLOYEE_HEADER_ALIASES) {
