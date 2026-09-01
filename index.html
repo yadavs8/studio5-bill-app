@@ -374,7 +374,7 @@
   .view-track {
     display: flex;
     width: 100%;
-    transition: transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1), height 0.32s ease;
+    transition: transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
   }
   .view-track.dragging { transition: none; }
   .view { flex: 0 0 100%; max-width: 100%; box-sizing: border-box; min-width: 0; }
@@ -578,6 +578,14 @@
     <div class="view-track" id="viewTrack">
 
       <div class="view" id="view-dashboard">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label for="dashMonthSelect" style="font-size:12.5px; font-weight:600; color:var(--walnut-light);">Viewing:</label>
+            <select id="dashMonthSelect" style="padding:8px 12px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:13px; background:#fff;"></select>
+          </div>
+          <button class="btn-ghost" id="refreshDashboardBtn">Refresh</button>
+        </div>
+
         <div class="dash-grid">
           <div class="dash-card alert" id="pendingCard">
             <div class="dash-label">Pending Your Approval</div>
@@ -590,19 +598,19 @@
             <div class="dash-sub">Unpaid, over 30 days old</div>
           </div>
           <div class="dash-card">
-            <div class="dash-label">This Month · Spend</div>
+            <div class="dash-label" id="dashSpendLabel">This Month · Spend</div>
             <div class="dash-value" id="dashMonthSpend">–</div>
             <div class="dash-sub">GST + Non-GST combined</div>
           </div>
           <div class="dash-card">
-            <div class="dash-label">This Month · GST Paid</div>
+            <div class="dash-label" id="dashGstLabel">This Month · GST Paid</div>
             <div class="dash-value" id="dashMonthGst">–</div>
             <div class="dash-sub">IGST + CGST + SGST</div>
           </div>
           <div class="dash-card">
             <div class="dash-label">Total Bills in Ledger</div>
             <div class="dash-value" id="dashTotalBills">–</div>
-            <div class="dash-sub">Approved entries</div>
+            <div class="dash-sub">Approved entries, all time</div>
           </div>
         </div>
 
@@ -635,6 +643,7 @@
           <div class="table-toolbar">
             <h2>Ledger <span class="count-pill" id="countPill">0 entries</span></h2>
             <div style="display:flex; gap:8px;">
+              <button class="btn-ghost" id="refreshLedgerBtn">Refresh</button>
               <button class="btn-ghost" id="exportBtn">Export to Excel</button>
             </div>
           </div>
@@ -740,6 +749,7 @@
     ['date','Invoice Date'],
     ['time','Time'],
     ['purchased_by','Purchased By'],
+    ['description','Description'],
     ['place_of_supply','Place of Supply'],
     ['taxable_value','Taxable Value'],
     ['igst','IGST'],
@@ -762,6 +772,7 @@
     ['date','Invoice Date'],
     ['time','Time'],
     ['purchased_by','Submitted By'],
+    ['description','Description'],
     ['invoice_value','Invoice Value'],
     ['uploaded_on','Uploaded On'],
     ['photo_link','Photo'],
@@ -779,6 +790,7 @@
     ['date','Invoice Date', 'both'],
     ['time','Time', 'both'],
     ['purchased_by','Purchased By / Submitted By', 'both'],
+    ['description','Description', 'both'],
     ['place_of_supply','Place of Supply', 'gst'],
     ['taxable_value','Taxable Value', 'gst'],
     ['igst','IGST', 'gst'],
@@ -821,6 +833,7 @@
   let currentFileBase64 = null;
   let currentFileMediaType = null;
   let queueIndex = 0;
+  let batchOutcomes = []; // tracks what happened to each file, for the end-of-batch summary
   const MAX_BATCH = 5;
 
   function handleFileQueue(files) {
@@ -830,15 +843,35 @@
     }
     fileQueue = files;
     queueIndex = 0;
+    batchOutcomes = files.map(f => ({ name: f.name, status: 'pending' }));
     processNextInQueue();
   }
 
-  function processNextInQueue() {
-    if (queueIndex >= fileQueue.length) {
-      uploadLabel.textContent = `Click to upload up to ${MAX_BATCH} bill photos or PDFs`;
-      fileInput.value = '';
-      return;
+  function showBatchSummaryIfDone() {
+    if (queueIndex < fileQueue.length) return false; // batch isn't finished yet
+    uploadLabel.textContent = `Click to upload up to ${MAX_BATCH} bill photos or PDFs`;
+    fileInput.value = '';
+
+    if (fileQueue.length > 1) {
+      const statusMeta = {
+        sent: ['✅', 'Sent for approval'],
+        sending: ['⏳', 'Still sending…'],
+        failed: ['❌', 'Failed to send'],
+        discarded: ['⏭️', 'Discarded'],
+        skipped: ['⚠️', 'Skipped']
+      };
+      const lines = batchOutcomes.map(o => {
+        const [icon, defaultDetail] = statusMeta[o.status] || ['⚠️', 'Unknown'];
+        const detail = o.reason ? `${defaultDetail} — ${o.reason}` : defaultDetail;
+        return `${icon} ${o.name}: ${detail}`;
+      }).join('<br>');
+      statusArea.innerHTML = `<div class="banner info"><strong>Batch complete (${fileQueue.length} files):</strong><br>${lines}</div>`;
     }
+    return true;
+  }
+
+  function processNextInQueue() {
+    if (showBatchSummaryIfDone()) return;
     handleFile(fileQueue[queueIndex]);
   }
 
@@ -871,10 +904,16 @@
 
     } catch (err) {
       console.error(err);
-      const skipBtn = fileQueue.length > 1 ? `<br><button class="btn-ghost" id="skipQueueBtn" style="margin-top:8px;">Skip this one, continue with the rest</button>` : '';
+      batchOutcomes[queueIndex] = { name: file.name, status: 'skipped', reason: err.message || 'could not read' };
+      const skipBtn = fileQueue.length > 1 ? `<br><button class="btn-ghost" id="skipQueueBtn" style="margin-top:8px;">Continue now</button>` : '';
       statusArea.innerHTML = `<div class="banner warn">Couldn't read that bill automatically (${err.message || 'unknown error'}). Try a clearer photo, a well-lit shot with the bill flat, or a cleaner PDF scan.${skipBtn}</div>`;
+
+      // Auto-advance after a few seconds even if no one taps anything — a failed bill
+      // in a batch should never silently stall the rest waiting for a click nobody sees.
+      const advance = () => { queueIndex++; processNextInQueue(); };
       const skipEl = document.getElementById('skipQueueBtn');
-      if (skipEl) skipEl.onclick = () => { queueIndex++; processNextInQueue(); };
+      if (skipEl) skipEl.onclick = advance;
+      if (fileQueue.length > 1) setTimeout(advance, 4000);
     }
   }
 
@@ -906,6 +945,8 @@
             if (idx >= 0 && r[idx]) { rec.submitted_by_employee = String(r[idx]); break; }
           }
         }
+        const entryIdIdx = headerRow.indexOf('Entry ID');
+        rec.entry_id = entryIdIdx >= 0 ? String(r[entryIdIdx] ?? '') : '';
         return rec;
       });
   }
@@ -938,6 +979,12 @@
   // GSTIN has a real, verifiable checksum digit (like a credit card) — this catches
   // the vast majority of single-character OCR slips (0/O, 1/I, 5/S, 8/B, etc.)
   // before a wrong GSTIN ever reaches your books.
+  const OWN_GSTINS = ['06ABICS6962P1ZG', '07ABICS6962P1ZE'];
+  function isOwnGSTIN(gstin) {
+    if (!gstin) return false;
+    return OWN_GSTINS.includes(gstin.trim().toUpperCase());
+  }
+
   function isValidGSTINChecksum(gstin) {
     if (!gstin || gstin.length !== 15) return false;
     const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -963,12 +1010,17 @@
     let fieldsHtml = ALL_FIELDS.map(([key, label, scope]) => {
       const dimmed = scope === 'gst' && !isGst;
       const isGstinField = key === 'gstin';
-      const gstinBad = isGstinField && isGst && extracted.gstin && !isValidGSTINChecksum(extracted.gstin);
+      const gstinIsOwn = isGstinField && isGst && isOwnGSTIN(extracted.gstin);
+      const gstinChecksumBad = isGstinField && isGst && extracted.gstin && !isValidGSTINChecksum(extracted.gstin);
+      const gstinBad = gstinIsOwn || gstinChecksumBad;
+      const gstinMsg = gstinIsOwn
+        ? '⚠ This is Studio5\'s OWN GSTIN, not the seller\'s. The bot likely picked up the wrong one from the bill — please replace it with the vendor\'s actual GSTIN.'
+        : '⚠ Checksum doesn\'t match — this GSTIN likely has a typo. Please compare it character-by-character against the photo.';
       return `
       <div class="field ${dimmed ? 'dimmed' : ''} ${gstinBad ? 'gstin-invalid' : ''}" ${isGstinField ? 'id="gstinFieldWrap"' : ''}>
         <label>${label}</label>
         <input data-key="${key}" ${dimmed ? 'disabled' : ''} value="${(extracted[key] ?? '').toString().replace(/"/g,'&quot;')}" />
-        ${isGstinField ? '<div class="gstin-warning" id="gstinWarningText">⚠ Checksum doesn\'t match — this GSTIN likely has a typo. Please compare it character-by-character against the photo.</div>' : ''}
+        ${isGstinField ? `<div class="gstin-warning" id="gstinWarningText">${gstinMsg}</div>` : ''}
       </div>`;
     }).join('');
 
@@ -1013,9 +1065,17 @@
     const gstinWrap = document.getElementById('gstinFieldWrap');
     if (gstinWrap && isGst) {
       const gstinInput = gstinWrap.querySelector('input');
+      const gstinWarningEl = document.getElementById('gstinWarningText');
       gstinInput.addEventListener('input', () => {
-        const stillBad = gstinInput.value && !isValidGSTINChecksum(gstinInput.value);
-        gstinWrap.classList.toggle('gstin-invalid', !!stillBad);
+        const val = gstinInput.value;
+        const isOwn = val && isOwnGSTIN(val);
+        const checksumBad = val && !isValidGSTINChecksum(val);
+        gstinWrap.classList.toggle('gstin-invalid', !!(isOwn || checksumBad));
+        if (gstinWarningEl) {
+          gstinWarningEl.textContent = isOwn
+            ? '⚠ This is Studio5\'s OWN GSTIN, not the seller\'s. Please replace it with the vendor\'s actual GSTIN.'
+            : '⚠ Checksum doesn\'t match — this GSTIN likely has a typo. Please compare it character-by-character against the photo.';
+        }
       });
     }
 
@@ -1032,6 +1092,7 @@
 
     saveBtn.onclick = () => ensureEmployeeNameThenRun(() => submitForApproval(extracted.bill_type, extracted.payment_status));
     document.getElementById('discardBtn').onclick = () => {
+      if (batchOutcomes[queueIndex]) batchOutcomes[queueIndex].status = 'discarded';
       reviewArea.innerHTML = '';
       statusArea.innerHTML = '';
       queueIndex++;
@@ -1072,7 +1133,7 @@
   }
 
 
-  async function submitForApproval(billType, paymentStatus) {
+  function submitForApproval(billType, paymentStatus) {
     const inputs = reviewArea.querySelectorAll('.field input');
     const record = {
       uploaded_at: new Date().toISOString(),
@@ -1087,25 +1148,42 @@
       record.photo_media_type = currentFileMediaType;
     }
 
-    try {
-      const saveResponse = await fetch(`${BACKEND_URL}/submit-for-approval`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
-        body: JSON.stringify(record)
-      });
-      const saveResult = await saveResponse.json();
-      if (!saveResponse.ok || saveResult.error) {
-        statusArea.innerHTML = `<div class="banner warn">Couldn't send for approval (${saveResult.error || 'unknown error'}). Try again.</div>`;
-        return;
-      }
+    // Capture this bill's position now — queueIndex will have already moved on
+    // by the time the background request below actually finishes.
+    const thisIndex = queueIndex;
+    const vendorLabel = record.vendor_name || 'bill';
 
-      const progressNote = fileQueue.length > 1 ? ` (${queueIndex + 1} of ${fileQueue.length} done)` : '';
-      statusArea.innerHTML = `<div class="banner ok">Sent to your manager for approval.${progressNote}</div>`;
-      reviewArea.innerHTML = '';
-      queueIndex++;
-      setTimeout(processNextInQueue, 900);
-    } catch (e) {
-      statusArea.innerHTML = `<div class="banner warn">Couldn't reach the backend. Check your connection and try again.</div>`;
+    const progressNote = fileQueue.length > 1 ? ` (${thisIndex + 1} of ${fileQueue.length})` : '';
+    statusArea.innerHTML = `<div class="banner info">Sending ${vendorLabel} for approval in the background…${progressNote}</div>`;
+    reviewArea.innerHTML = '';
+    if (batchOutcomes[thisIndex]) batchOutcomes[thisIndex].status = 'sending';
+    queueIndex++;
+    processNextInQueue(); // move on right away — don't make the next bill wait on this one's network round-trip
+
+    // The actual save happens here, detached from the UI flow above.
+    fetch(`${BACKEND_URL}/submit-for-approval`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+      body: JSON.stringify(record)
+    })
+      .then(async (res) => {
+        const result = await res.json();
+        if (!res.ok || result.error) throw new Error(result.error || `Backend returned ${res.status}`);
+        if (batchOutcomes[thisIndex]) batchOutcomes[thisIndex].status = 'sent';
+        refreshBatchSummaryIfShown();
+      })
+      .catch((e) => {
+        console.error('Background submission failed:', e);
+        if (batchOutcomes[thisIndex]) { batchOutcomes[thisIndex].status = 'failed'; batchOutcomes[thisIndex].reason = e.message; }
+        refreshBatchSummaryIfShown();
+      });
+  }
+
+  // If the batch summary is already on screen and a background submission finishes
+  // afterward, quietly update the summary in place rather than leaving it stale.
+  function refreshBatchSummaryIfShown() {
+    if (queueIndex >= fileQueue.length && fileQueue.length > 1 && !reviewArea.innerHTML) {
+      showBatchSummaryIfDone();
     }
   }
 
@@ -1134,7 +1212,7 @@
       tableArea.innerHTML = `<div class="empty-state">No ${activeTab === 'gst' ? 'GST' : 'non-GST'} bills in the sheet yet.</div>`;
       return;
     }
-    const headers = fields.map(([,label]) => `<th>${label}</th>`).join('');
+    const headers = fields.map(([,label]) => `<th>${label}</th>`).join('') + '<th></th>';
     const rows = filtered.map(r => {
       const overdue = isOverdue(r);
       const cells = fields.map(([key]) => {
@@ -1147,10 +1225,47 @@
         }
         return `<td>${r[key] ?? ''}</td>`;
       }).join('');
-      return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}</tr>`;
+      const deleteCell = r.entry_id
+        ? `<td><button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button></td>`
+        : `<td></td>`; // older entries predating Entry ID tracking can't be targeted for deletion from here
+      return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}${deleteCell}</tr>`;
     }).join('');
     tableArea.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+
+    tableArea.querySelectorAll('.del-btn').forEach(btn => {
+      btn.onclick = () => requestLedgerDelete(btn.dataset.entryId, btn.dataset.billType, btn);
+    });
   }
+
+  function requestLedgerDelete(entryId, billType, btnEl) {
+    ensureBossUnlockedThenRun(async () => {
+      const reason = prompt('Reason for deleting this entry (e.g. "duplicate upload"):');
+      if (reason === null) return; // cancelled
+      const row = btnEl.closest('tr');
+      row.style.opacity = '0.5';
+      try {
+        const res = await fetch(`${BACKEND_URL}/delete-ledger-entry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+          body: JSON.stringify({ entry_id: entryId, bill_type: billType, reason: reason || '' })
+        });
+        const result = await res.json();
+        if (!res.ok || result.error) throw new Error(result.error || 'Delete failed');
+        recordsCache[billType] = recordsCache[billType].filter(r => r.entry_id !== entryId);
+        renderTable();
+      } catch (e) {
+        row.style.opacity = '1';
+        alert('Could not delete this entry: ' + e.message);
+      }
+    });
+  }
+
+  document.getElementById('refreshLedgerBtn').addEventListener('click', async () => {
+    tableArea.innerHTML = `<div class="empty-state">Refreshing from Google Sheets…</div>`;
+    recordsCache.gst = [];
+    recordsCache.non_gst = [];
+    await loadRecords();
+  });
 
   exportBtn.addEventListener('click', () => {
     const gstRows = recordsCache.gst.map(r => {
@@ -1209,9 +1324,11 @@
   // approval cards, dashboard charts, the review form appearing — without needing
   // a manual height-refresh call scattered through every place content can change.
   if (typeof ResizeObserver !== 'undefined') {
-    const viewportResizeObserver = new ResizeObserver(() => {
+    const viewportResizeObserver = new ResizeObserver((entries) => {
       const activeView = viewTrack.children[currentViewIndex];
-      if (activeView) viewport.style.height = activeView.offsetHeight + 'px';
+      if (!activeView) return;
+      const activeChanged = entries.some(entry => entry.target === activeView);
+      if (activeChanged) viewport.style.height = activeView.offsetHeight + 'px';
     });
     Array.from(viewTrack.children).forEach(view => viewportResizeObserver.observe(view));
   }
@@ -1351,16 +1468,48 @@
 
   let trendChartInstance = null;
 
+  let selectedMonthKey = null; // null means "current month" until the dropdown is populated
+
+  function populateMonthDropdown(allRecords) {
+    const select = document.getElementById('dashMonthSelect');
+    const now = new Date();
+    const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+    // Collect every distinct month that actually has data, plus the current month even if empty.
+    const keysWithData = new Set(allRecords.map(getMonthKey).filter(Boolean));
+    keysWithData.add(currentKey);
+    const sortedKeys = Array.from(keysWithData).sort().reverse(); // most recent first
+
+    const previousSelection = selectedMonthKey || currentKey;
+    select.innerHTML = sortedKeys.map(key => {
+      const [y, m] = key.split('-');
+      const label = new Date(parseInt(y), parseInt(m)-1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+      const displayLabel = key === currentKey ? `${label} (current)` : label;
+      return `<option value="${key}" ${key === previousSelection ? 'selected' : ''}>${displayLabel}</option>`;
+    }).join('');
+    selectedMonthKey = previousSelection;
+  }
+
   function paintDashboardStats() {
     const all = [...recordsCache.gst, ...recordsCache.non_gst];
-    const thisMonth = all.filter(r => isThisMonth(r));
-    const monthSpend = thisMonth.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
-    const monthGst = thisMonth
+    populateMonthDropdown(all);
+
+    const now = new Date();
+    const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const isCurrent = selectedMonthKey === currentKey;
+    const selectedRecords = all.filter(r => getMonthKey(r) === selectedMonthKey);
+
+    const spend = selectedRecords.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
+    const gstPaid = selectedRecords
       .filter(r => r.bill_type === 'gst')
       .reduce((sum, r) => sum + toNum(r.igst) + toNum(r.cgst) + toNum(r.sgst), 0);
 
-    document.getElementById('dashMonthSpend').textContent = '₹' + monthSpend.toLocaleString('en-IN');
-    document.getElementById('dashMonthGst').textContent = '₹' + monthGst.toLocaleString('en-IN');
+    const [selYear, selMonth] = selectedMonthKey.split('-').map(Number);
+    const monthLabel = isCurrent ? 'This Month' : new Date(selYear, selMonth - 1, 1).toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+    document.getElementById('dashSpendLabel').textContent = `${monthLabel} · Spend`;
+    document.getElementById('dashGstLabel').textContent = `${monthLabel} · GST Paid`;
+    document.getElementById('dashMonthSpend').textContent = '₹' + spend.toLocaleString('en-IN');
+    document.getElementById('dashMonthGst').textContent = '₹' + gstPaid.toLocaleString('en-IN');
     document.getElementById('dashTotalBills').textContent = all.length;
 
     const overdueCount = all.filter(isOverdue).length;
@@ -1369,7 +1518,7 @@
     overdueCard.classList.toggle('alert', overdueCount > 0);
 
     renderTrendChart(all);
-    renderTopVendors(thisMonth);
+    renderTopVendors(selectedRecords);
   }
 
   async function refreshDashboard() {
@@ -1386,7 +1535,8 @@
     }
 
     // Always refresh in the background too, even with cache present — approvals can
-    // happen via WhatsApp outside this browser, so a long session shouldn't go stale.
+    // happen via WhatsApp outside this browser, and deletions can happen directly in
+    // the Sheet, so a long session shouldn't ever show stale or removed entries.
     const pendingCountPromise = refreshPendingCount();
     try {
       [recordsCache.gst, recordsCache.non_gst] = await Promise.all([
@@ -1402,6 +1552,21 @@
     paintDashboardStats();
     await pendingCountPromise;
   }
+
+  document.getElementById('dashMonthSelect').addEventListener('change', (e) => {
+    selectedMonthKey = e.target.value;
+    paintDashboardStats(); // instant — no need to refetch, just recompute from what's cached
+  });
+
+  document.getElementById('refreshDashboardBtn').addEventListener('click', async () => {
+    recordsCache.gst = [];
+    recordsCache.non_gst = [];
+    document.getElementById('dashMonthSpend').textContent = '…';
+    document.getElementById('dashMonthGst').textContent = '…';
+    document.getElementById('dashTotalBills').textContent = '…';
+    await refreshDashboard();
+  });
+
 
   function renderTrendChart(allRecords) {
     const canvas = document.getElementById('trendChart');
@@ -1491,22 +1656,31 @@
   const bossPinInput = document.getElementById('bossPinInput');
   const bossPinError = document.getElementById('bossPinError');
 
-  function openApprovals() {
+  let pendingBossAction = null;
+
+  function ensureBossUnlockedThenRun(callback) {
     if (sessionStorage.getItem('boss_unlocked') === 'yes') {
-      renderApprovals();
-    } else {
-      bossPinOverlay.style.display = 'flex';
-      bossPinInput.value = '';
-      bossPinError.textContent = '';
-      bossPinInput.focus();
+      callback();
+      return;
     }
+    pendingBossAction = callback;
+    bossPinOverlay.style.display = 'flex';
+    bossPinInput.value = '';
+    bossPinError.textContent = '';
+    bossPinInput.focus();
+  }
+
+  function openApprovals() {
+    ensureBossUnlockedThenRun(renderApprovals);
   }
 
   function tryBossUnlock() {
     if (bossPinInput.value.trim() === BOSS_PIN) {
       sessionStorage.setItem('boss_unlocked', 'yes');
       bossPinOverlay.style.display = 'none';
-      renderApprovals();
+      const action = pendingBossAction;
+      pendingBossAction = null;
+      if (action) action();
     } else {
       bossPinError.textContent = 'Incorrect PIN.';
       bossPinInput.value = '';
@@ -1519,7 +1693,7 @@
   });
   document.getElementById('bossPinCancel').addEventListener('click', () => {
     bossPinOverlay.style.display = 'none';
-    switchView('dashboard');
+    pendingBossAction = null;
   });
 
   let approvalsLoaded = false; // distinguishes "never fetched" from "fetched, zero pending"
