@@ -1432,13 +1432,23 @@
   window.addEventListener('resize', () => settleTrackToIndex(currentViewIndex, false));
 
   // ---------- Dashboard ----------
-  function parseUploadedOnDate(str) {
-    // Expects "DD/MM/YYYY, hh:mm am/pm" from toLocaleString('en-IN', ...)
+  // Accepts DD/MM/YYYY, DD-MM-YYYY, and DD.MM.YYYY alike, plus 2-digit years and
+  // single-digit day/month — real bills print dates in all of these styles, and a
+  // date that fails to parse here silently vanishes from every month-based total.
+  function parseAnyDate(str) {
     if (!str) return null;
-    const datePart = str.split(',')[0].trim();
-    const parts = datePart.split('/');
-    if (parts.length !== 3) return null;
-    return { day: parseInt(parts[0],10), month: parseInt(parts[1],10), year: parseInt(parts[2],10) };
+    const datePart = String(str).split(',')[0].trim(); // strips a trailing time, e.g. "..., 01:06 am"
+    const match = datePart.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (!match) return null;
+    let day, month, year;
+    day = parseInt(match[1], 10); month = parseInt(match[2], 10); year = parseInt(match[3], 10);
+    if (year < 100) year += 2000;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return { day, month, year };
+  }
+
+  function parseUploadedOnDate(str) {
+    return parseAnyDate(str);
   }
 
   function isThisMonth(record) {
@@ -1473,14 +1483,11 @@
     return `<a href="${photoLink}" target="_blank" rel="noopener"><img class="thumb" src="${thumbUrl}" alt="Bill photo" loading="lazy" onerror="this.parentElement.innerHTML='<div class=&quot;thumb-fallback&quot;>🧾</div>'"></a>`;
   }
 
-  // Parses a DD/MM/YYYY-style invoice date into a real Date object for age comparisons.
+  // Parses an invoice date (any of DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY) into a real Date object.
   function parseInvoiceDate(dateStr) {
-    if (!dateStr) return null;
-    const parts = String(dateStr).split('/');
-    if (parts.length !== 3) return null;
-    const day = parseInt(parts[0], 10), month = parseInt(parts[1], 10), year = parseInt(parts[2], 10);
-    if (!day || !month || !year) return null;
-    return new Date(year, month - 1, day);
+    const d = parseAnyDate(dateStr);
+    if (!d) return null;
+    return new Date(d.year, d.month - 1, d.day);
   }
 
   function isOverdue(record) {
