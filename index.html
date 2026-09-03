@@ -535,11 +535,38 @@
   </div>
 </div>
 
+<div class="pin-overlay" id="paymentOverlay" style="display:none; z-index:10000;">
+  <div class="pin-card">
+    <h2 id="paymentModalTitle">Record a Payment</h2>
+    <p id="paymentModalHint">Log cash given to a team member. This updates their balance.</p>
+    <select id="paymentPersonSelect" style="width:100%; padding:12px; font-size:16px; border:1px solid var(--line); border-radius:4px; margin-bottom:10px; font-family:inherit; background:#fff;">
+      <option value="">— Select person —</option>
+    </select>
+    <input type="text" id="paymentPersonOther" placeholder="Type the person's name" style="letter-spacing:normal; text-align:left; font-size:16px; margin-bottom:10px; display:none;" />
+    <input type="number" id="paymentAmountInput" placeholder="Amount (₹)" style="letter-spacing:normal; text-align:left; font-size:16px; margin-bottom:10px;" />
+    <input type="text" id="paymentNoteInput" placeholder="Note (optional, e.g. Dehradun site)" style="letter-spacing:normal; text-align:left; font-size:15px; margin-bottom:10px;" />
+    <div class="pin-error" id="paymentError"></div>
+    <button class="btn-primary" id="paymentSaveBtn" style="width:100%;">Save Payment</button>
+    <button class="btn-ghost" id="paymentCancelBtn" style="width:100%; margin-top:8px;">Cancel</button>
+  </div>
+</div>
+
 <div class="pin-overlay" id="nameCaptureOverlay" style="display:none; z-index:10000;">
   <div class="pin-card">
     <h2>One quick thing</h2>
-    <p>What's your name? This is saved on this device so it shows up automatically next time.</p>
-    <input type="text" id="nameCaptureInput" placeholder="Your name" style="letter-spacing:normal; text-align:left; font-size:16px;" />
+    <p>Who's submitting this bill? This is saved on this device so it's automatic next time.</p>
+    <select id="nameCaptureSelect" style="width:100%; padding:12px; font-size:16px; border:1px solid var(--line); border-radius:4px; margin-bottom:10px; font-family:inherit; background:#fff;">
+      <option value="">— Select your name —</option>
+      <option value="Sanjeev Yadav">Sanjeev Yadav</option>
+      <option value="Sanjeev Sharma">Sanjeev Sharma</option>
+      <option value="Prince">Prince</option>
+      <option value="Anil Kori">Anil Kori</option>
+      <option value="Rajiv Bawa">Rajiv Bawa</option>
+      <option value="Kuhu Bawa">Kuhu Bawa</option>
+      <option value="Vishal">Vishal</option>
+      <option value="__OTHER__">Other (type it in)</option>
+    </select>
+    <input type="text" id="nameCaptureInput" placeholder="Type your name" style="letter-spacing:normal; text-align:left; font-size:16px; display:none;" />
     <div class="pin-error" id="nameCaptureError"></div>
     <button class="btn-primary" id="nameCaptureSubmit" style="width:100%;">Continue</button>
   </div>
@@ -612,6 +639,17 @@
             <div class="dash-value" id="dashTotalBills">–</div>
             <div class="dash-sub" id="dashBillBreakdown">Approved entries, all time</div>
           </div>
+        </div>
+
+        <div class="panel" style="margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+            <h2 id="personReportTitle" style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin:0;">Spend & Balance by Person</h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn-ghost" id="openingBalanceBtn" style="font-size:13px; padding:8px 14px;">Set Opening Balance</button>
+              <button class="btn-primary" id="recordPaymentBtn" style="font-size:13px; padding:8px 14px;">+ Record Payment</button>
+            </div>
+          </div>
+          <div class="table-scroll" id="personReportArea"><div class="empty-state">No spend recorded for this month yet.</div></div>
         </div>
 
         <div class="panel" style="margin-bottom:20px;">
@@ -918,6 +956,30 @@
   }
 
   let recordsCache = { gst: [], non_gst: [] };
+  let paymentsCache = []; // [{ person, amount, date }, ...] — cash advances given to field people
+
+  async function fetchPayments() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/payments?_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } });
+      const data = await res.json();
+      const rows = data.rows || [];
+      if (rows.length < 1) return [];
+      const headerRow = rows[0];
+      const personIdx = headerRow.indexOf('Person');
+      const amountIdx = headerRow.indexOf('Amount');
+      const dateIdx = headerRow.indexOf('Date');
+      return rows.slice(1)
+        .filter(r => r.some(c => c !== '' && c !== null && c !== undefined))
+        .map(r => ({
+          person: personIdx >= 0 ? String(r[personIdx] ?? '').trim() : '',
+          amount: amountIdx >= 0 ? r[amountIdx] : 0,
+          date: dateIdx >= 0 ? String(r[dateIdx] ?? '') : ''
+        }));
+    } catch (e) {
+      console.error('Failed to fetch payments:', e);
+      return [];
+    }
+  }
 
   const EMPLOYEE_HEADER_ALIASES = ['Submitted By (Employee)', 'Submitted by', 'Submitted By Employee', 'Employee', 'Employee Name'];
 
@@ -1136,30 +1198,49 @@
     return localStorage.getItem('studio5_employee_name');
   }
 
-  // Asks for the employee's name exactly once per device, then remembers it —
-  // every later submission on this device attaches automatically, no re-asking.
+  // Asks who's submitting exactly once per device (via dropdown), then remembers it.
   function ensureEmployeeNameThenRun(callback) {
     if (getEmployeeName()) { callback(); return; }
 
     const overlay = document.getElementById('nameCaptureOverlay');
+    const select = document.getElementById('nameCaptureSelect');
     const input = document.getElementById('nameCaptureInput');
     const errorEl = document.getElementById('nameCaptureError');
-    overlay.style.display = 'flex';
-    input.value = '';
-    errorEl.textContent = '';
-    input.focus();
-
     const submitBtn = document.getElementById('nameCaptureSubmit');
+
+    overlay.style.display = 'flex';
+    select.value = '';
+    input.value = '';
+    input.style.display = 'none';
+    errorEl.textContent = '';
+
+    function handleSelectChange() {
+      if (select.value === '__OTHER__') {
+        input.style.display = 'block';
+        input.focus();
+      } else {
+        input.style.display = 'none';
+      }
+    }
+
+    function resolveName() {
+      if (select.value === '__OTHER__') return input.value.trim();
+      return select.value;
+    }
+
     function handleSubmit() {
-      const val = input.value.trim();
-      if (!val) { errorEl.textContent = 'Please enter your name.'; return; }
+      const val = resolveName();
+      if (!val) { errorEl.textContent = 'Please select or type your name.'; return; }
       localStorage.setItem('studio5_employee_name', val);
       overlay.style.display = 'none';
       submitBtn.removeEventListener('click', handleSubmit);
+      select.removeEventListener('change', handleSelectChange);
       input.removeEventListener('keydown', handleKeydown);
       callback();
     }
     function handleKeydown(e) { if (e.key === 'Enter') handleSubmit(); }
+
+    select.addEventListener('change', handleSelectChange);
     submitBtn.addEventListener('click', handleSubmit);
     input.addEventListener('keydown', handleKeydown);
   }
@@ -1320,6 +1401,7 @@
 
   // ---------- Navigation ----------
   const BOSS_PIN = '5719';
+  const TEAM_MEMBERS = ['Sanjeev Yadav', 'Sanjeev Sharma', 'Prince', 'Anil Kori', 'Rajiv Bawa', 'Kuhu Bawa', 'Vishal'];
   let approvalsCache = [];
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1555,7 +1637,7 @@
     const isCurrent = selectedMonthKey === currentKey;
     const selectedRecords = isAllTime ? all : all.filter(r => getMonthKey(r) === selectedMonthKey);
 
-    /* ---- TEMPORARY DIAGNOSTIC (remove after debugging) ----
+    // ---- TEMPORARY DIAGNOSTIC (remove after debugging) ----
     // Shows, for every bill, the raw date fields and the month the app assigns it.
     try {
       const diag = all.map(r => {
@@ -1574,7 +1656,7 @@
       all.forEach(r => { const k = getMonthKey(r) || 'NONE'; counts[k] = (counts[k]||0)+1; });
       diagBox.textContent = 'MONTH COUNTS: ' + JSON.stringify(counts) + '\n\n' + diag;
     } catch(e) { console.error('diag error', e); }
-    // ---- END DIAGNOSTIC ----*/
+    // ---- END DIAGNOSTIC ----
 
     const spend = selectedRecords.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
     const gstPaid = selectedRecords
@@ -1600,9 +1682,197 @@
     document.getElementById('dashOverdueCount').textContent = overdueCount;
     overdueCard.classList.toggle('alert', overdueCount > 0);
 
+    renderPersonReport(selectedRecords, monthLabel);
     renderTrendChart(all);
     renderTopVendors(selectedRecords);
   }
+
+  function renderPersonReport(monthRecords, monthLabel) {
+    document.getElementById('personReportTitle').textContent = `${monthLabel} · Spend & Balance by Person`;
+    const area = document.getElementById('personReportArea');
+
+    // THIS MONTH's spend, per person, split GST vs Non-GST (respects the selected month)
+    const monthSpend = {};
+    monthRecords.forEach(r => {
+      const name = (r.submitted_by_employee || '').trim() || 'Unattributed';
+      if (!monthSpend[name]) monthSpend[name] = { gst: 0, nonGst: 0 };
+      if (r.bill_type === 'gst') monthSpend[name].gst += toNum(r.invoice_value);
+      else monthSpend[name].nonGst += toNum(r.invoice_value);
+    });
+
+    // ALL-TIME totals for the carry-forward balance (given − spent), across every bill/payment ever.
+    const allRecords = [...recordsCache.gst, ...recordsCache.non_gst];
+    const allTimeSpent = {};
+    allRecords.forEach(r => {
+      const name = (r.submitted_by_employee || '').trim() || 'Unattributed';
+      allTimeSpent[name] = (allTimeSpent[name] || 0) + toNum(r.invoice_value);
+    });
+    const allTimeGiven = {};
+    paymentsCache.forEach(p => {
+      const name = (p.person || '').trim();
+      if (name) allTimeGiven[name] = (allTimeGiven[name] || 0) + toNum(p.amount);
+    });
+
+    const names = new Set([
+      ...Object.keys(monthSpend), ...Object.keys(allTimeSpent), ...Object.keys(allTimeGiven), ...TEAM_MEMBERS
+    ]);
+
+    const people = Array.from(names).map(name => {
+      const given = allTimeGiven[name] || 0;
+      const spent = allTimeSpent[name] || 0;
+      const ms = monthSpend[name] || { gst: 0, nonGst: 0 };
+      return {
+        name,
+        monthGst: ms.gst,
+        monthNonGst: ms.nonGst,
+        monthTotal: ms.gst + ms.nonGst,
+        given,
+        spent,
+        balance: given - spent
+      };
+    })
+    .filter(p => p.monthTotal !== 0 || p.given !== 0 || p.spent !== 0)
+    .sort((a, b) => b.monthTotal - a.monthTotal);
+
+    if (people.length === 0) {
+      area.innerHTML = `<div class="empty-state">No spend or payments recorded yet.</div>`;
+      return;
+    }
+
+    const rows = people.map(p => {
+      const balColor = p.balance < 0 ? 'var(--danger)' : (p.balance > 0 ? 'var(--good)' : 'var(--ink)');
+      return `
+      <tr>
+        <td style="font-weight:600;">${p.name}</td>
+        <td style="text-align:right;">₹${p.monthGst.toLocaleString('en-IN')}</td>
+        <td style="text-align:right;">₹${p.monthNonGst.toLocaleString('en-IN')}</td>
+        <td style="text-align:right; font-weight:600;">₹${p.monthTotal.toLocaleString('en-IN')}</td>
+        <td style="text-align:right;">₹${p.given.toLocaleString('en-IN')}</td>
+        <td style="text-align:right; font-weight:700; color:${balColor};">₹${p.balance.toLocaleString('en-IN')}</td>
+      </tr>`;
+    }).join('');
+
+    area.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Person</th>
+            <th style="text-align:right;">GST (${monthLabel})</th>
+            <th style="text-align:right;">Non-GST (${monthLabel})</th>
+            <th style="text-align:right;">Month Total</th>
+            <th style="text-align:right;">Given (all-time)</th>
+            <th style="text-align:right;">Balance</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="font-size:11.5px; color:var(--walnut-light); margin-top:8px;">
+        GST & Non-GST columns show the selected month only. Balance = all-time cash given − all-time bills submitted (carries forward). Green = cash in hand, red = spent more than given.
+      </div>`;
+  }
+
+  // ---------- Record Payment / Opening Balance (boss-PIN gated) ----------
+  let paymentMode = 'payment'; // 'payment' or 'opening'
+
+  function openPaymentModal(mode) {
+    paymentMode = mode || 'payment';
+    ensureBossUnlockedThenRun(() => {
+      const overlay = document.getElementById('paymentOverlay');
+      const select = document.getElementById('paymentPersonSelect');
+      select.innerHTML = '<option value="">— Select person —</option>' +
+        TEAM_MEMBERS.map(n => `<option value="${n}">${n}</option>`).join('') +
+        '<option value="__OTHER__">Other (type a name)</option>';
+      const otherInput = document.getElementById('paymentPersonOther');
+      otherInput.value = '';
+      otherInput.style.display = 'none';
+      document.getElementById('paymentAmountInput').value = '';
+      document.getElementById('paymentNoteInput').value = '';
+      document.getElementById('paymentError').textContent = '';
+
+      if (paymentMode === 'opening') {
+        document.getElementById('paymentModalTitle').textContent = 'Set Opening Balance';
+        document.getElementById('paymentModalHint').textContent = "Enter each person's current cash-in-hand as of today. Use a positive number if they hold excess cash, or a negative number (e.g. -2000) if the company owes them.";
+        document.getElementById('paymentAmountInput').placeholder = 'Balance (₹) — negative if company owes them';
+        document.getElementById('paymentNoteInput').value = 'Opening balance';
+        document.getElementById('paymentSaveBtn').textContent = 'Save Opening Balance';
+      } else {
+        document.getElementById('paymentModalTitle').textContent = 'Record a Payment';
+        document.getElementById('paymentModalHint').textContent = 'Log cash given to a team member. This updates their balance.';
+        document.getElementById('paymentAmountInput').placeholder = 'Amount (₹)';
+        document.getElementById('paymentNoteInput').value = '';
+        document.getElementById('paymentSaveBtn').textContent = 'Save Payment';
+      }
+      overlay.style.display = 'flex';
+    });
+  }
+
+  // Reveal the free-text name box only when "Other" is chosen.
+  document.getElementById('paymentPersonSelect').addEventListener('change', (e) => {
+    const otherInput = document.getElementById('paymentPersonOther');
+    if (e.target.value === '__OTHER__') {
+      otherInput.style.display = 'block';
+      otherInput.focus();
+    } else {
+      otherInput.style.display = 'none';
+    }
+  });
+
+  function resolvePaymentPerson() {
+    const select = document.getElementById('paymentPersonSelect');
+    if (select.value === '__OTHER__') {
+      return document.getElementById('paymentPersonOther').value.trim();
+    }
+    return select.value;
+  }
+
+  async function savePayment() {
+    const person = resolvePaymentPerson();
+    const amount = parseFloat(document.getElementById('paymentAmountInput').value);
+    const note = document.getElementById('paymentNoteInput').value.trim();
+    const errorEl = document.getElementById('paymentError');
+
+    if (!person) { errorEl.textContent = 'Please select or type a person\'s name.'; return; }
+    // Opening balance allows negative (company owes them); a payment must be positive.
+    if (isNaN(amount) || amount === 0) {
+      errorEl.textContent = 'Please enter a non-zero amount.'; return;
+    }
+    if (paymentMode === 'payment' && amount < 0) {
+      errorEl.textContent = 'A payment must be a positive amount. (For a negative balance, use Set Opening Balance.)'; return;
+    }
+
+    const saveBtn = document.getElementById('paymentSaveBtn');
+    const originalLabel = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+    try {
+      const res = await fetch(`${BACKEND_URL}/log-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+        body: JSON.stringify({
+          person, amount, note: note || (paymentMode === 'opening' ? 'Opening balance' : ''),
+          date: new Date().toLocaleDateString('en-GB'),
+          recorded_by: (getEmployeeName() || 'Dashboard') + (paymentMode === 'opening' ? ' (opening)' : '')
+        })
+      });
+      const result = await res.json();
+      if (!res.ok || result.error) throw new Error(result.error || 'Save failed');
+      document.getElementById('paymentOverlay').style.display = 'none';
+      paymentsCache = await fetchPayments(); // refresh balances
+      paintDashboardStats();
+    } catch (e) {
+      errorEl.textContent = 'Could not save: ' + e.message;
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalLabel;
+    }
+  }
+
+  document.getElementById('recordPaymentBtn').addEventListener('click', () => openPaymentModal('payment'));
+  document.getElementById('openingBalanceBtn').addEventListener('click', () => openPaymentModal('opening'));
+  document.getElementById('paymentSaveBtn').addEventListener('click', savePayment);
+  document.getElementById('paymentCancelBtn').addEventListener('click', () => {
+    document.getElementById('paymentOverlay').style.display = 'none';
+  });
 
   async function refreshDashboard() {
     const hasCache = recordsCache.gst.length > 0 || recordsCache.non_gst.length > 0;
@@ -1622,10 +1892,14 @@
     // the Sheet, so a long session shouldn't ever show stale or removed entries.
     const pendingCountPromise = refreshPendingCount();
     try {
-      [recordsCache.gst, recordsCache.non_gst] = await Promise.all([
+      const [gst, nonGst, payments] = await Promise.all([
         fetchRecords('gst'),
-        fetchRecords('non_gst')
+        fetchRecords('non_gst'),
+        fetchPayments()
       ]);
+      recordsCache.gst = gst;
+      recordsCache.non_gst = nonGst;
+      paymentsCache = payments;
     } catch (e) {
       if (!hasCache) { /* nothing to show yet and the fetch failed — leave placeholders */ }
       await pendingCountPromise;
