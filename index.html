@@ -1402,6 +1402,8 @@
   // ---------- Navigation ----------
   const BOSS_PIN = '5719';
   const TEAM_MEMBERS = ['Sanjeev Yadav', 'Sanjeev Sharma', 'Prince', 'Anil Kori', 'Rajiv Bawa', 'Kuhu Bawa', 'Vishal'];
+  // Balance tracking starts here. Anything dated before this month never counts toward balances.
+  const BALANCE_START_MONTH = '2026-09'; // September 2026
   let approvalsCache = [];
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1637,27 +1639,6 @@
     const isCurrent = selectedMonthKey === currentKey;
     const selectedRecords = isAllTime ? all : all.filter(r => getMonthKey(r) === selectedMonthKey);
 
-    // ---- TEMPORARY DIAGNOSTIC (remove after debugging) ----
-    // Shows, for every bill, the raw date fields and the month the app assigns it.
-    try {
-      const diag = all.map(r => {
-        const mk = getMonthKey(r);
-        return `${r.bill_type} | date="${r.date}" | uploaded="${r.uploaded_on}" | -> ${mk || 'NO MONTH'} | ₹${r.invoice_value}`;
-      }).join('\n');
-      let diagBox = document.getElementById('diagBox');
-      if (!diagBox) {
-        diagBox = document.createElement('pre');
-        diagBox.id = 'diagBox';
-        diagBox.style.cssText = 'background:#fff;border:1px solid #ccc;padding:10px;font-size:10px;max-height:240px;overflow:auto;white-space:pre-wrap;margin:12px 0;border-radius:4px;';
-        const dashView = document.getElementById('view-dashboard');
-        if (dashView) dashView.insertBefore(diagBox, dashView.firstChild);
-      }
-      const counts = {};
-      all.forEach(r => { const k = getMonthKey(r) || 'NONE'; counts[k] = (counts[k]||0)+1; });
-      diagBox.textContent = 'MONTH COUNTS: ' + JSON.stringify(counts) + '\n\n' + diag;
-    } catch(e) { console.error('diag error', e); }
-    // ---- END DIAGNOSTIC ----
-
     const spend = selectedRecords.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
     const gstPaid = selectedRecords
       .filter(r => r.bill_type === 'gst')
@@ -1687,88 +1668,151 @@
     renderTopVendors(selectedRecords);
   }
 
+  // Returns a bill's month key (YYYY-MM) strictly by its BILL date, for balance purposes.
+  function billMonthKey(record) {
+    const d = parseAnyDate(record.date);
+    if (!d) return null;
+    return `${d.year}-${String(d.month).padStart(2,'0')}`;
+  }
+  // Returns a payment's month key by its Date.
+  function paymentMonthKey(payment) {
+    const d = parseAnyDate(payment.date);
+    if (!d) return null;
+    return `${d.year}-${String(d.month).padStart(2,'0')}`;
+  }
+  // Compares two YYYY-MM strings: returns true if a is strictly before b.
+  function monthBefore(a, b) { return a < b; }
+
   function renderPersonReport(monthRecords, monthLabel) {
-    document.getElementById('personReportTitle').textContent = `${monthLabel} · Spend & Balance by Person`;
+    // The passbook only makes sense for a specific month, not "All Time".
+    const isAllTimeView = selectedMonthKey === 'ALL_TIME';
+    const targetMonth = isAllTimeView ? null : selectedMonthKey;
+
+    document.getElementById('personReportTitle').textContent = isAllTimeView
+      ? `Spend & Balance by Person`
+      : `${monthLabel} · Passbook by Person`;
     const area = document.getElementById('personReportArea');
 
-    // THIS MONTH's spend, per person, split GST vs Non-GST (respects the selected month)
-    const monthSpend = {};
-    monthRecords.forEach(r => {
-      const name = (r.submitted_by_employee || '').trim() || 'Unattributed';
-      if (!monthSpend[name]) monthSpend[name] = { gst: 0, nonGst: 0 };
-      if (r.bill_type === 'gst') monthSpend[name].gst += toNum(r.invoice_value);
-      else monthSpend[name].nonGst += toNum(r.invoice_value);
-    });
-
-    // ALL-TIME totals for the carry-forward balance (given − spent), across every bill/payment ever.
     const allRecords = [...recordsCache.gst, ...recordsCache.non_gst];
-    const allTimeSpent = {};
-    allRecords.forEach(r => {
-      const name = (r.submitted_by_employee || '').trim() || 'Unattributed';
-      allTimeSpent[name] = (allTimeSpent[name] || 0) + toNum(r.invoice_value);
+
+    // Only bills DATED on/after the balance start month count toward balances.
+    const balanceBills = allRecords.filter(r => {
+      const mk = billMonthKey(r);
+      return mk && !monthBefore(mk, BALANCE_START_MONTH);
     });
-    const allTimeGiven = {};
-    paymentsCache.forEach(p => {
-      const name = (p.person || '').trim();
-      if (name) allTimeGiven[name] = (allTimeGiven[name] || 0) + toNum(p.amount);
+    const balancePayments = paymentsCache.filter(p => {
+      const mk = paymentMonthKey(p);
+      // Opening balances are dated when entered; if their month is before start, still treat as opening.
+      // We include all payments on/after start, plus any explicitly-opening ones.
+      return mk && !monthBefore(mk, BALANCE_START_MONTH);
     });
 
-    const names = new Set([
-      ...Object.keys(monthSpend), ...Object.keys(allTimeSpent), ...Object.keys(allTimeGiven), ...TEAM_MEMBERS
-    ]);
+    // Build the set of people to show.
+    const names = new Set([...TEAM_MEMBERS]);
+    balanceBills.forEach(r => names.add((r.submitted_by_employee || '').trim() || 'Unattributed'));
+    balancePayments.forEach(p => { const n = (p.person || '').trim(); if (n) names.add(n); });
+    // Also include people who have month-spend in the selected month even if pre-start (for the spend columns).
+    monthRecords.forEach(r => names.add((r.submitted_by_employee || '').trim() || 'Unattributed'));
 
-    const people = Array.from(names).map(name => {
-      const given = allTimeGiven[name] || 0;
-      const spent = allTimeSpent[name] || 0;
-      const ms = monthSpend[name] || { gst: 0, nonGst: 0 };
-      return {
-        name,
-        monthGst: ms.gst,
-        monthNonGst: ms.nonGst,
-        monthTotal: ms.gst + ms.nonGst,
-        given,
-        spent,
-        balance: given - spent
-      };
-    })
-    .filter(p => p.monthTotal !== 0 || p.given !== 0 || p.spent !== 0)
-    .sort((a, b) => b.monthTotal - a.monthTotal);
+    function sumFor(person, monthFilter) {
+      // monthFilter: 'before' = strictly before targetMonth, 'equal' = exactly targetMonth
+      let given = 0, spent = 0, gstSpent = 0, nonGstSpent = 0;
+      balancePayments.forEach(p => {
+        if ((p.person || '').trim() !== person) return;
+        const mk = paymentMonthKey(p);
+        if (monthFilter === 'before' && monthBefore(mk, targetMonth)) given += toNum(p.amount);
+        if (monthFilter === 'equal' && mk === targetMonth) given += toNum(p.amount);
+      });
+      balanceBills.forEach(r => {
+        const rn = (r.submitted_by_employee || '').trim() || 'Unattributed';
+        if (rn !== person) return;
+        const mk = billMonthKey(r);
+        const val = toNum(r.invoice_value);
+        const inScope = (monthFilter === 'before' && monthBefore(mk, targetMonth)) || (monthFilter === 'equal' && mk === targetMonth);
+        if (inScope) {
+          spent += val;
+          if (r.bill_type === 'gst') gstSpent += val; else nonGstSpent += val;
+        }
+      });
+      return { given, spent, gstSpent, nonGstSpent };
+    }
+
+    let people;
+    if (isAllTimeView) {
+      // All-time view: simple total given − total spent (from start month onward).
+      people = Array.from(names).map(name => {
+        let given = 0, spent = 0, gstSpent = 0, nonGstSpent = 0;
+        balancePayments.forEach(p => { if ((p.person||'').trim() === name) given += toNum(p.amount); });
+        balanceBills.forEach(r => {
+          const rn = (r.submitted_by_employee || '').trim() || 'Unattributed';
+          if (rn !== name) return;
+          const val = toNum(r.invoice_value);
+          spent += val;
+          if (r.bill_type === 'gst') gstSpent += val; else nonGstSpent += val;
+        });
+        return { name, opening: 0, given, gstSpent, nonGstSpent, spent, closing: given - spent, isAllTime: true };
+      }).filter(p => p.given !== 0 || p.spent !== 0)
+        .sort((a,b) => b.spent - a.spent);
+    } else {
+      people = Array.from(names).map(name => {
+        const before = sumFor(name, 'before');
+        const eq = sumFor(name, 'equal');
+        const opening = before.given - before.spent; // carried in from prior months (since start)
+        const closing = opening + eq.given - eq.spent;
+        return {
+          name, opening,
+          given: eq.given,
+          gstSpent: eq.gstSpent, nonGstSpent: eq.nonGstSpent, spent: eq.spent,
+          closing, isAllTime: false
+        };
+      }).filter(p => p.opening !== 0 || p.given !== 0 || p.spent !== 0)
+        .sort((a,b) => b.spent - a.spent);
+    }
 
     if (people.length === 0) {
-      area.innerHTML = `<div class="empty-state">No spend or payments recorded yet.</div>`;
+      area.innerHTML = `<div class="empty-state">No spend or payments recorded from ${monthLabelFromKey(BALANCE_START_MONTH)} onward yet.</div>`;
       return;
     }
 
-    const rows = people.map(p => {
-      const balColor = p.balance < 0 ? 'var(--danger)' : (p.balance > 0 ? 'var(--good)' : 'var(--ink)');
-      return `
-      <tr>
-        <td style="font-weight:600;">${p.name}</td>
-        <td style="text-align:right;">₹${p.monthGst.toLocaleString('en-IN')}</td>
-        <td style="text-align:right;">₹${p.monthNonGst.toLocaleString('en-IN')}</td>
-        <td style="text-align:right; font-weight:600;">₹${p.monthTotal.toLocaleString('en-IN')}</td>
-        <td style="text-align:right;">₹${p.given.toLocaleString('en-IN')}</td>
-        <td style="text-align:right; font-weight:700; color:${balColor};">₹${p.balance.toLocaleString('en-IN')}</td>
-      </tr>`;
-    }).join('');
+    const money = (n) => '₹' + n.toLocaleString('en-IN');
+    const balColor = (n) => n < 0 ? 'var(--danger)' : (n > 0 ? 'var(--good)' : 'var(--ink)');
+
+    let head, rows;
+    if (isAllTimeView) {
+      head = `<tr><th>Person</th><th style="text-align:right;">GST Spent</th><th style="text-align:right;">Non-GST Spent</th><th style="text-align:right;">Total Given</th><th style="text-align:right;">Balance</th></tr>`;
+      rows = people.map(p => `
+        <tr>
+          <td style="font-weight:600;">${p.name}</td>
+          <td style="text-align:right;">${money(p.gstSpent)}</td>
+          <td style="text-align:right;">${money(p.nonGstSpent)}</td>
+          <td style="text-align:right;">${money(p.given)}</td>
+          <td style="text-align:right; font-weight:700; color:${balColor(p.closing)};">${money(p.closing)}</td>
+        </tr>`).join('');
+    } else {
+      head = `<tr><th>Person</th><th style="text-align:right;">Opening</th><th style="text-align:right;">Given</th><th style="text-align:right;">Spent (GST)</th><th style="text-align:right;">Spent (Non-GST)</th><th style="text-align:right;">Closing</th></tr>`;
+      rows = people.map(p => `
+        <tr>
+          <td style="font-weight:600;">${p.name}</td>
+          <td style="text-align:right; color:${balColor(p.opening)};">${money(p.opening)}</td>
+          <td style="text-align:right;">${money(p.given)}</td>
+          <td style="text-align:right;">${money(p.gstSpent)}</td>
+          <td style="text-align:right;">${money(p.nonGstSpent)}</td>
+          <td style="text-align:right; font-weight:700; color:${balColor(p.closing)};">${money(p.closing)}</td>
+        </tr>`).join('');
+    }
 
     area.innerHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th>Person</th>
-            <th style="text-align:right;">GST (${monthLabel})</th>
-            <th style="text-align:right;">Non-GST (${monthLabel})</th>
-            <th style="text-align:right;">Month Total</th>
-            <th style="text-align:right;">Given (all-time)</th>
-            <th style="text-align:right;">Balance</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
+      <table><thead>${head}</thead><tbody>${rows}</tbody></table>
       <div style="font-size:11.5px; color:var(--walnut-light); margin-top:8px;">
-        GST & Non-GST columns show the selected month only. Balance = all-time cash given − all-time bills submitted (carries forward). Green = cash in hand, red = spent more than given.
+        ${isAllTimeView
+          ? `Balance = cash given − bills submitted, counting only from ${monthLabelFromKey(BALANCE_START_MONTH)} onward.`
+          : `Opening = balance carried in from earlier months. Closing = Opening + Given − Spent (carries to next month). Only bills dated ${monthLabelFromKey(BALANCE_START_MONTH)} onward count. Green = cash in hand, red = spent more than held.`}
       </div>`;
+  }
+
+  function monthLabelFromKey(key) {
+    const [y, m] = key.split('-').map(Number);
+    return new Date(y, m - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
   }
 
   // ---------- Record Payment / Opening Balance (boss-PIN gated) ----------
