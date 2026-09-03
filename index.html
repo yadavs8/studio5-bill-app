@@ -1901,8 +1901,12 @@
       const result = await res.json();
       if (!res.ok || result.error) throw new Error(result.error || 'Save failed');
       document.getElementById('paymentOverlay').style.display = 'none';
-      paymentsCache = await fetchPayments(); // refresh balances
-      paintDashboardStats();
+      paymentsCache = await fetchPayments();
+      console.log('Payments fetched after save:', paymentsCache.length, 'rows', paymentsCache);
+      // Force a full refresh so the report re-renders with the new payment data.
+      recordsCache.gst = [];
+      recordsCache.non_gst = [];
+      await refreshDashboard();
     } catch (e) {
       errorEl.textContent = 'Could not save: ' + e.message;
     } finally {
