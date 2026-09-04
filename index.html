@@ -635,9 +635,9 @@
             <div class="dash-sub">IGST + CGST + SGST</div>
           </div>
           <div class="dash-card">
-            <div class="dash-label">Total Bills in Ledger</div>
+            <div class="dash-label" id="dashBillsLabel">This Month · Bills in Ledger</div>
             <div class="dash-value" id="dashTotalBills">–</div>
-            <div class="dash-sub" id="dashBillBreakdown">Approved entries, all time</div>
+            <div class="dash-sub" id="dashBillBreakdown">–</div>
           </div>
         </div>
 
@@ -650,6 +650,11 @@
             </div>
           </div>
           <div class="table-scroll" id="personReportArea"><div class="empty-state">No spend recorded for this month yet.</div></div>
+        </div>
+
+        <div class="panel" style="margin-bottom:20px;">
+          <h2 style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin-bottom:16px;">Monthly Bills Breakdown</h2>
+          <div class="table-scroll" id="monthlyBreakdownArea"><div class="empty-state">No bills recorded yet.</div></div>
         </div>
 
         <div class="panel" style="margin-bottom:20px;">
@@ -1679,14 +1684,20 @@
     const sortedKeys = Array.from(keysWithData).sort().reverse();
 
     const previousSelection = selectedMonthKey || currentKey;
+
+    const allGst = recordsCache.gst.length;
+    const allNonGst = recordsCache.non_gst.length;
+
     const monthOptions = sortedKeys.map(key => {
       const [y, m] = key.split('-');
       const label = new Date(parseInt(y), parseInt(m)-1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
       const displayLabel = key === currentKey ? `${label} (current)` : label;
-      return `<option value="${key}" ${key === previousSelection ? 'selected' : ''}>${displayLabel}</option>`;
+      const mGst = allRecords.filter(r => getMonthKey(r) === key && r.bill_type === 'gst').length;
+      const mNonGst = allRecords.filter(r => getMonthKey(r) === key && r.bill_type !== 'gst').length;
+      return `<option value="${key}" ${key === previousSelection ? 'selected' : ''}>${displayLabel} — ${mGst} GST · ${mNonGst} Non-GST (${mGst + mNonGst} bills)</option>`;
     }).join('');
 
-    select.innerHTML = `<option value="ALL_TIME" ${previousSelection === 'ALL_TIME' ? 'selected' : ''}>All Time</option>` + monthOptions;
+    select.innerHTML = `<option value="ALL_TIME" ${previousSelection === 'ALL_TIME' ? 'selected' : ''}>All Time — ${allGst} GST · ${allNonGst} Non-GST (${allGst + allNonGst} bills)</option>` + monthOptions;
     selectedMonthKey = previousSelection;
   }
 
@@ -1716,8 +1727,18 @@
     document.getElementById('dashGstLabel').textContent = `${monthLabel} · GST Paid`;
     document.getElementById('dashMonthSpend').textContent = '₹' + spend.toLocaleString('en-IN');
     document.getElementById('dashMonthGst').textContent = '₹' + gstPaid.toLocaleString('en-IN');
-    document.getElementById('dashTotalBills').textContent = all.length;
-    document.getElementById('dashBillBreakdown').textContent = `${recordsCache.gst.length} GST + ${recordsCache.non_gst.length} Non-GST`;
+
+    // Month-wise bills in ledger with separate GST and Non-GST counts
+    const selGst = selectedRecords.filter(r => r.bill_type === 'gst').length;
+    const selNonGst = selectedRecords.filter(r => r.bill_type !== 'gst').length;
+    const billsLabelEl = document.getElementById('dashBillsLabel');
+    if (billsLabelEl) billsLabelEl.textContent = `${monthLabel} · Bills in Ledger`;
+    document.getElementById('dashTotalBills').textContent = selectedRecords.length;
+    document.getElementById('dashBillBreakdown').innerHTML = `
+      <span class="type-tag gst" style="font-size:11px; padding:2px 7px;">${selGst} GST</span>
+      <span style="color:var(--line); margin:0 3px;">•</span>
+      <span class="type-tag non_gst" style="font-size:11px; padding:2px 7px;">${selNonGst} Non-GST</span>
+    `;
 
     const overdueCount = all.filter(isOverdue).length;
     const overdueCard = document.getElementById('overdueCard');
@@ -1725,6 +1746,7 @@
     overdueCard.classList.toggle('alert', overdueCount > 0);
 
     renderPersonReport(selectedRecords, monthLabel);
+    renderMonthlyBreakdown(all);
     renderTrendChart(all);
     renderTopVendors(selectedRecords);
   }
@@ -2000,6 +2022,7 @@
       document.getElementById('dashMonthSpend').textContent = '…';
       document.getElementById('dashMonthGst').textContent = '…';
       document.getElementById('dashTotalBills').textContent = '…';
+      document.getElementById('dashBillBreakdown').textContent = '…';
       document.getElementById('dashOverdueCount').textContent = '…';
     }
 
@@ -2037,6 +2060,7 @@
     document.getElementById('dashMonthSpend').textContent = '…';
     document.getElementById('dashMonthGst').textContent = '…';
     document.getElementById('dashTotalBills').textContent = '…';
+    document.getElementById('dashBillBreakdown').textContent = '…';
     await refreshDashboard();
   });
 
@@ -2106,6 +2130,78 @@
         <div class="vendor-amount">₹${amount.toLocaleString('en-IN')}</div>
       </div>
     `).join('');
+  }
+
+  function renderMonthlyBreakdown(allRecords) {
+    const area = document.getElementById('monthlyBreakdownArea');
+    if (!area) return;
+
+    const keys = Array.from(new Set(allRecords.map(getMonthKey).filter(Boolean))).sort().reverse();
+    if (keys.length === 0) {
+      area.innerHTML = `<div class="empty-state">No bills recorded yet.</div>`;
+      return;
+    }
+
+    const currentKey = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+
+    const rows = keys.map(key => {
+      const [y, m] = key.split('-');
+      const label = new Date(parseInt(y), parseInt(m)-1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+      const mRecords = allRecords.filter(r => getMonthKey(r) === key);
+      const gstCount = mRecords.filter(r => r.bill_type === 'gst').length;
+      const nonGstCount = mRecords.filter(r => r.bill_type !== 'gst').length;
+      const totalCount = mRecords.length;
+      const mSpend = mRecords.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
+      const mGstPaid = mRecords.filter(r => r.bill_type === 'gst')
+        .reduce((sum, r) => sum + toNum(r.igst) + toNum(r.cgst) + toNum(r.sgst), 0);
+
+      const isSel = selectedMonthKey === key;
+      return `
+        <tr style="${isSel ? 'background:#e0f2fe; font-weight:600;' : ''}">
+          <td style="font-weight:600;">${label} ${key === currentKey ? '<span style="font-size:11px; color:var(--brass-dark); margin-left:4px;">(Current)</span>' : ''}</td>
+          <td style="text-align:center;"><span class="type-tag gst" style="font-size:11px; padding:2px 8px;">${gstCount}</span></td>
+          <td style="text-align:center;"><span class="type-tag non_gst" style="font-size:11px; padding:2px 8px;">${nonGstCount}</span></td>
+          <td style="text-align:center; font-weight:700;">${totalCount}</td>
+          <td style="text-align:right;">₹${mSpend.toLocaleString('en-IN')}</td>
+          <td style="text-align:right;">₹${mGstPaid.toLocaleString('en-IN')}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const totalGst = allRecords.filter(r => r.bill_type === 'gst').length;
+    const totalNonGst = allRecords.filter(r => r.bill_type !== 'gst').length;
+    const totalBills = allRecords.length;
+    const totalSpend = allRecords.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
+    const totalGstPaid = allRecords.filter(r => r.bill_type === 'gst')
+      .reduce((sum, r) => sum + toNum(r.igst) + toNum(r.cgst) + toNum(r.sgst), 0);
+
+    const isAllTime = selectedMonthKey === 'ALL_TIME';
+
+    area.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th style="text-align:center;">GST Bills</th>
+            <th style="text-align:center;">Non-GST Bills</th>
+            <th style="text-align:center;">Total Bills</th>
+            <th style="text-align:right;">Total Spend</th>
+            <th style="text-align:right;">GST Paid</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+          <tr style="border-top:2px solid var(--walnut); font-weight:700; ${isAllTime ? 'background:#e0f2fe;' : 'background:#f8fafc;'}">
+            <td>Total (All Time)</td>
+            <td style="text-align:center;"><span class="type-tag gst" style="font-size:11px; padding:2px 8px;">${totalGst}</span></td>
+            <td style="text-align:center;"><span class="type-tag non_gst" style="font-size:11px; padding:2px 8px;">${totalNonGst}</span></td>
+            <td style="text-align:center;">${totalBills}</td>
+            <td style="text-align:right;">₹${totalSpend.toLocaleString('en-IN')}</td>
+            <td style="text-align:right;">₹${totalGstPaid.toLocaleString('en-IN')}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
   }
 
   async function refreshPendingCount() {
