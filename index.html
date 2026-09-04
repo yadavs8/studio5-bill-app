@@ -958,23 +958,50 @@
   let recordsCache = { gst: [], non_gst: [] };
   let paymentsCache = []; // [{ person, amount, date }, ...] — cash advances given to field people
 
+  // Alias lists for Payments sheet columns — tries each name in order until one matches.
+  // This makes fetchPayments resilient to whatever column names the Apps Script uses.
+  const PAYMENT_COL_ALIASES = {
+    person: ['Person', 'Paid To', 'Payment To', 'Name', 'Employee', 'Team Member'],
+    amount: ['Amount', 'Amount Paid', 'Payment Amount', 'Paid Amount', 'Cash', 'Value'],
+    date:   ['Date', 'Payment Date', 'Paid On', 'Date of Payment', 'Transaction Date'],
+    note:   ['Note', 'Notes', 'Remarks', 'Description', 'Narration', 'Purpose'],
+  };
+
+  function findPaymentColIdx(headerRow, key) {
+    for (const alias of PAYMENT_COL_ALIASES[key]) {
+      const idx = headerRow.indexOf(alias);
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+
   async function fetchPayments() {
     try {
       const res = await fetch(`${BACKEND_URL}/payments?_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } });
+      if (!res.ok) {
+        console.error('fetchPayments: HTTP', res.status, res.statusText);
+        return [];
+      }
       const data = await res.json();
       const rows = data.rows || [];
       if (rows.length < 1) return [];
       const headerRow = rows[0];
-      const personIdx = headerRow.indexOf('Person');
-      const amountIdx = headerRow.indexOf('Amount');
-      const dateIdx   = headerRow.indexOf('Date');
-      const noteIdx   = headerRow.indexOf('Note');
+
+      const personIdx = findPaymentColIdx(headerRow, 'person');
+      const amountIdx = findPaymentColIdx(headerRow, 'amount');
+      const dateIdx   = findPaymentColIdx(headerRow, 'date');
+      const noteIdx   = findPaymentColIdx(headerRow, 'note');
+
+      console.log('fetchPayments: headers=', headerRow,
+        '| person@', personIdx, '| amount@', amountIdx,
+        '| date@', dateIdx, '| note@', noteIdx);
+
       return rows.slice(1)
         .filter(r => r.some(c => c !== '' && c !== null && c !== undefined))
         .map(r => {
           const rawNote = noteIdx >= 0 ? String(r[noteIdx] ?? '').trim() : '';
           return {
-            person:     personIdx >= 0 ? String(r[personIdx] ?? '').trim() : '',
+            person:     personIdx >= 0 ? resolvePersonName(String(r[personIdx] ?? '').trim()) : '',
             amount:     amountIdx >= 0 ? parseFloat(String(r[amountIdx] ?? '0').replace(/[^0-9.\-]/g, '')) || 0 : 0,
             date:       dateIdx   >= 0 ? String(r[dateIdx]   ?? '') : '',
             note:       rawNote,
@@ -1044,6 +1071,10 @@
             const idx = headerRow.indexOf(alias);
             if (idx >= 0 && r[idx]) { rec.submitted_by_employee = String(r[idx]); break; }
           }
+        }
+        // Normalize phone numbers stored in submitted_by_employee back to real names.
+        if (rec.submitted_by_employee) {
+          rec.submitted_by_employee = resolvePersonName(rec.submitted_by_employee);
         }
         const entryIdIdx = headerRow.indexOf('Entry ID');
         rec.entry_id = entryIdIdx >= 0 ? String(r[entryIdIdx] ?? '') : '';
@@ -1408,6 +1439,30 @@
   // ---------- Navigation ----------
   const BOSS_PIN = '5719';
   const TEAM_MEMBERS = ['Sanjeev Yadav', 'Sanjeev Sharma', 'Prince', 'Anil Kori', 'Rajiv Bawa', 'Kuhu Bawa', 'Vishal'];
+
+  // Client-side phone → name map. Mirrors the backend EMPLOYEE_PHONE_MAP.
+  // Needed because old WhatsApp bills stored a raw phone number in submitted_by_employee
+  // (happens when Twilio sends From without the + prefix and the map lookup fails).
+  // Both +91 and 91 variants are listed to handle both formats.
+  const PHONE_NAME_MAP = {
+    '919810866600':  'Rajiv Bawa',   '+919810866600': 'Rajiv Bawa',
+    '919599239231':  'Kuhu Bawa',    '+919599239231': 'Kuhu Bawa',
+    '919582421534':  'Anil Kori',    '+919582421534': 'Anil Kori',
+    '918778681112':  'Sanjeev Yadav','+918778681112': 'Sanjeev Yadav',
+    '919319316166':  'Sanjeev Sharma','+919319316166':'Sanjeev Sharma',
+    '919810729277':  'Prince',       '+919810729277': 'Prince',
+    '917004353803':  'Vishal',       '+917004353803': 'Vishal',
+  };
+
+  // Resolves a raw submitted_by_employee value that may be a phone number
+  // (e.g. "919810866600") back to the correct person name (e.g. "Rajiv Bawa").
+  // If the value is already a name (no mapping found), it is returned as-is.
+  function resolvePersonName(raw) {
+    if (!raw) return '';
+    const trimmed = raw.trim();
+    return PHONE_NAME_MAP[trimmed] || trimmed;
+  }
+
   // Balance tracking starts here. Anything dated before this month never counts toward balances.
   const BALANCE_START_MONTH = '2026-08'; // August 2026 — balance tracking starts here; anything before is excluded
   let approvalsCache = [];
