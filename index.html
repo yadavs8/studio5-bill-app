@@ -967,14 +967,20 @@
       const headerRow = rows[0];
       const personIdx = headerRow.indexOf('Person');
       const amountIdx = headerRow.indexOf('Amount');
-      const dateIdx = headerRow.indexOf('Date');
+      const dateIdx   = headerRow.indexOf('Date');
+      const noteIdx   = headerRow.indexOf('Note');
       return rows.slice(1)
         .filter(r => r.some(c => c !== '' && c !== null && c !== undefined))
-        .map(r => ({
-          person: personIdx >= 0 ? String(r[personIdx] ?? '').trim() : '',
-          amount: amountIdx >= 0 ? r[amountIdx] : 0,
-          date: dateIdx >= 0 ? String(r[dateIdx] ?? '') : ''
-        }));
+        .map(r => {
+          const rawNote = noteIdx >= 0 ? String(r[noteIdx] ?? '').trim() : '';
+          return {
+            person:     personIdx >= 0 ? String(r[personIdx] ?? '').trim() : '',
+            amount:     amountIdx >= 0 ? parseFloat(String(r[amountIdx] ?? '0').replace(/[^0-9.\-]/g, '')) || 0 : 0,
+            date:       dateIdx   >= 0 ? String(r[dateIdx]   ?? '') : '',
+            note:       rawNote,
+            is_opening: rawNote.toLowerCase().includes('opening')
+          };
+        });
     } catch (e) {
       console.error('Failed to fetch payments:', e);
       return [];
@@ -1403,7 +1409,7 @@
   const BOSS_PIN = '5719';
   const TEAM_MEMBERS = ['Sanjeev Yadav', 'Sanjeev Sharma', 'Prince', 'Anil Kori', 'Rajiv Bawa', 'Kuhu Bawa', 'Vishal'];
   // Balance tracking starts here. Anything dated before this month never counts toward balances.
-  const BALANCE_START_MONTH = '2026-09'; // September 2026
+  const BALANCE_START_MONTH = '2026-08'; // August 2026 — balance tracking starts here; anything before is excluded
   let approvalsCache = [];
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1720,8 +1726,14 @@
       balancePayments.forEach(p => {
         if ((p.person || '').trim() !== person) return;
         const mk = paymentMonthKey(p);
-        if (monthFilter === 'before' && monthBefore(mk, targetMonth)) given += toNum(p.amount);
-        if (monthFilter === 'equal' && mk === targetMonth) given += toNum(p.amount);
+        if (p.is_opening) {
+          // Opening balances always belong to the 'Opening' column regardless of their entry date —
+          // they represent a starting state, not a cash payment made during the month.
+          if (monthFilter === 'before') given += toNum(p.amount);
+        } else {
+          if (monthFilter === 'before' && monthBefore(mk, targetMonth)) given += toNum(p.amount);
+          if (monthFilter === 'equal' && mk === targetMonth) given += toNum(p.amount);
+        }
       });
       balanceBills.forEach(r => {
         const rn = (r.submitted_by_employee || '').trim() || 'Unattributed';
@@ -1901,11 +1913,12 @@
       const result = await res.json();
       if (!res.ok || result.error) throw new Error(result.error || 'Save failed');
       document.getElementById('paymentOverlay').style.display = 'none';
-      paymentsCache = await fetchPayments();
-      console.log('Payments fetched after save:', paymentsCache.length, 'rows', paymentsCache);
-      // Force a full refresh so the report re-renders with the new payment data.
+      // Clear all caches so refreshDashboard does one clean, authoritative fetch with the latest data.
+      // (Avoid a double-fetch race: pre-fetching here and then fetching again inside refreshDashboard
+      // can cause the second stale result to overwrite the correct first one.)
       recordsCache.gst = [];
       recordsCache.non_gst = [];
+      paymentsCache = [];
       await refreshDashboard();
     } catch (e) {
       errorEl.textContent = 'Could not save: ' + e.message;
