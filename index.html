@@ -522,6 +522,54 @@
     0%, 100% { opacity: 1; transform: translateY(0) scaleY(1); }
     50% { opacity: 1; transform: translateY(-3px) scaleY(1.02); }
   }
+
+  .site-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .site-badge.dehradun { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+  .site-badge.traudan { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+  .site-badge.gurgaon { background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
+  .site-badge.central { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
+
+  .tally-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+  }
+  .btn-tally {
+    background: #047857;
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    transition: background 0.15s ease;
+  }
+  .btn-tally:hover { background: #065f46; }
+  .btn-sm {
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: inherit;
+  }
 </style>
 
 <div class="pin-overlay" id="bossPinOverlay" style="display:none; z-index:10000;">
@@ -548,6 +596,22 @@
     <div class="pin-error" id="paymentError"></div>
     <button class="btn-primary" id="paymentSaveBtn" style="width:100%;">Save Payment</button>
     <button class="btn-ghost" id="paymentCancelBtn" style="width:100%; margin-top:8px;">Cancel</button>
+  </div>
+</div>
+
+<div class="pin-overlay" id="calibrateOverlay" style="display:none; z-index:10000;">
+  <div class="pin-card" style="max-width:380px;">
+    <h2>⚡ Set Cash-in-Hand Today</h2>
+    <p style="font-size:12.5px; line-height:1.5;">Calibrate physical cash in hand with a person as of today. Avoids historical month-by-month negative balances.</p>
+    <select id="calibratePersonSelect" style="width:100%; padding:12px; font-size:15px; border:1px solid var(--line); border-radius:4px; margin-bottom:10px; font-family:inherit; background:#fff;">
+      <option value="">— Select team member —</option>
+    </select>
+    <div style="text-align:left; font-size:12px; font-weight:600; color:var(--walnut-light); margin-bottom:4px;">Actual Physical Cash Held as of Today (₹):</div>
+    <input type="number" id="calibrateAmountInput" placeholder="e.g. 15000" style="letter-spacing:normal; text-align:left; font-size:16px; margin-bottom:10px;" />
+    <input type="text" id="calibrateNoteInput" placeholder="Note (e.g. Confirmed with boss today)" style="letter-spacing:normal; text-align:left; font-size:14px; margin-bottom:10px;" />
+    <div class="pin-error" id="calibrateError"></div>
+    <button class="btn-primary" id="calibrateSaveBtn" style="width:100%;">Set Balance as of Today</button>
+    <button class="btn-ghost" id="calibrateCancelBtn" style="width:100%; margin-top:8px;">Cancel</button>
   </div>
 </div>
 
@@ -610,7 +674,46 @@
             <label for="dashMonthSelect" style="font-size:12.5px; font-weight:600; color:var(--walnut-light);">Viewing:</label>
             <select id="dashMonthSelect" style="padding:8px 12px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:13px; background:#fff;"></select>
           </div>
-          <button class="btn-ghost" id="refreshDashboardBtn">Refresh</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button class="btn-tally" id="exportTallyXmlBtn" title="Download standards-compliant Tally XML for Import Data -> Vouchers">📥 Export to Tally (XML)</button>
+            <button class="btn-ghost" id="exportGstr2bBtn" style="font-size:13px; padding:8px 14px;" title="Download ITC reconciliation spreadsheet">📄 GSTR-2B (CSV)</button>
+            <button class="btn-ghost" id="refreshDashboardBtn">Refresh</button>
+          </div>
+        </div>
+
+        <!-- Financier & Management KPI Summary -->
+        <div class="panel" style="margin-bottom:20px; border-left:4px solid var(--brass);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <div>
+              <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:var(--brass-dark); font-weight:700;">Executive Financier Presentation</span>
+              <h2 style="font-family:Georgia,serif; font-size:20px; color:var(--walnut); margin:2px 0 0;">Payables, Cash Runway & Tax ITC</h2>
+            </div>
+            <div style="font-size:12px; color:var(--walnut-light);">
+              Tally Prime XML format: <span class="tally-tag">Ready</span>
+            </div>
+          </div>
+          <div class="dash-grid" style="margin-bottom:0;">
+            <div class="dash-card">
+              <div class="dash-label">Total Spend (Committed)</div>
+              <div class="dash-value" id="financierTotalSpend">–</div>
+              <div class="dash-sub">Total verified bills in ledger</div>
+            </div>
+            <div class="dash-card">
+              <div class="dash-label">Unpaid Liabilities</div>
+              <div class="dash-value" id="financierUnpaidLiabilities" style="color:var(--brass-dark);">–</div>
+              <div class="dash-sub" id="financierUnpaidCount">0 unpaid bills</div>
+            </div>
+            <div class="dash-card">
+              <div class="dash-label">Overdue (>30 Days)</div>
+              <div class="dash-value" id="financierOverdueAmount" style="color:var(--danger);">–</div>
+              <div class="dash-sub" id="financierOverdueCount">0 aging bills</div>
+            </div>
+            <div class="dash-card">
+              <div class="dash-label">Eligible Input GST (ITC)</div>
+              <div class="dash-value" id="financierEligibleItc" style="color:var(--good);">–</div>
+              <div class="dash-sub">Input Tax Credit claimable</div>
+            </div>
+          </div>
         </div>
 
         <div class="dash-grid">
@@ -641,15 +744,30 @@
           </div>
         </div>
 
+        <!-- Current Cash in Hand / Live Balances (replacing month passbook) -->
         <div class="panel" style="margin-bottom:20px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
-            <h2 id="personReportTitle" style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin:0;">Spend & Balance by Person</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+            <div>
+              <h2 id="personReportTitle" style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin:0;">Current Cash-in-Hand (as of Today)</h2>
+              <div style="font-size:12px; color:var(--walnut-light); margin-top:3px;">Actual physical cash with each supervisor today. Subsequent approved bills deduct, recorded payments add.</div>
+            </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button class="btn-ghost" id="openingBalanceBtn" style="font-size:13px; padding:8px 14px;">Set Opening Balance</button>
-              <button class="btn-primary" id="recordPaymentBtn" style="font-size:13px; padding:8px 14px;">+ Record Payment</button>
+              <button class="btn-primary" id="calibrateCashBtn" style="font-size:13px; padding:8px 14px;">⚡ Set Today's Cash</button>
+              <button class="btn-ghost" id="recordPaymentBtn" style="font-size:13px; padding:8px 14px;">+ Record Payment Given</button>
             </div>
           </div>
-          <div class="table-scroll" id="personReportArea"><div class="empty-state">No spend recorded for this month yet.</div></div>
+          <div class="table-scroll" id="personReportArea"><div class="empty-state">No balances recorded yet.</div></div>
+        </div>
+
+        <!-- Site-Wise Spend & Liabilities Breakdown -->
+        <div class="panel" style="margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+            <div>
+              <h2 style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin:0;">Site-Wise Spend & Liabilities</h2>
+              <div style="font-size:12px; color:var(--walnut-light); margin-top:3px;">Breakdown by project site (Dehradun, Traudan, Gurgaon, Central).</div>
+            </div>
+          </div>
+          <div class="table-scroll" id="siteBreakdownArea"><div class="empty-state">Loading site breakdown…</div></div>
         </div>
 
         <div class="panel" style="margin-bottom:20px;">
@@ -685,7 +803,9 @@
         <div class="panel">
           <div class="table-toolbar">
             <h2>Ledger <span class="count-pill" id="countPill">0 entries</span></h2>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button class="btn-tally" id="ledgerTallyExportBtn" title="Download Tally Prime XML import file">📥 Export to Tally (XML)</button>
+              <button class="btn-ghost" id="ledgerGstr2bBtn" title="Download GSTR-2B compliance CSV">📄 GSTR-2B CSV</button>
               <button class="btn-ghost" id="refreshLedgerBtn">Refresh</button>
               <button class="btn-ghost" id="exportBtn">Export to Excel</button>
             </div>
@@ -1077,10 +1197,11 @@
             if (idx >= 0 && r[idx]) { rec.submitted_by_employee = String(r[idx]); break; }
           }
         }
-        // Normalize phone numbers stored in submitted_by_employee back to real names.
-        if (rec.submitted_by_employee) {
-          rec.submitted_by_employee = resolvePersonName(rec.submitted_by_employee);
+        if (!rec.submitted_by_employee && rec.purchased_by) {
+          rec.submitted_by_employee = rec.purchased_by;
         }
+        // Normalize phone numbers / aliases stored in submitted_by_employee back to canonical names.
+        rec.submitted_by_employee = resolvePersonName(rec.submitted_by_employee);
         const entryIdIdx = headerRow.indexOf('Entry ID');
         rec.entry_id = entryIdIdx >= 0 ? String(r[entryIdIdx] ?? '') : '';
         return rec;
@@ -1381,6 +1502,11 @@
           const label = r[key] === 'paid' ? 'Paid' : r[key] === 'unpaid' ? 'Not Paid' : '-';
           return `<td>${label}${overdue ? '<span class="overdue-tag">Overdue</span>' : ''}</td>`;
         }
+        if (key === 'submitted_by_employee') {
+          const person = resolvePersonName(r[key]);
+          const siteInfo = getSupervisorSiteInfo(person);
+          return `<td><b>${person}</b> <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px; margin-left:3px;">${siteInfo.site.replace(' Site','')}</span></td>`;
+        }
         return `<td>${r[key] ?? ''}</td>`;
       }).join('');
       const deleteCell = r.entry_id
@@ -1462,17 +1588,54 @@
     '917004353803':  'Vishal',       '+917004353803': 'Vishal',
   };
 
-  // Resolves a raw submitted_by_employee value that may be a phone number
-  // (e.g. "919810866600") back to the correct person name (e.g. "Rajiv Bawa").
-  // If the value is already a name (no mapping found), it is returned as-is.
+  const SUPERVISOR_SITE_MAP = {
+    'Sanjeev Sharma': { site: 'Dehradun Site', badgeClass: 'dehradun' },
+    'Vishal':         { site: 'Traudan Site',  badgeClass: 'traudan' },
+    'Anil Kori':       { site: 'Gurgaon Sites (Supervisor)', badgeClass: 'gurgaon' },
+    'Prince':          { site: 'Gurgaon Sites', badgeClass: 'gurgaon' },
+    'Sanjeev Yadav':   { site: 'Central / Projects', badgeClass: 'central' },
+    'Rajiv Bawa':      { site: 'Management / Central', badgeClass: 'central' },
+    'Kuhu Bawa':        { site: 'Design / Central', badgeClass: 'central' }
+  };
+
+  function getSupervisorSiteInfo(name) {
+    if (!name) return { site: 'Central / Unassigned', badgeClass: 'central' };
+    const clean = String(name).trim();
+    if (SUPERVISOR_SITE_MAP[clean]) return SUPERVISOR_SITE_MAP[clean];
+    if (clean.toLowerCase() === 'sanjeev') return SUPERVISOR_SITE_MAP['Sanjeev Yadav'];
+    return { site: 'Central / Projects', badgeClass: 'central' };
+  }
+
+  // Resolves names: merges bare "Sanjeev" -> "Sanjeev Yadav", maps phone numbers,
+  // and marks blank fields as "Central / Unattributed".
   function resolvePersonName(raw) {
-    if (!raw) return '';
-    const trimmed = raw.trim();
+    if (!raw) return 'Central / Unattributed';
+    const trimmed = String(raw).trim();
+    if (trimmed.toLowerCase() === 'sanjeev') return 'Sanjeev Yadav';
+    if (trimmed.toLowerCase() === 'unattributed' || trimmed === '-' || trimmed.toLowerCase() === 'unknown') return 'Central / Unattributed';
     return PHONE_NAME_MAP[trimmed] || trimmed;
   }
 
-  // Balance tracking starts here. Anything dated before this month never counts toward balances.
-  const BALANCE_START_MONTH = '2026-08'; // August 2026 — balance tracking starts here; anything before is excluded
+  // Live cash-in-hand calibration storage (as of today)
+  function getCalibratedBalances() {
+    try {
+      const raw = localStorage.getItem('studio5_live_cash_calibrations');
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveCalibratedBalance(person, amount, note) {
+    const cals = getCalibratedBalances();
+    cals[person] = {
+      amount: parseFloat(amount) || 0,
+      date: new Date().toISOString(),
+      displayDate: new Date().toLocaleDateString('en-GB'),
+      note: note || 'Calibrated as of today'
+    };
+    localStorage.setItem('studio5_live_cash_calibrations', JSON.stringify(cals));
+  }
   let approvalsCache = [];
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1812,158 +1975,496 @@
     document.getElementById('dashOverdueCount').textContent = overdueCount;
     overdueCard.classList.toggle('alert', overdueCount > 0);
 
-    renderPersonReport(selectedRecords, monthLabel);
+    paintFinancierKpis(all);
+    renderPersonReport(all);
+    renderSiteBreakdown(all);
     renderMonthlyBreakdown(all);
     renderTrendChart(all);
     renderTopVendors(selectedRecords);
   }
 
-  // Returns a bill's month key (YYYY-MM) strictly by its BILL date, for balance purposes.
-  function billMonthKey(record) {
-    const d = parseAnyDate(record.date);
-    if (!d) return null;
-    return `${d.year}-${String(d.month).padStart(2,'0')}`;
-  }
-  // Returns a payment's month key by its Date.
-  function paymentMonthKey(payment) {
-    const d = parseAnyDate(payment.date);
-    if (!d) return null;
-    return `${d.year}-${String(d.month).padStart(2,'0')}`;
-  }
-  // Compares two YYYY-MM strings: returns true if a is strictly before b.
-  function monthBefore(a, b) { return a < b; }
+  function paintFinancierKpis(allRecords) {
+    const money = n => '₹' + Math.round(n).toLocaleString('en-IN');
+    const totalSpend = allRecords.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
+    const unpaidBills = allRecords.filter(r => r.payment_status === 'unpaid');
+    const unpaidAmount = unpaidBills.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
+    const overdueBills = allRecords.filter(isOverdue);
+    const overdueAmount = overdueBills.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
+    const eligibleItc = allRecords
+      .filter(r => r.bill_type === 'gst')
+      .reduce((sum, r) => sum + toNum(r.igst) + toNum(r.cgst) + toNum(r.sgst), 0);
 
-  function renderPersonReport(monthRecords, monthLabel) {
-    // The passbook only makes sense for a specific month, not "All Time".
-    const isAllTimeView = selectedMonthKey === 'ALL_TIME';
-    const targetMonth = isAllTimeView ? null : selectedMonthKey;
+    const elTotal = document.getElementById('financierTotalSpend');
+    if (elTotal) elTotal.textContent = money(totalSpend);
+    const elUnpaid = document.getElementById('financierUnpaidLiabilities');
+    if (elUnpaid) elUnpaid.textContent = money(unpaidAmount);
+    const elUnpaidCnt = document.getElementById('financierUnpaidCount');
+    if (elUnpaidCnt) elUnpaidCnt.textContent = `${unpaidBills.length} unpaid bill${unpaidBills.length === 1 ? '' : 's'}`;
+    const elOverdue = document.getElementById('financierOverdueAmount');
+    if (elOverdue) elOverdue.textContent = money(overdueAmount);
+    const elOverdueCnt = document.getElementById('financierOverdueCount');
+    if (elOverdueCnt) elOverdueCnt.textContent = `${overdueBills.length} overdue (>30d)`;
+    const elItc = document.getElementById('financierEligibleItc');
+    if (elItc) elItc.textContent = money(eligibleItc);
+  }
 
-    document.getElementById('personReportTitle').textContent = isAllTimeView
-      ? `Spend & Balance by Person`
-      : `${monthLabel} · Passbook by Person`;
+  function renderPersonReport(allRecords) {
     const area = document.getElementById('personReportArea');
+    if (!area) return;
 
-    const allRecords = [...recordsCache.gst, ...recordsCache.non_gst];
+    const calibrations = getCalibratedBalances();
+    const money = n => '₹' + Math.round(n).toLocaleString('en-IN');
+    const balColor = n => n < 0 ? 'var(--danger)' : (n > 0 ? 'var(--good)' : 'var(--ink)');
 
-    // Only bills DATED on/after the balance start month count toward balances.
-    const balanceBills = allRecords.filter(r => {
-      const mk = billMonthKey(r);
-      return mk && !monthBefore(mk, BALANCE_START_MONTH);
-    });
-    const balancePayments = paymentsCache.filter(p => {
-      const mk = paymentMonthKey(p);
-      // Opening balances are dated when entered; if their month is before start, still treat as opening.
-      // We include all payments on/after start, plus any explicitly-opening ones.
-      return mk && !monthBefore(mk, BALANCE_START_MONTH);
-    });
+    const team = [...TEAM_MEMBERS];
 
-    // Build the set of people to show.
-    const names = new Set([...TEAM_MEMBERS]);
-    balanceBills.forEach(r => names.add((r.submitted_by_employee || '').trim() || 'Unattributed'));
-    balancePayments.forEach(p => { const n = (p.person || '').trim(); if (n) names.add(n); });
-    // Also include people who have month-spend in the selected month even if pre-start (for the spend columns).
-    monthRecords.forEach(r => names.add((r.submitted_by_employee || '').trim() || 'Unattributed'));
+    const teamReports = team.map(name => {
+      const cal = calibrations[name];
+      const baseline = cal ? cal.amount : 0;
+      const calTimestamp = cal ? new Date(cal.date).getTime() : 0;
 
-    function sumFor(person, monthFilter) {
-      // monthFilter: 'before' = strictly before targetMonth, 'equal' = exactly targetMonth
-      let given = 0, spent = 0, gstSpent = 0, nonGstSpent = 0;
-      balancePayments.forEach(p => {
-        if ((p.person || '').trim() !== person) return;
-        const mk = paymentMonthKey(p);
-        if (p.is_opening) {
-          // Opening balances always belong to the 'Opening' column regardless of their entry date —
-          // they represent a starting state, not a cash payment made during the month.
-          if (monthFilter === 'before') given += toNum(p.amount);
-        } else {
-          if (monthFilter === 'before' && monthBefore(mk, targetMonth)) given += toNum(p.amount);
-          if (monthFilter === 'equal' && mk === targetMonth) given += toNum(p.amount);
+      let cashAdded = 0;
+      paymentsCache.forEach(p => {
+        if (resolvePersonName(p.person) !== name) return;
+        if (p.is_opening && cal) return;
+        const pDate = parseInvoiceDate(p.date);
+        const pTime = pDate ? pDate.getTime() : 0;
+        if (!cal || pTime >= calTimestamp) {
+          cashAdded += toNum(p.amount);
         }
       });
-      balanceBills.forEach(r => {
-        const rn = (r.submitted_by_employee || '').trim() || 'Unattributed';
-        if (rn !== person) return;
-        const mk = billMonthKey(r);
-        const val = toNum(r.invoice_value);
-        const inScope = (monthFilter === 'before' && monthBefore(mk, targetMonth)) || (monthFilter === 'equal' && mk === targetMonth);
-        if (inScope) {
-          spent += val;
-          if (r.bill_type === 'gst') gstSpent += val; else nonGstSpent += val;
+
+      let spendDeducted = 0;
+      let gstSpent = 0;
+      let nonGstSpent = 0;
+      allRecords.forEach(b => {
+        const pName = resolvePersonName(b.submitted_by_employee || b.purchased_by);
+        if (pName !== name) return;
+        const bDate = parseInvoiceDate(b.date);
+        const bTime = bDate ? bDate.getTime() : 0;
+        if (!cal || bTime >= calTimestamp) {
+          const val = toNum(b.invoice_value);
+          spendDeducted += val;
+          if (b.bill_type === 'gst') gstSpent += val; else nonGstSpent += val;
         }
       });
-      return { given, spent, gstSpent, nonGstSpent };
-    }
 
-    let people;
-    if (isAllTimeView) {
-      // All-time view: simple total given − total spent (from start month onward).
-      people = Array.from(names).map(name => {
-        let given = 0, spent = 0, gstSpent = 0, nonGstSpent = 0;
-        balancePayments.forEach(p => { if ((p.person||'').trim() === name) given += toNum(p.amount); });
-        balanceBills.forEach(r => {
-          const rn = (r.submitted_by_employee || '').trim() || 'Unattributed';
-          if (rn !== name) return;
-          const val = toNum(r.invoice_value);
-          spent += val;
-          if (r.bill_type === 'gst') gstSpent += val; else nonGstSpent += val;
-        });
-        return { name, opening: 0, given, gstSpent, nonGstSpent, spent, closing: given - spent, isAllTime: true };
-      }).filter(p => p.given !== 0 || p.spent !== 0)
-        .sort((a,b) => b.spent - a.spent);
-    } else {
-      people = Array.from(names).map(name => {
-        const before = sumFor(name, 'before');
-        const eq = sumFor(name, 'equal');
-        const opening = before.given - before.spent; // carried in from prior months (since start)
-        const closing = opening + eq.given - eq.spent;
-        return {
-          name, opening,
-          given: eq.given,
-          gstSpent: eq.gstSpent, nonGstSpent: eq.nonGstSpent, spent: eq.spent,
-          closing, isAllTime: false
-        };
-      }).filter(p => p.opening !== 0 || p.given !== 0 || p.spent !== 0)
-        .sort((a,b) => b.spent - a.spent);
-    }
+      const currentCash = baseline + cashAdded - spendDeducted;
+      const siteInfo = getSupervisorSiteInfo(name);
 
-    if (people.length === 0) {
-      area.innerHTML = `<div class="empty-state">No spend or payments recorded from ${monthLabelFromKey(BALANCE_START_MONTH)} onward yet.</div>`;
-      return;
-    }
+      return {
+        name,
+        site: siteInfo.site,
+        badgeClass: siteInfo.badgeClass,
+        baseline,
+        calibratedDate: cal ? cal.displayDate : null,
+        cashAdded,
+        spendDeducted,
+        gstSpent,
+        nonGstSpent,
+        currentCash
+      };
+    });
 
-    const money = (n) => '₹' + n.toLocaleString('en-IN');
-    const balColor = (n) => n < 0 ? 'var(--danger)' : (n > 0 ? 'var(--good)' : 'var(--ink)');
+    let unattributedCount = 0;
+    let unattributedSpend = 0;
+    allRecords.forEach(b => {
+      const pName = resolvePersonName(b.submitted_by_employee || b.purchased_by);
+      if (pName === 'Central / Unattributed') {
+        unattributedCount++;
+        unattributedSpend += toNum(b.invoice_value);
+      }
+    });
 
-    let head, rows;
-    if (isAllTimeView) {
-      head = `<tr><th>Person</th><th style="text-align:right;">GST Spent</th><th style="text-align:right;">Non-GST Spent</th><th style="text-align:right;">Total Given</th><th style="text-align:right;">Balance</th></tr>`;
-      rows = people.map(p => `
+    const rows = teamReports.map(p => {
+      let statusHtml;
+      if (p.currentCash > 2000) {
+        statusHtml = `<span style="color:var(--good); font-weight:600;">🟢 Sufficient (${money(p.currentCash)})</span>`;
+      } else if (p.currentCash >= 0) {
+        statusHtml = `<span style="color:var(--brass-dark); font-weight:600;">🟡 Low Cash (${money(p.currentCash)})</span>`;
+      } else {
+        statusHtml = `<span style="color:var(--danger); font-weight:700;">🔴 Advance Due (${money(Math.abs(p.currentCash))})</span>`;
+      }
+
+      return `
         <tr>
-          <td style="font-weight:600;">${p.name}</td>
-          <td style="text-align:right;">${money(p.gstSpent)}</td>
-          <td style="text-align:right;">${money(p.nonGstSpent)}</td>
-          <td style="text-align:right;">${money(p.given)}</td>
-          <td style="text-align:right; font-weight:700; color:${balColor(p.closing)};">${money(p.closing)}</td>
-        </tr>`).join('');
-    } else {
-      head = `<tr><th>Person</th><th style="text-align:right;">Opening</th><th style="text-align:right;">Given</th><th style="text-align:right;">Spent (GST)</th><th style="text-align:right;">Spent (Non-GST)</th><th style="text-align:right;">Closing</th></tr>`;
-      rows = people.map(p => `
-        <tr>
-          <td style="font-weight:600;">${p.name}</td>
-          <td style="text-align:right; color:${balColor(p.opening)};">${money(p.opening)}</td>
-          <td style="text-align:right;">${money(p.given)}</td>
-          <td style="text-align:right;">${money(p.gstSpent)}</td>
-          <td style="text-align:right;">${money(p.nonGstSpent)}</td>
-          <td style="text-align:right; font-weight:700; color:${balColor(p.closing)};">${money(p.closing)}</td>
-        </tr>`).join('');
+          <td>
+            <div style="font-weight:600; color:var(--walnut);">${p.name}</div>
+            <div style="margin-top:2px;"><span class="site-badge ${p.badgeClass}">${p.site}</span></div>
+          </td>
+          <td style="text-align:right;">
+            ${p.calibratedDate ? `<b>${money(p.baseline)}</b><div style="font-size:10.5px; color:var(--walnut-light);">As of ${p.calibratedDate}</div>` : '<span style="color:var(--walnut-light); font-size:12px;">Not set</span>'}
+          </td>
+          <td style="text-align:right; color:var(--good); font-weight:600;">+${money(p.cashAdded)}</td>
+          <td style="text-align:right; color:var(--danger); font-weight:600;">-${money(p.spendDeducted)}</td>
+          <td style="text-align:right; font-size:15px; font-weight:700; color:${balColor(p.currentCash)};">${money(p.currentCash)}</td>
+          <td style="text-align:left;">${statusHtml}</td>
+          <td style="text-align:center; white-space:nowrap;">
+            <button class="btn-ghost btn-sm calibrate-row-btn" data-person="${p.name}" style="padding:4px 8px; font-size:11.5px; margin-right:4px;" title="Update physical cash with this person as of today">⚡ Set Cash</button>
+            <button class="btn-primary btn-sm pay-row-btn" data-person="${p.name}" style="padding:4px 8px; font-size:11.5px;" title="Log cash given to this person">+ Pay</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    let unattributedRow = '';
+    if (unattributedCount > 0) {
+      unattributedRow = `
+        <tr style="background:#f8fafc; font-size:12.5px;">
+          <td colspan="2">
+            <b>Central / Unattributed Bills</b>
+            <div style="font-size:11px; color:var(--walnut-light);">${unattributedCount} bills where 'Submitted By' was left blank in the Google Sheet.</div>
+          </td>
+          <td style="text-align:right;">–</td>
+          <td style="text-align:right; color:var(--danger); font-weight:600;">-${money(unattributedSpend)}</td>
+          <td colspan="3" style="color:var(--walnut-light); font-style:italic;">Direct company expense / No supervisor assigned</td>
+        </tr>
+      `;
     }
 
     area.innerHTML = `
-      <table><thead>${head}</thead><tbody>${rows}</tbody></table>
-      <div style="font-size:11.5px; color:var(--walnut-light); margin-top:8px;">
-        ${isAllTimeView
-          ? `Balance = cash given − bills submitted, counting only from ${monthLabelFromKey(BALANCE_START_MONTH)} onward.`
-          : `Opening = balance carried in from earlier months. Closing = Opening + Given − Spent (carries to next month). Only bills dated ${monthLabelFromKey(BALANCE_START_MONTH)} onward count. Green = cash in hand, red = spent more than held.`}
-      </div>`;
+      <table>
+        <thead>
+          <tr>
+            <th>Team Member</th>
+            <th style="text-align:right;">Calibrated Cash</th>
+            <th style="text-align:right;">Cash Added</th>
+            <th style="text-align:right;">Spend Recorded</th>
+            <th style="text-align:right;">Current Cash in Hand</th>
+            <th>Status</th>
+            <th style="text-align:center;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+          ${unattributedRow}
+        </tbody>
+      </table>
+      <div style="font-size:12px; color:var(--walnut-light); margin-top:10px; line-height:1.4;">
+        💡 <b>Live Calibration:</b> Click <b>"⚡ Set Cash"</b> on any person to calibrate what physical cash they hold today as confirmed by management. Subsequent approved bills deduct, and recorded cash payments add. This removes historical unrecorded gaps.
+      </div>
+    `;
+
+    area.querySelectorAll('.calibrate-row-btn').forEach(b => {
+      b.onclick = () => openCalibrateModal(b.dataset.person);
+    });
+    area.querySelectorAll('.pay-row-btn').forEach(b => {
+      b.onclick = () => {
+        openPaymentModal('payment');
+        setTimeout(() => {
+          const sel = document.getElementById('paymentPersonSelect');
+          if (sel) sel.value = b.dataset.person;
+        }, 50);
+      };
+    });
+  }
+
+  function renderSiteBreakdown(allRecords) {
+    const area = document.getElementById('siteBreakdownArea');
+    if (!area) return;
+
+    const siteStats = {
+      'Dehradun Site':                 { supervisor: 'Sanjeev Sharma', spend: 0, paid: 0, unpaid: 0, count: 0, badge: 'dehradun' },
+      'Traudan Site':                  { supervisor: 'Vishal',         spend: 0, paid: 0, unpaid: 0, count: 0, badge: 'traudan' },
+      'Gurgaon Sites (Supervisor)':    { supervisor: 'Anil Kori',      spend: 0, paid: 0, unpaid: 0, count: 0, badge: 'gurgaon' },
+      'Gurgaon Sites':                 { supervisor: 'Prince',         spend: 0, paid: 0, unpaid: 0, count: 0, badge: 'gurgaon' },
+      'Central / Projects':            { supervisor: 'Sanjeev Yadav',  spend: 0, paid: 0, unpaid: 0, count: 0, badge: 'central' },
+      'Management / Central':          { supervisor: 'Rajiv Bawa',     spend: 0, paid: 0, unpaid: 0, count: 0, badge: 'central' },
+      'Design / Central':              { supervisor: 'Kuhu Bawa',      spend: 0, paid: 0, unpaid: 0, count: 0, badge: 'central' }
+    };
+
+    let totalSpendAllSites = 0;
+
+    allRecords.forEach(r => {
+      const person = resolvePersonName(r.submitted_by_employee || r.purchased_by);
+      const siteInfo = getSupervisorSiteInfo(person);
+      const siteName = siteInfo.site;
+      if (!siteStats[siteName]) {
+        siteStats[siteName] = { supervisor: person || 'Field Team', spend: 0, paid: 0, unpaid: 0, count: 0, badge: siteInfo.badgeClass };
+      }
+      const val = toNum(r.invoice_value);
+      siteStats[siteName].spend += val;
+      siteStats[siteName].count++;
+      totalSpendAllSites += val;
+
+      if (r.payment_status === 'paid') {
+        siteStats[siteName].paid += val;
+      } else {
+        siteStats[siteName].unpaid += val;
+      }
+    });
+
+    const money = n => '₹' + Math.round(n).toLocaleString('en-IN');
+    const rows = Object.entries(siteStats)
+      .filter(([, s]) => s.count > 0 || s.spend > 0)
+      .sort((a, b) => b[1].spend - a[1].spend)
+      .map(([siteName, s]) => {
+        const pct = totalSpendAllSites > 0 ? Math.round((s.spend / totalSpendAllSites) * 100) : 0;
+        return `
+          <tr>
+            <td>
+              <span class="site-badge ${s.badge}">${siteName}</span>
+              <div style="font-size:11.5px; color:var(--walnut-light); margin-top:2px;">Lead: <b>${s.supervisor}</b></div>
+            </td>
+            <td style="text-align:center; font-weight:600;">${s.count}</td>
+            <td style="text-align:right; font-weight:700;">${money(s.spend)}</td>
+            <td style="text-align:right; color:var(--good); font-weight:600;">${money(s.paid)}</td>
+            <td style="text-align:right; color:${s.unpaid > 0 ? 'var(--danger)' : 'var(--ink)'}; font-weight:${s.unpaid > 0 ? '700' : '400'};">${money(s.unpaid)}</td>
+            <td style="width:130px;">
+              <div style="font-size:11px; margin-bottom:3px; text-align:right; font-weight:600;">${pct}%</div>
+              <div style="height:6px; border-radius:3px; background:#e0f2fe; overflow:hidden;">
+                <div style="width:${pct}%; height:100%; background:var(--brass-dark); border-radius:3px;"></div>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+    area.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Site / Location</th>
+            <th style="text-align:center;">Bills</th>
+            <th style="text-align:right;">Total Spend</th>
+            <th style="text-align:right;">Paid</th>
+            <th style="text-align:right;">Unpaid Liability</th>
+            <th style="text-align:right;">Share of Spend</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || '<tr><td colspan="6" class="empty-state">No site spend recorded yet.</td></tr>'}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function escapeXml(unsafe) {
+    if (unsafe === null || unsafe === undefined) return '';
+    return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  }
+
+  function parseTallyDate(dateStr) {
+    if (!dateStr) {
+      const now = new Date();
+      return `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+    }
+    const clean = String(dateStr).trim();
+    const m = clean.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (m) {
+      let year = m[3];
+      if (year.length === 2) year = '20' + year;
+      return `${year}${m[2].padStart(2,'0')}${m[1].padStart(2,'0')}`;
+    }
+    const now = new Date();
+    return `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+  }
+
+  function generateTallyEnvelopeXml(bills) {
+    const vouchersXml = bills.map(b => {
+      const isGst = b.bill_type === 'gst' || (!b.bill_type && b.gstin);
+      const tallyDate = parseTallyDate(b.date);
+      const vendorName = escapeXml(b.vendor_name || 'Sundry Creditor');
+      const invoiceNo = escapeXml(b.bill_no || `VCH-${Date.now()}`);
+      const gstin = escapeXml(b.gstin || '');
+      const person = resolvePersonName(b.submitted_by_employee || b.purchased_by);
+      const siteInfo = getSupervisorSiteInfo(person);
+      const site = escapeXml(b.site || siteInfo.site);
+      const photoLink = escapeXml(b.photo_link || '');
+      const totalVal = toNum(b.invoice_value);
+
+      let narration = `${isGst ? 'GST Inv' : 'Non-GST'}: ${invoiceNo} | Vendor: ${vendorName}`;
+      if (gstin) narration += ` | GSTIN: ${gstin}`;
+      if (site) narration += ` | Site: ${site}`;
+      if (person) narration += ` | Verified: ${person}`;
+      if (photoLink && !photoLink.startsWith('Upload failed')) narration += ` | Bill Photo: ${photoLink}`;
+
+      if (isGst) {
+        let taxableVal = toNum(b.taxable_value);
+        const igst = toNum(b.igst);
+        const cgst = toNum(b.cgst);
+        const sgst = toNum(b.sgst);
+        if (taxableVal === 0 && totalVal > 0) {
+          taxableVal = Math.max(0, totalVal - (igst + cgst + sgst));
+        }
+
+        let entries = `
+          <ALLLEDGERENTRIES.LIST>
+            <LEDGERNAME>${vendorName}</LEDGERNAME>
+            <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+            <AMOUNT>${totalVal.toFixed(2)}</AMOUNT>
+            <BILLALLOCATIONS.LIST>
+              <NAME>${invoiceNo}</NAME>
+              <BILLTYPE>New Ref</BILLTYPE>
+              <AMOUNT>${totalVal.toFixed(2)}</AMOUNT>
+            </BILLALLOCATIONS.LIST>
+          </ALLLEDGERENTRIES.LIST>
+          <ALLLEDGERENTRIES.LIST>
+            <LEDGERNAME>GST Purchases</LEDGERNAME>
+            <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+            <AMOUNT>-${taxableVal.toFixed(2)}</AMOUNT>
+            <CATEGORYLIST.LIST>
+              <NAME>Cost Centre</NAME>
+              <COSTCENTRELIST.LIST><NAME>${site}</NAME><AMOUNT>-${taxableVal.toFixed(2)}</AMOUNT></COSTCENTRELIST.LIST>
+            </CATEGORYLIST.LIST>
+          </ALLLEDGERENTRIES.LIST>`;
+
+        if (cgst > 0) {
+          entries += `
+          <ALLLEDGERENTRIES.LIST>
+            <LEDGERNAME>Input CGST</LEDGERNAME>
+            <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+            <AMOUNT>-${cgst.toFixed(2)}</AMOUNT>
+          </ALLLEDGERENTRIES.LIST>`;
+        }
+        if (sgst > 0) {
+          entries += `
+          <ALLLEDGERENTRIES.LIST>
+            <LEDGERNAME>Input SGST</LEDGERNAME>
+            <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+            <AMOUNT>-${sgst.toFixed(2)}</AMOUNT>
+          </ALLLEDGERENTRIES.LIST>`;
+        }
+        if (igst > 0) {
+          entries += `
+          <ALLLEDGERENTRIES.LIST>
+            <LEDGERNAME>Input IGST</LEDGERNAME>
+            <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+            <AMOUNT>-${igst.toFixed(2)}</AMOUNT>
+          </ALLLEDGERENTRIES.LIST>`;
+        }
+
+        return `
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Purchase" ACTION="Create" OBJVIEW="Invoice Voucher View">
+            <DATE>${tallyDate}</DATE>
+            <EFFECTIVEDATE>${tallyDate}</EFFECTIVEDATE>
+            <VOUCHERTYPENAME>Purchase</VOUCHERTYPENAME>
+            <REFERENCE>${invoiceNo}</REFERENCE>
+            <VOUCHERNUMBER>${invoiceNo}</VOUCHERNUMBER>
+            <PARTYLEDGERNAME>${vendorName}</PARTYLEDGERNAME>
+            ${gstin ? `<PARTYGSTIN>${gstin}</PARTYGSTIN>` : ''}
+            <NARRATION>${narration}</NARRATION>
+            ${entries}
+          </VOUCHER>
+        </TALLYMESSAGE>`;
+      } else {
+        const cashOrPayable = b.payment_status === 'paid' ? 'Cash in Hand' : 'Site Expenses Payable';
+        return `
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Payment" ACTION="Create">
+            <DATE>${tallyDate}</DATE>
+            <EFFECTIVEDATE>${tallyDate}</EFFECTIVEDATE>
+            <VOUCHERTYPENAME>Payment</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>${invoiceNo}</VOUCHERNUMBER>
+            <NARRATION>${narration}</NARRATION>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Site Consumables & Maintenance</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-${totalVal.toFixed(2)}</AMOUNT>
+              <CATEGORYLIST.LIST>
+                <NAME>Cost Centre</NAME>
+                <COSTCENTRELIST.LIST><NAME>${site}</NAME><AMOUNT>-${totalVal.toFixed(2)}</AMOUNT></COSTCENTRELIST.LIST>
+              </CATEGORYLIST.LIST>
+            </ALLLEDGERENTRIES.LIST>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>${cashOrPayable}</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>${totalVal.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+          </VOUCHER>
+        </TALLYMESSAGE>`;
+      }
+    }).join('\n');
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+  <HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES><SVCURRENTCOMPANY>Studio5 Interiors Private Limited</SVCURRENTCOMPANY></STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        ${vouchersXml}
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+  }
+
+  function downloadTallyXml() {
+    const all = [...recordsCache.gst, ...recordsCache.non_gst];
+    if (all.length === 0) {
+      alert('No bills loaded in ledger yet. Please refresh or upload a bill first.');
+      return;
+    }
+    const xml = generateTallyEnvelopeXml(all);
+    const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `studio5_tally_vouchers_${new Date().toISOString().slice(0,10)}.xml`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    alert('✅ Tally Prime XML Downloaded!\n\nImport in Tally Prime:\n1. Open Tally Prime\n2. Press Alt + O (Import Data) -> Vouchers\n3. Select the downloaded studio5_tally_vouchers XML file.\n4. All Purchase & Expense vouchers will be recorded with GST taxes & site cost centres!');
+  }
+
+  function downloadGstr2bCsv() {
+    const gstBills = recordsCache.gst;
+    if (gstBills.length === 0) {
+      alert('No GST bills recorded yet to export.');
+      return;
+    }
+    const headers = [
+      'GSTIN of Supplier', 'Trade/Legal Name', 'Invoice Number', 'Invoice Type',
+      'Invoice Date', 'Invoice Value (₹)', 'Place of Supply', 'Reverse Charge',
+      'Rate (%)', 'Taxable Value (₹)', 'Integrated Tax (₹)', 'Central Tax (₹)',
+      'State/UT Tax (₹)', 'Cess (₹)', 'ITC Available', 'Site', 'Submitted By'
+    ];
+    const rows = [headers.join(',')];
+    gstBills.forEach(b => {
+      const total = toNum(b.invoice_value);
+      const igst = toNum(b.igst);
+      const cgst = toNum(b.cgst);
+      const sgst = toNum(b.sgst);
+      const cess = toNum(b.cess);
+      let taxable = toNum(b.taxable_value);
+      if (taxable === 0 && total > 0) taxable = Math.max(0, total - (igst + cgst + sgst));
+      const rate = taxable > 0 ? Math.round(((igst + cgst + sgst) / taxable) * 100) : 18;
+      const person = resolvePersonName(b.submitted_by_employee || b.purchased_by);
+      const site = getSupervisorSiteInfo(person).site;
+      const stateCode = (b.gstin && b.gstin.length >= 2) ? b.gstin.substring(0, 2) : '';
+
+      rows.push([
+        `"${b.gstin || ''}"`,
+        `"${(b.vendor_name || '').replace(/"/g, '""')}"`,
+        `"${(b.bill_no || '').replace(/"/g, '""')}"`,
+        `"Regular"`,
+        `"${b.date || ''}"`,
+        total,
+        `"${b.place_of_supply || stateCode}"`,
+        `"N"`,
+        rate,
+        taxable,
+        igst,
+        cgst,
+        sgst,
+        cess,
+        `"Y"`,
+        `"${site}"`,
+        `"${person}"`
+      ].join(','));
+    });
+
+    const csvBlob = new Blob([rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(csvBlob);
+    a.download = `studio5_gstr2b_reconciliation_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   function monthLabelFromKey(key) {
@@ -2072,12 +2573,71 @@
     }
   }
 
-  document.getElementById('recordPaymentBtn').addEventListener('click', () => openPaymentModal('payment'));
-  document.getElementById('openingBalanceBtn').addEventListener('click', () => openPaymentModal('opening'));
+  function openCalibrateModal(preselectedPerson) {
+    ensureBossUnlockedThenRun(() => {
+      const overlay = document.getElementById('calibrateOverlay');
+      const select = document.getElementById('calibratePersonSelect');
+      select.innerHTML = '<option value="">— Select team member —</option>' +
+        TEAM_MEMBERS.map(n => `<option value="${n}">${n}</option>`).join('');
+
+      if (preselectedPerson && TEAM_MEMBERS.includes(preselectedPerson)) {
+        select.value = preselectedPerson;
+      }
+
+      const cals = getCalibratedBalances();
+      const existing = preselectedPerson && cals[preselectedPerson] ? cals[preselectedPerson].amount : '';
+      document.getElementById('calibrateAmountInput').value = existing;
+      document.getElementById('calibrateNoteInput').value = '';
+      document.getElementById('calibrateError').textContent = '';
+      overlay.style.display = 'flex';
+    });
+  }
+
+  function saveCalibratedCash() {
+    const select = document.getElementById('calibratePersonSelect');
+    const person = select.value;
+    const amountVal = document.getElementById('calibrateAmountInput').value;
+    const note = document.getElementById('calibrateNoteInput').value.trim();
+    const errorEl = document.getElementById('calibrateError');
+
+    if (!person) { errorEl.textContent = 'Please select a team member.'; return; }
+    if (amountVal === '' || isNaN(parseFloat(amountVal))) {
+      errorEl.textContent = 'Please enter a valid cash amount.'; return;
+    }
+
+    saveCalibratedBalance(person, parseFloat(amountVal), note);
+    document.getElementById('calibrateOverlay').style.display = 'none';
+    refreshDashboard();
+  }
+
+  const calBtn = document.getElementById('calibrateCashBtn');
+  if (calBtn) calBtn.addEventListener('click', () => openCalibrateModal());
+  const calSaveBtn = document.getElementById('calibrateSaveBtn');
+  if (calSaveBtn) calSaveBtn.addEventListener('click', saveCalibratedCash);
+  const calCancelBtn = document.getElementById('calibrateCancelBtn');
+  if (calCancelBtn) calCancelBtn.addEventListener('click', () => {
+    document.getElementById('calibrateOverlay').style.display = 'none';
+  });
+
+  const recPayBtn = document.getElementById('recordPaymentBtn');
+  if (recPayBtn) recPayBtn.addEventListener('click', () => openPaymentModal('payment'));
+  const openBalBtn = document.getElementById('openingBalanceBtn');
+  if (openBalBtn) openBalBtn.addEventListener('click', () => openPaymentModal('opening'));
   document.getElementById('paymentSaveBtn').addEventListener('click', savePayment);
   document.getElementById('paymentCancelBtn').addEventListener('click', () => {
     document.getElementById('paymentOverlay').style.display = 'none';
   });
+
+  // Tally & GSTR-2B Export Buttons
+  const expTallyBtn = document.getElementById('exportTallyXmlBtn');
+  if (expTallyBtn) expTallyBtn.addEventListener('click', downloadTallyXml);
+  const ledgerTallyBtn = document.getElementById('ledgerTallyExportBtn');
+  if (ledgerTallyBtn) ledgerTallyBtn.addEventListener('click', downloadTallyXml);
+
+  const expGstrBtn = document.getElementById('exportGstr2bBtn');
+  if (expGstrBtn) expGstrBtn.addEventListener('click', downloadGstr2bCsv);
+  const ledgerGstrBtn = document.getElementById('ledgerGstr2bBtn');
+  if (ledgerGstrBtn) ledgerGstrBtn.addEventListener('click', downloadGstr2bCsv);
 
   async function refreshDashboard() {
     const hasCache = recordsCache.gst.length > 0 || recordsCache.non_gst.length > 0;
