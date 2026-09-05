@@ -451,6 +451,94 @@
     font-family: inherit; font-size: 13px; resize: vertical; min-height: 60px; margin-bottom: 8px;
   }
 
+  /* Quick Cash & On-Behalf-Of UI Styles */
+  .identity-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+  .identity-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--walnut);
+  }
+  .identity-pill {
+    background: var(--cream);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    font-weight: 700;
+    color: var(--brass-dark);
+  }
+  .category-chip {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--walnut);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  .category-chip:hover {
+    border-color: var(--brass);
+    background: var(--cream);
+  }
+  .category-chip.active {
+    background: var(--walnut);
+    color: #ffffff;
+    border-color: var(--walnut);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  }
+  .toast-celebration {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--walnut);
+    color: #ffffff;
+    padding: 14px 20px;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10001;
+    font-size: 14px;
+    font-weight: 600;
+    animation: slideUpToast 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes slideUpToast {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .ledger-filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    background: var(--cream, #f9f8f6);
+    padding: 12px 14px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    border: 1px solid var(--line);
+  }
+
   .vendor-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
   .vendor-name { width: 150px; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--walnut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vendor-bar-track { flex: 1; background: var(--line); border-radius: 3px; height: 20px; overflow: hidden; }
@@ -655,7 +743,28 @@
       <div class="brand-eyebrow">Studio5 Interiors · Internal Tool</div>
       <h1>Purchase Bill Ledger</h1>
     </div>
-    <div class="subhead">Upload a vendor bill photo. The app tells GST bills and non-GST bills apart, pulls the right fields for each, and checks for duplicates before saving.</div>
+  </div>
+
+  <div class="identity-bar">
+    <div class="identity-tag">
+      <span>👤 Logged in:</span>
+      <span class="identity-pill" id="activeUserNameBadge">Sanjeev Yadav</span>
+      <button type="button" id="switchUserBtn" class="btn-ghost" style="padding:3px 8px; font-size:11.5px;" title="Switch logged-in employee">Switch</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <label for="submittingForSelect" style="font-size:12px; font-weight:600; color:var(--walnut-light);">Submitting On Behalf Of:</label>
+      <select id="submittingForSelect" style="padding:6px 12px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:13px; font-weight:700; color:var(--walnut); background:#fff;">
+        <option value="__SELF__">Myself (Default)</option>
+        <option value="Sanjeev Sharma">Sanjeev Sharma (Dehradun Site)</option>
+        <option value="Sanjeev Yadav">Sanjeev Yadav (Central)</option>
+        <option value="Prince">Prince (Gurgaon Sites)</option>
+        <option value="Anil Kori">Anil Kori (Gurgaon Supervisor)</option>
+        <option value="Rajiv Bawa">Rajiv Bawa (Management)</option>
+        <option value="Kuhu Bawa">Kuhu Bawa (Design)</option>
+        <option value="Vishal">Vishal (Traudan Site)</option>
+        <option value="__OTHER__">Other Person / Site Direct</option>
+      </select>
+    </div>
   </div>
 
   <div class="navbar">
@@ -788,14 +897,109 @@
 
       <div class="view" id="view-upload">
         <div class="panel">
-          <div class="upload-zone" id="dropZone">
-            <input type="file" id="fileInput" accept="image/*,application/pdf" multiple />
-            <div class="upload-icon">🧾</div>
-            <div class="upload-label" id="uploadLabel">Click to upload up to 5 bill photos or PDFs</div>
-            <div class="upload-hint">JPG, PNG, or PDF · select multiple files to batch-upload · works for both GST invoices and plain vendor bills</div>
+          <!-- Upload Mode Tabs -->
+          <div class="tabs" style="margin-bottom:20px;">
+            <button class="tab-btn active" id="modeBillBtn" type="button">🧾 Upload Bill Photo / PDF</button>
+            <button class="tab-btn" id="modeVoucherBtn" type="button">⚡ Quick Cash Voucher (₹500, Tempo, Tea...)</button>
           </div>
-          <div id="statusArea"></div>
-          <div id="reviewArea"></div>
+
+          <!-- Mode 1: Photo/PDF AI Bill Upload -->
+          <div id="billUploadSection">
+            <div class="upload-zone" id="dropZone">
+              <input type="file" id="fileInput" accept="image/*,application/pdf" multiple />
+              <div class="upload-icon">🧾</div>
+              <div class="upload-label" id="uploadLabel">Click to upload up to 5 bill photos or PDFs</div>
+              <div class="upload-hint">JPG, PNG, or PDF · select multiple files to batch-upload · works for both GST invoices and plain vendor bills</div>
+            </div>
+            <div id="statusArea"></div>
+            <div id="reviewArea"></div>
+          </div>
+
+          <!-- Mode 2: Quick Cash Voucher (10-Second Entry for Unbilled Expenses) -->
+          <div id="quickVoucherSection" style="display:none;">
+            <div style="background:var(--cream, #f9f8f6); border:1px solid var(--line); border-radius:8px; padding:22px;">
+              <div style="margin-bottom:18px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                  <h3 style="font-family:Georgia,serif; font-size:19px; color:var(--walnut); margin:0;">⚡ Log Quick Cash Expense</h3>
+                  <span style="font-size:12px; font-weight:600; color:var(--brass-dark); background:#fff; padding:4px 10px; border-radius:12px; border:1px solid var(--line);">No printed bill needed</span>
+                </div>
+                <div style="font-size:12.5px; color:var(--walnut-light); margin-top:4px;">Instantly record cash paid to transport drivers, site labor, tea, local hardware, or incidentals.</div>
+              </div>
+
+              <!-- 1. Amount -->
+              <div style="margin-bottom:20px;">
+                <label style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--walnut-light); display:block; margin-bottom:6px;">Amount Paid (₹) *</label>
+                <div style="position:relative; max-width:260px;">
+                  <span style="position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:22px; font-weight:700; color:var(--walnut-light);">₹</span>
+                  <input type="number" id="voucherAmountInput" placeholder="500" style="width:100%; padding:10px 14px 10px 36px; font-size:24px; font-weight:700; border:2px solid var(--line); border-radius:6px; font-family:inherit; color:var(--walnut); box-sizing:border-box;" />
+                </div>
+              </div>
+
+              <!-- 2. Category Quick Chips -->
+              <div style="margin-bottom:20px;">
+                <label style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--walnut-light); display:block; margin-bottom:8px;">Category *</label>
+                <div id="voucherCategoryChips" style="display:flex; flex-wrap:wrap; gap:8px;">
+                  <button type="button" class="category-chip active" data-cat="🚚 Transport / Tempo / Auto">🚚 Transport / Tempo</button>
+                  <button type="button" class="category-chip" data-cat="🔨 Site Labor / Lifting">🔨 Site Labor / Lifting</button>
+                  <button type="button" class="category-chip" data-cat="☕ Tea & Refreshments">☕ Tea & Refreshments</button>
+                  <button type="button" class="category-chip" data-cat="🔩 Hardware & Consumables">🔩 Hardware & Consumables</button>
+                  <button type="button" class="category-chip" data-cat="⛽ Fuel & Travel">⛽ Fuel & Travel</button>
+                  <button type="button" class="category-chip" data-cat="📦 Other Petty Cash">📦 Other Petty Cash</button>
+                </div>
+              </div>
+
+              <!-- 3. Incurred By & Paid From -->
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:18px;">
+                <div>
+                  <label style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--walnut-light); display:block; margin-bottom:6px;">Whose Expense? (Incurred By) *</label>
+                  <select id="voucherIncurredBySelect" style="width:100%; padding:10px 12px; font-size:13.5px; font-weight:600; border:1px solid var(--line); border-radius:6px; font-family:inherit; background:#fff; color:var(--walnut); box-sizing:border-box;">
+                    <option value="Sanjeev Sharma">Sanjeev Sharma (Dehradun Site)</option>
+                    <option value="Sanjeev Yadav">Sanjeev Yadav (Central / Projects)</option>
+                    <option value="Prince">Prince (Gurgaon Sites)</option>
+                    <option value="Anil Kori">Anil Kori (Gurgaon Supervisor)</option>
+                    <option value="Rajiv Bawa">Rajiv Bawa (Management)</option>
+                    <option value="Kuhu Bawa">Kuhu Bawa (Design)</option>
+                    <option value="Vishal">Vishal (Traudan Site)</option>
+                    <option value="Central / Company">Central / Company Cash</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--walnut-light); display:block; margin-bottom:6px;">Paid From / Source *</label>
+                  <select id="voucherPaidFromSelect" style="width:100%; padding:10px 12px; font-size:13.5px; border:1px solid var(--line); border-radius:6px; font-family:inherit; background:#fff; color:var(--walnut); box-sizing:border-box;">
+                    <option value="Sir Paid (Pocket Cash)">Sir Paid (Pocket Cash)</option>
+                    <option value="Supervisor Cash (From Hand)">Supervisor Cash (From Hand)</option>
+                    <option value="Company Petty Cash">Company Petty Cash</option>
+                    <option value="UPI / Online Transfer">UPI / Online Transfer</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 4. Site Location & Description -->
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:18px;">
+                <div>
+                  <label style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--walnut-light); display:block; margin-bottom:6px;">Site / Location</label>
+                  <input type="text" id="voucherSiteInput" placeholder="e.g. Dehradun Site, DLF Phase 5" style="width:100%; padding:10px 12px; font-size:13.5px; border:1px solid var(--line); border-radius:6px; font-family:inherit; box-sizing:border-box;" />
+                </div>
+                <div>
+                  <label style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--walnut-light); display:block; margin-bottom:6px;">Note / Description *</label>
+                  <input type="text" id="voucherNoteInput" placeholder="e.g. Tempo fare for modular kitchen panels" style="width:100%; padding:10px 12px; font-size:13.5px; border:1px solid var(--line); border-radius:6px; font-family:inherit; box-sizing:border-box;" />
+                </div>
+              </div>
+
+              <!-- 5. Optional photo attach -->
+              <div style="margin-bottom:20px;">
+                <label style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--walnut-light); display:block; margin-bottom:6px;">Attach Photo of Slip / Note (Optional)</label>
+                <input type="file" id="voucherPhotoInput" accept="image/*" style="font-size:13px;" />
+                <div id="voucherPhotoPreview" style="margin-top:8px; display:none; max-width:140px;"></div>
+              </div>
+
+              <!-- Action button -->
+              <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <button type="button" class="btn-primary" id="voucherSubmitBtn" style="padding:12px 28px; font-size:15px; font-weight:700;">⚡ Record Cash Expense</button>
+                <span id="voucherStatusText" style="font-size:13.5px; font-weight:600;"></span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -810,6 +1014,54 @@
               <button class="btn-ghost" id="exportBtn">Export to Excel</button>
             </div>
           </div>
+
+          <!-- Manager Analysis Filter Toolbar -->
+          <div class="ledger-filters">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <label for="ledgerPersonFilter" style="font-size:12px; font-weight:600; color:var(--walnut-light);">👤 Person:</label>
+              <select id="ledgerPersonFilter" style="padding:6px 10px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:13px; font-weight:600; background:#fff;">
+                <option value="">All Team Members</option>
+                <option value="Sanjeev Sharma">Sanjeev Sharma</option>
+                <option value="Sanjeev Yadav">Sanjeev Yadav</option>
+                <option value="Prince">Prince</option>
+                <option value="Anil Kori">Anil Kori</option>
+                <option value="Rajiv Bawa">Rajiv Bawa</option>
+                <option value="Kuhu Bawa">Kuhu Bawa</option>
+                <option value="Vishal">Vishal</option>
+              </select>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <label for="ledgerMonthFilter" style="font-size:12px; font-weight:600; color:var(--walnut-light);">📅 Period:</label>
+              <select id="ledgerMonthFilter" style="padding:6px 10px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:13px; font-weight:600; background:#fff;">
+                <option value="">All Time</option>
+                <option value="THIS_MONTH">This Month</option>
+                <option value="LAST_MONTH">Last Month</option>
+                <option value="LAST_2_MONTHS">Last 2 Months (This + Last)</option>
+              </select>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <label for="ledgerSearchInput" style="font-size:12px; font-weight:600; color:var(--walnut-light);">🔍 Search:</label>
+              <input type="text" id="ledgerSearchInput" placeholder="Vendor, note, amount..." style="padding:6px 10px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:12.5px; background:#fff; width:170px;" />
+            </div>
+            <button class="btn-ghost" id="clearLedgerFiltersBtn" style="font-size:11.5px; padding:6px 10px;">Reset Filters</button>
+          </div>
+
+          <!-- Manager Analysis KPI Card (Dynamic calculation for filtered person & timeframe) -->
+          <div id="ledgerAnalysisSummary" style="display:none; margin-bottom:16px; padding:14px 18px; background:#fff; border-left:4px solid var(--brass); border-radius:4px; border-top:1px solid var(--line); border-right:1px solid var(--line); border-bottom:1px solid var(--line);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+              <div>
+                <span id="analysisTitle" style="font-size:14px; font-weight:700; color:var(--walnut);">Expenses Analysis</span>
+                <div id="analysisSubtitle" style="font-size:12px; color:var(--walnut-light); margin-top:2px;">Showing filtered transactions</div>
+              </div>
+              <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                <div><span style="font-size:10.5px; color:var(--walnut-light); text-transform:uppercase; font-weight:700;">Total Spend</span><div id="analysisTotalSpend" style="font-size:17px; font-weight:700; color:var(--walnut);">₹0</div></div>
+                <div><span style="font-size:10.5px; color:var(--walnut-light); text-transform:uppercase; font-weight:700;">GST Bills</span><div id="analysisGstSpend" style="font-size:17px; font-weight:700; color:var(--walnut);">₹0 (0)</div></div>
+                <div><span style="font-size:10.5px; color:var(--walnut-light); text-transform:uppercase; font-weight:700;">Non-GST & Cash</span><div id="analysisNonGstSpend" style="font-size:17px; font-weight:700; color:var(--walnut);">₹0 (0)</div></div>
+                <div><span style="font-size:10.5px; color:var(--walnut-light); text-transform:uppercase; font-weight:700;">Unpaid</span><div id="analysisUnpaid" style="font-size:17px; font-weight:700; color:var(--danger);">₹0</div></div>
+              </div>
+            </div>
+          </div>
+
           <div class="tabs">
             <button class="tab-btn active" data-tab="gst" id="tabGst">GST Bills</button>
             <button class="tab-btn" data-tab="non_gst" id="tabNonGst">Non-GST Bills</button>
@@ -889,6 +1141,7 @@
 (function(){
   const BACKEND_URL = 'https://studio5-bill-backened.onrender.com';
   const APP_SECRET = 'studio5-field-2026'; // must exactly match APP_SHARED_SECRET on Render
+  const TEAM_MEMBERS = ['Sanjeev Yadav', 'Sanjeev Sharma', 'Prince', 'Anil Kori', 'Rajiv Bawa', 'Kuhu Bawa', 'Vishal'];
   const fileInput = document.getElementById('fileInput');
   const dropZone = document.getElementById('dropZone');
   const uploadLabel = document.getElementById('uploadLabel');
@@ -1288,6 +1541,9 @@
       </div>`;
     }).join('');
 
+    const activeIncurred = getSubmittingForPerson() || getEmployeeName() || 'Sanjeev Yadav';
+    const incurredOptions = TEAM_MEMBERS.map(m => `<option value="${m}" ${m === activeIncurred ? 'selected' : ''}>${m}</option>`).join('');
+
     reviewArea.innerHTML = `
       <div class="review-card">
         <div class="review-card-head">
@@ -1295,6 +1551,19 @@
           <span>${dup ? '<span class="dup-tag">Possible duplicate</span>' : ''}</span>
         </div>
         ${dup ? `<div class="banner warn" style="margin:12px 16px 0;">A bill with this ${isGst ? 'GSTIN + invoice number' : 'vendor + invoice number + date'} is already in the sheet. Sending is blocked by default — this is almost always the same bill uploaded twice.</div>` : ''}
+
+        <!-- Proxy Submission: Whose expense is this? -->
+        <div style="margin:12px 16px 0; padding:10px 14px; background:var(--cream, #f9f8f6); border:1px solid var(--line); border-radius:6px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--walnut-light); font-weight:700; display:block;">Whose Expense Is This? (Incurred By)</label>
+            <div style="font-size:12px; color:var(--walnut-light);">This supervisor/employee's ledger will be credited</div>
+          </div>
+          <select id="reviewIncurredBySelect" style="padding:6px 12px; font-size:13px; font-weight:700; border:1px solid var(--line); border-radius:4px; font-family:inherit; background:#fff; color:var(--walnut);">
+            ${incurredOptions}
+            <option value="Central / Company" ${activeIncurred === 'Central / Company' ? 'selected' : ''}>Central / Company Cash</option>
+          </select>
+        </div>
+
         <div class="review-grid">${fieldsHtml}</div>
         <div style="padding: 4px 16px 0;">
           <label style="font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; color:#4a7a94; font-weight:600;">Has this bill been paid?</label>
@@ -1354,7 +1623,12 @@
 
     if (checkbox) checkbox.addEventListener('change', refreshSaveEnabled);
 
-    saveBtn.onclick = () => ensureEmployeeNameThenRun(() => submitForApproval(extracted.bill_type, extracted.payment_status));
+    saveBtn.onclick = () => {
+      const selectEl = document.getElementById('reviewIncurredBySelect');
+      const chosenIncurred = selectEl ? selectEl.value : getSubmittingForPerson();
+      ensureEmployeeNameThenRun(() => submitForApproval(extracted.bill_type, extracted.payment_status, chosenIncurred));
+    };
+
     document.getElementById('discardBtn').onclick = () => {
       if (batchOutcomes[queueIndex]) batchOutcomes[queueIndex].status = 'discarded';
       reviewArea.innerHTML = '';
@@ -1368,9 +1642,47 @@
     return localStorage.getItem('studio5_employee_name');
   }
 
+  function setEmployeeName(name) {
+    if (name) localStorage.setItem('studio5_employee_name', name);
+    updateIdentityDisplay();
+  }
+
+  function getSubmittingForPerson() {
+    const el = document.getElementById('submittingForSelect');
+    if (!el || el.value === '__SELF__') return getEmployeeName() || 'Sanjeev Yadav';
+    if (el.value === '__OTHER__') {
+      const custom = prompt('Enter the name of the person who incurred this expense:');
+      return custom && custom.trim() ? custom.trim() : (getEmployeeName() || 'Sanjeev Yadav');
+    }
+    return el.value;
+  }
+
+  function updateIdentityDisplay() {
+    const name = getEmployeeName() || 'Sanjeev Yadav';
+    const badge = document.getElementById('activeUserNameBadge');
+    if (badge) badge.textContent = name;
+  }
+
+  function showCelebrationToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'toast-celebration';
+    toast.innerHTML = `<span>🎉</span> <span>${msg}</span>`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(20px)';
+      setTimeout(() => toast.remove(), 400);
+    }, 3500);
+  }
+
   // Asks who's submitting exactly once per device (via dropdown), then remembers it.
   function ensureEmployeeNameThenRun(callback) {
-    if (getEmployeeName()) { callback(); return; }
+    if (getEmployeeName()) {
+      updateIdentityDisplay();
+      callback();
+      return;
+    }
 
     const overlay = document.getElementById('nameCaptureOverlay');
     const select = document.getElementById('nameCaptureSelect');
@@ -1401,7 +1713,7 @@
     function handleSubmit() {
       const val = resolveName();
       if (!val) { errorEl.textContent = 'Please select or type your name.'; return; }
-      localStorage.setItem('studio5_employee_name', val);
+      setEmployeeName(val);
       overlay.style.display = 'none';
       submitBtn.removeEventListener('click', handleSubmit);
       select.removeEventListener('change', handleSelectChange);
@@ -1415,17 +1727,25 @@
     input.addEventListener('keydown', handleKeydown);
   }
 
-
-  function submitForApproval(billType, paymentStatus) {
+  function submitForApproval(billType, paymentStatus, customIncurredBy) {
     const inputs = reviewArea.querySelectorAll('.field input');
+    const uploader = getEmployeeName() || 'Unknown';
+    const incurredPerson = customIncurredBy || getSubmittingForPerson() || uploader;
     const record = {
       uploaded_at: new Date().toISOString(),
       uploaded_on: new Date().toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
       bill_type: billType,
       payment_status: paymentStatus,
-      submitted_by_employee: getEmployeeName() || 'Unknown'
+      submitted_by_employee: uploader,
+      purchased_by: incurredPerson,
+      incurred_by: incurredPerson
     };
-    inputs.forEach(inp => record[inp.dataset.key] = inp.disabled ? '' : inp.value.trim());
+    inputs.forEach(inp => {
+      if (inp.dataset.key) record[inp.dataset.key] = inp.disabled ? '' : inp.value.trim();
+    });
+    // Explicitly guarantee purchased_by and incurred_by reflect the chosen employee
+    record.purchased_by = incurredPerson;
+    record.incurred_by = incurredPerson;
     if (record.date) {
       record.date = normalizeDate(record.date);
     }
@@ -1434,19 +1754,16 @@
       record.photo_media_type = currentFileMediaType;
     }
 
-    // Capture this bill's position now — queueIndex will have already moved on
-    // by the time the background request below actually finishes.
     const thisIndex = queueIndex;
     const vendorLabel = record.vendor_name || 'bill';
 
     const progressNote = fileQueue.length > 1 ? ` (${thisIndex + 1} of ${fileQueue.length})` : '';
-    statusArea.innerHTML = `<div class="banner info">Sending ${vendorLabel} for approval in the background…${progressNote}</div>`;
+    statusArea.innerHTML = `<div class="banner info">Sending ${vendorLabel} (for ${incurredPerson}) for approval…${progressNote}</div>`;
     reviewArea.innerHTML = '';
     if (batchOutcomes[thisIndex]) batchOutcomes[thisIndex].status = 'sending';
     queueIndex++;
-    processNextInQueue(); // move on right away — don't make the next bill wait on this one's network round-trip
+    processNextInQueue();
 
-    // The actual save happens here, detached from the UI flow above.
     fetch(`${BACKEND_URL}/submit-for-approval`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
@@ -1456,6 +1773,7 @@
         const result = await res.json();
         if (!res.ok || result.error) throw new Error(result.error || `Backend returned ${res.status}`);
         if (batchOutcomes[thisIndex]) batchOutcomes[thisIndex].status = 'sent';
+        showCelebrationToast(`Submitted bill for ${incurredPerson}!`);
         refreshBatchSummaryIfShown();
       })
       .catch((e) => {
@@ -1487,15 +1805,114 @@
     renderTable();
   }
 
+  let ledgerPersonFilter = '';
+  let ledgerMonthFilter = '';
+  let ledgerSearchQuery = '';
+
+  function filterRecordsList(records) {
+    if (!records) return [];
+    return records.filter(r => {
+      // 1. Person filter: checks both purchased_by and submitted_by_employee
+      if (ledgerPersonFilter) {
+        const pIncurred = resolvePersonName(r.purchased_by);
+        const pSubmitter = resolvePersonName(r.submitted_by_employee);
+        if (pIncurred !== ledgerPersonFilter && pSubmitter !== ledgerPersonFilter) {
+          return false;
+        }
+      }
+      // 2. Month filter: checks date or uploaded_on
+      if (ledgerMonthFilter) {
+        const d = parseInvoiceDate(r.date) || parseInvoiceDate(r.uploaded_on);
+        if (!d) return false;
+        const now = new Date();
+        const thisYear = now.getFullYear();
+        const thisMonth = now.getMonth();
+        const recYear = d.getFullYear();
+        const recMonth = d.getMonth();
+
+        if (ledgerMonthFilter === 'THIS_MONTH') {
+          if (recYear !== thisYear || recMonth !== thisMonth) return false;
+        } else if (ledgerMonthFilter === 'LAST_MONTH') {
+          const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+          const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+          if (recYear !== lastMonthYear || recMonth !== lastMonth) return false;
+        } else if (ledgerMonthFilter === 'LAST_2_MONTHS') {
+          const diffMonths = (thisYear - recYear) * 12 + (thisMonth - recMonth);
+          if (diffMonths < 0 || diffMonths > 1) return false;
+        }
+      }
+      // 3. Search query
+      if (ledgerSearchQuery) {
+        const q = ledgerSearchQuery.toLowerCase();
+        const match = (r.vendor_name || '').toLowerCase().includes(q)
+          || (r.description || '').toLowerCase().includes(q)
+          || (r.invoice_value || '').toString().includes(q)
+          || (r.bill_no || '').toLowerCase().includes(q)
+          || (r.purchased_by || '').toLowerCase().includes(q);
+        if (!match) return false;
+      }
+      return true;
+    });
+  }
+
+  function updateLedgerAnalysisSummary() {
+    const summaryCard = document.getElementById('ledgerAnalysisSummary');
+    if (!summaryCard) return;
+
+    if (!ledgerPersonFilter && !ledgerMonthFilter && !ledgerSearchQuery) {
+      summaryCard.style.display = 'none';
+      return;
+    }
+
+    summaryCard.style.display = 'block';
+    const allGst = filterRecordsList(recordsCache.gst || []);
+    const allNonGst = filterRecordsList(recordsCache.non_gst || []);
+    const allFiltered = [...allGst, ...allNonGst];
+
+    const titleEl = document.getElementById('analysisTitle');
+    const subEl = document.getElementById('analysisSubtitle');
+    const totalEl = document.getElementById('analysisTotalSpend');
+    const gstEl = document.getElementById('analysisGstSpend');
+    const nonGstEl = document.getElementById('analysisNonGstSpend');
+    const unpaidEl = document.getElementById('analysisUnpaid');
+
+    const personLabel = ledgerPersonFilter || 'All Team Members';
+    let periodLabel = 'All Time';
+    if (ledgerMonthFilter === 'THIS_MONTH') periodLabel = 'This Month';
+    else if (ledgerMonthFilter === 'LAST_MONTH') periodLabel = 'Last Month';
+    else if (ledgerMonthFilter === 'LAST_2_MONTHS') periodLabel = 'Last 2 Months (This + Last)';
+
+    if (titleEl) titleEl.textContent = `Expenses for ${personLabel}`;
+    if (subEl) subEl.textContent = `${periodLabel} · ${allFiltered.length} total entries`;
+
+    const money = n => '₹' + Math.round(n).toLocaleString('en-IN');
+    const gstSpend = allGst.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
+    const nonGstSpend = allNonGst.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
+    const totalSpend = gstSpend + nonGstSpend;
+    const unpaidSpend = allFiltered.filter(r => r.payment_status === 'unpaid').reduce((sum, r) => sum + toNum(r.invoice_value), 0);
+
+    if (totalEl) totalEl.textContent = money(totalSpend);
+    if (gstEl) gstEl.textContent = `${money(gstSpend)} (${allGst.length})`;
+    if (nonGstEl) nonGstEl.textContent = `${money(nonGstSpend)} (${allNonGst.length})`;
+    if (unpaidEl) unpaidEl.textContent = money(unpaidSpend);
+  }
+
   function renderTable() {
-    const filtered = recordsCache[activeTab] || [];
-    const total = recordsCache.gst.length + recordsCache.non_gst.length;
-    countPill.textContent = `${total} entr${total === 1 ? 'y' : 'ies'} total`;
+    const rawList = recordsCache[activeTab] || [];
+    const filtered = filterRecordsList(rawList);
+    const totalFiltered = filterRecordsList(recordsCache.gst || []).length + filterRecordsList(recordsCache.non_gst || []).length;
+    const totalRaw = recordsCache.gst.length + recordsCache.non_gst.length;
+
+    countPill.textContent = (ledgerPersonFilter || ledgerMonthFilter || ledgerSearchQuery)
+      ? `${totalFiltered} of ${totalRaw} entries`
+      : `${totalRaw} entr${totalRaw === 1 ? 'y' : 'ies'} total`;
+
+    updateLedgerAnalysisSummary();
 
     const fields = activeTab === 'gst' ? GST_FIELDS : NON_GST_FIELDS;
 
     if (filtered.length === 0) {
-      tableArea.innerHTML = `<div class="empty-state">No ${activeTab === 'gst' ? 'GST' : 'non-GST'} bills in the sheet yet.</div>`;
+      tableArea.innerHTML = `<div class="empty-state">No matching ${activeTab === 'gst' ? 'GST' : 'non-GST'} bills found for this filter.</div>`;
       return;
     }
     const headers = fields.map(([,label]) => `<th>${label}</th>`).join('') + '<th></th>';
@@ -1510,15 +1927,17 @@
           return `<td>${label}${overdue ? '<span class="overdue-tag">Overdue</span>' : ''}</td>`;
         }
         if (key === 'submitted_by_employee') {
-          const person = resolvePersonName(r[key]);
-          const siteInfo = getSupervisorSiteInfo(person);
-          return `<td><b>${person}</b> <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px; margin-left:3px;">${siteInfo.site.replace(' Site','')}</span></td>`;
+          const uploader = resolvePersonName(r.submitted_by_employee);
+          const incurred = r.purchased_by ? resolvePersonName(r.purchased_by) : uploader;
+          const siteInfo = getSupervisorSiteInfo(incurred);
+          const proxyNote = (incurred !== uploader && uploader !== 'Central / Unattributed') ? `<div style="font-size:10px; color:var(--walnut-light);">uploaded by ${uploader}</div>` : '';
+          return `<td><b>${incurred}</b> <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px; margin-left:3px;">${siteInfo.site.replace(' Site','')}</span>${proxyNote}</td>`;
         }
         return `<td>${r[key] ?? ''}</td>`;
       }).join('');
       const deleteCell = r.entry_id
         ? `<td><button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button></td>`
-        : `<td></td>`; // older entries predating Entry ID tracking can't be targeted for deletion from here
+        : `<td></td>`;
       return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}${deleteCell}</tr>`;
     }).join('');
     tableArea.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
@@ -1559,27 +1978,38 @@
   });
 
   exportBtn.addEventListener('click', () => {
-    const gstRows = recordsCache.gst.map(r => {
+    const gstFiltered = filterRecordsList(recordsCache.gst || []);
+    const nonGstFiltered = filterRecordsList(recordsCache.non_gst || []);
+
+    const gstRows = gstFiltered.map(r => {
       const row = {};
       GST_FIELDS.forEach(([key,label]) => row[label] = r[key] ?? '');
       return row;
     });
-    const nonGstRows = recordsCache.non_gst.map(r => {
+    const nonGstRows = nonGstFiltered.map(r => {
       const row = {};
       NON_GST_FIELDS.forEach(([key,label]) => row[label] = r[key] ?? '');
       return row;
     });
-    if (gstRows.length === 0 && nonGstRows.length === 0) return;
+    if (gstRows.length === 0 && nonGstRows.length === 0) {
+      alert('No entries to export with the current filter.');
+      return;
+    }
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gstRows.length ? gstRows : [{}]), 'GST Bills');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(nonGstRows.length ? nonGstRows : [{}]), 'Non-GST Bills');
-    XLSX.writeFile(wb, 'studio5-bill-ledger.xlsx');
+    
+    let filename = 'studio5-bill-ledger';
+    if (ledgerPersonFilter) filename += `-${ledgerPersonFilter.toLowerCase().replace(/\s+/g, '-')}`;
+    if (ledgerMonthFilter) filename += `-${ledgerMonthFilter.toLowerCase()}`;
+    filename += '.xlsx';
+
+    XLSX.writeFile(wb, filename);
   });
 
   // ---------- Navigation ----------
   const BOSS_PIN = '5719';
-  const TEAM_MEMBERS = ['Sanjeev Yadav', 'Sanjeev Sharma', 'Prince', 'Anil Kori', 'Rajiv Bawa', 'Kuhu Bawa', 'Vishal'];
 
   // Client-side phone → name map. Mirrors the backend EMPLOYEE_PHONE_MAP.
   // Needed because old WhatsApp bills stored a raw phone number in submitted_by_employee
@@ -2069,7 +2499,7 @@
       let gstSpent = 0;
       let nonGstSpent = 0;
       allRecords.forEach(b => {
-        const pName = resolvePersonName(b.submitted_by_employee || b.purchased_by);
+        const pName = resolvePersonName(b.purchased_by || b.submitted_by_employee);
         if (pName !== name) return;
         let bTime = 0;
         // Prioritize the bill's own date (its transaction date)
@@ -2113,7 +2543,7 @@
     let unattributedCount = 0;
     let unattributedSpend = 0;
     allRecords.forEach(b => {
-      const pName = resolvePersonName(b.submitted_by_employee || b.purchased_by);
+      const pName = resolvePersonName(b.purchased_by || b.submitted_by_employee);
       if (pName === 'Central / Unattributed') {
         unattributedCount++;
         unattributedSpend += toNum(b.invoice_value);
@@ -3060,6 +3490,248 @@
     }
   }
 
+  function setupQuickCashVoucher() {
+    const modeBillBtn = document.getElementById('modeBillBtn');
+    const modeVoucherBtn = document.getElementById('modeVoucherBtn');
+    const billSec = document.getElementById('billUploadSection');
+    const voucherSec = document.getElementById('quickVoucherSection');
+
+    if (modeBillBtn && modeVoucherBtn) {
+      modeBillBtn.addEventListener('click', () => {
+        modeBillBtn.classList.add('active');
+        modeVoucherBtn.classList.remove('active');
+        if (billSec) billSec.style.display = 'block';
+        if (voucherSec) voucherSec.style.display = 'none';
+      });
+      modeVoucherBtn.addEventListener('click', () => {
+        modeVoucherBtn.classList.add('active');
+        modeBillBtn.classList.remove('active');
+        if (voucherSec) voucherSec.style.display = 'block';
+        if (billSec) billSec.style.display = 'none';
+
+        const incurSelect = document.getElementById('voucherIncurredBySelect');
+        if (incurSelect) {
+          const currentPerson = getSubmittingForPerson();
+          if (currentPerson && [...incurSelect.options].some(o => o.value === currentPerson)) {
+            incurSelect.value = currentPerson;
+          }
+        }
+      });
+    }
+
+    const chips = document.querySelectorAll('#voucherCategoryChips .category-chip');
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        chips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+      });
+    });
+
+    const photoInput = document.getElementById('voucherPhotoInput');
+    const photoPreview = document.getElementById('voucherPhotoPreview');
+    let voucherPhotoBase64 = null;
+    let voucherPhotoMediaType = null;
+
+    if (photoInput) {
+      photoInput.addEventListener('change', async () => {
+        const file = photoInput.files[0];
+        if (!file) {
+          voucherPhotoBase64 = null;
+          voucherPhotoMediaType = null;
+          if (photoPreview) photoPreview.style.display = 'none';
+          return;
+        }
+        voucherPhotoMediaType = file.type || 'image/jpeg';
+        voucherPhotoBase64 = await fileToBase64(file);
+        if (photoPreview) {
+          photoPreview.innerHTML = `<img src="data:${voucherPhotoMediaType};base64,${voucherPhotoBase64}" style="width:100%; border-radius:4px; border:1px solid var(--line);" />`;
+          photoPreview.style.display = 'block';
+        }
+      });
+    }
+
+    const submitBtn = document.getElementById('voucherSubmitBtn');
+    const statusText = document.getElementById('voucherStatusText');
+    const amountInput = document.getElementById('voucherAmountInput');
+    const siteInput = document.getElementById('voucherSiteInput');
+    const noteInput = document.getElementById('voucherNoteInput');
+    const incurSelect = document.getElementById('voucherIncurredBySelect');
+    const paidFromSelect = document.getElementById('voucherPaidFromSelect');
+
+    if (submitBtn) {
+      submitBtn.addEventListener('click', async () => {
+        const amt = parseFloat(amountInput.value);
+        if (!amt || isNaN(amt) || amt <= 0) {
+          alert('Please enter a valid amount in ₹ (e.g. 500).');
+          amountInput.focus();
+          return;
+        }
+
+        const activeChip = document.querySelector('#voucherCategoryChips .category-chip.active');
+        const category = activeChip ? activeChip.dataset.cat : '🚚 Transport / Tempo / Auto';
+        const incurredPerson = incurSelect ? incurSelect.value : (getEmployeeName() || 'Sanjeev Yadav');
+        const paidFrom = paidFromSelect ? paidFromSelect.value : 'Sir Paid (Pocket Cash)';
+        const site = siteInput ? (siteInput.value || '').trim() : '';
+        const note = noteInput ? (noteInput.value || '').trim() : '';
+
+        if (!note && !site) {
+          alert('Please enter a note or site location (e.g. "Tempo fare for panels").');
+          if (noteInput) noteInput.focus();
+          return;
+        }
+
+        const uploader = getEmployeeName() || 'Unknown';
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+        const fullDesc = [category, paidFrom, site ? `Site: ${site}` : '', note].filter(Boolean).join(' · ');
+
+        const record = {
+          uploaded_at: now.toISOString(),
+          uploaded_on: `${dateStr} ${timeStr}`,
+          date: dateStr,
+          time: timeStr,
+          bill_type: 'non_gst',
+          vendor_name: `${category.split(' ')[0]} ${site || 'Cash Expense'}`,
+          description: fullDesc,
+          invoice_value: amt.toString(),
+          payment_status: 'paid',
+          submitted_by_employee: uploader,
+          purchased_by: incurredPerson,
+          incurred_by: incurredPerson,
+          bill_no: `VOUCH-${Date.now().toString().slice(-6)}`
+        };
+
+        if (voucherPhotoBase64) {
+          record.photo_base64 = voucherPhotoBase64;
+          record.photo_media_type = voucherPhotoMediaType;
+        }
+
+        submitBtn.disabled = true;
+        if (statusText) {
+          statusText.style.color = 'var(--walnut)';
+          statusText.textContent = 'Saving cash voucher…';
+        }
+
+        try {
+          const res = await fetch(`${BACKEND_URL}/submit-for-approval`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+            body: JSON.stringify(record)
+          });
+          const result = await res.json();
+          if (!res.ok || result.error) throw new Error(result.error || `Error ${res.status}`);
+
+          showCelebrationToast(`Recorded ₹${amt.toLocaleString('en-IN')} for ${incurredPerson}!`);
+          if (statusText) {
+            statusText.style.color = 'var(--good)';
+            statusText.textContent = '✓ Saved successfully!';
+          }
+
+          amountInput.value = '';
+          if (siteInput) siteInput.value = '';
+          if (noteInput) noteInput.value = '';
+          if (photoInput) photoInput.value = '';
+          if (photoPreview) photoPreview.style.display = 'none';
+          voucherPhotoBase64 = null;
+          voucherPhotoMediaType = null;
+
+          loadRecords();
+        } catch (err) {
+          console.error('Voucher save failed:', err);
+          if (statusText) {
+            statusText.style.color = 'var(--danger)';
+            statusText.textContent = 'Failed: ' + err.message;
+          }
+        } finally {
+          submitBtn.disabled = false;
+          setTimeout(() => { if (statusText) statusText.textContent = ''; }, 5000);
+        }
+      });
+    }
+  }
+
+  function setupLedgerFilters() {
+    const personSelect = document.getElementById('ledgerPersonFilter');
+    const monthSelect = document.getElementById('ledgerMonthFilter');
+    const searchInput = document.getElementById('ledgerSearchInput');
+    const resetBtn = document.getElementById('clearLedgerFiltersBtn');
+
+    if (personSelect) {
+      personSelect.addEventListener('change', () => {
+        ledgerPersonFilter = personSelect.value;
+        renderTable();
+      });
+    }
+    if (monthSelect) {
+      monthSelect.addEventListener('change', () => {
+        ledgerMonthFilter = monthSelect.value;
+        renderTable();
+      });
+    }
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        ledgerSearchQuery = (searchInput.value || '').trim();
+        renderTable();
+      });
+    }
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        ledgerPersonFilter = '';
+        ledgerMonthFilter = '';
+        ledgerSearchQuery = '';
+        if (personSelect) personSelect.value = '';
+        if (monthSelect) monthSelect.value = '';
+        if (searchInput) searchInput.value = '';
+        renderTable();
+      });
+    }
+  }
+
+  // Switch active user button
+  const switchUserBtn = document.getElementById('switchUserBtn');
+  if (switchUserBtn) {
+    switchUserBtn.addEventListener('click', () => {
+      const overlay = document.getElementById('nameCaptureOverlay');
+      const select = document.getElementById('nameCaptureSelect');
+      const input = document.getElementById('nameCaptureInput');
+      const errorEl = document.getElementById('nameCaptureError');
+      const submitBtn = document.getElementById('nameCaptureSubmit');
+      if (overlay) {
+        overlay.style.display = 'flex';
+        select.value = getEmployeeName() || '';
+        input.value = '';
+        input.style.display = 'none';
+        errorEl.textContent = '';
+
+        function onSwitchSubmit() {
+          const val = select.value === '__OTHER__' ? input.value.trim() : select.value;
+          if (!val) { errorEl.textContent = 'Please select or type your name.'; return; }
+          setEmployeeName(val);
+          overlay.style.display = 'none';
+          submitBtn.removeEventListener('click', onSwitchSubmit);
+        }
+        submitBtn.addEventListener('click', onSwitchSubmit);
+      }
+    });
+  }
+
+  // Submitting on behalf of selector sync
+  const submittingForSelect = document.getElementById('submittingForSelect');
+  if (submittingForSelect) {
+    submittingForSelect.addEventListener('change', () => {
+      const incurSelect = document.getElementById('voucherIncurredBySelect');
+      const chosen = getSubmittingForPerson();
+      if (incurSelect && chosen && [...incurSelect.options].some(o => o.value === chosen)) {
+        incurSelect.value = chosen;
+      }
+    });
+  }
+
+  updateIdentityDisplay();
+  setupQuickCashVoucher();
+  setupLedgerFilters();
   loadRecords();
   refreshDashboard();
   settleTrackToIndex(0, false);
