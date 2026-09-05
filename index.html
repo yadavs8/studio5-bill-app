@@ -1086,15 +1086,18 @@
   // Alias lists for Payments sheet columns — tries each name in order until one matches.
   // This makes fetchPayments resilient to whatever column names the Apps Script uses.
   const PAYMENT_COL_ALIASES = {
-    person: ['Person', 'Paid To', 'Payment To', 'Name', 'Employee', 'Team Member'],
-    amount: ['Amount', 'Amount Paid', 'Payment Amount', 'Paid Amount', 'Cash', 'Value'],
-    date:   ['Date', 'Payment Date', 'Paid On', 'Date of Payment', 'Transaction Date'],
-    note:   ['Note', 'Notes', 'Remarks', 'Description', 'Narration', 'Purpose'],
+    id:          ['payment id', 'id', 'transaction id', 'voucher no'],
+    person:      ['person', 'paid to', 'payment to', 'name', 'employee', 'team member'],
+    amount:      ['amount', 'amount paid', 'payment amount', 'paid amount', 'cash', 'value'],
+    date:        ['date', 'payment date', 'paid on', 'date of payment', 'transaction date'],
+    note:        ['note', 'notes', 'remarks', 'description', 'narration', 'purpose'],
+    recorded_on: ['recorded on', 'timestamp', 'created at']
   };
 
   function findPaymentColIdx(headerRow, key) {
-    for (const alias of PAYMENT_COL_ALIASES[key]) {
-      const idx = headerRow.indexOf(alias);
+    const cleanHeader = headerRow.map(h => String(h || '').trim().toLowerCase());
+    for (const alias of (PAYMENT_COL_ALIASES[key] || [])) {
+      const idx = cleanHeader.indexOf(alias.toLowerCase());
       if (idx >= 0) return idx;
     }
     return -1;
@@ -1112,25 +1115,29 @@
       if (rows.length < 1) return [];
       const headerRow = rows[0];
 
+      const idIdx     = findPaymentColIdx(headerRow, 'id');
       const personIdx = findPaymentColIdx(headerRow, 'person');
       const amountIdx = findPaymentColIdx(headerRow, 'amount');
       const dateIdx   = findPaymentColIdx(headerRow, 'date');
       const noteIdx   = findPaymentColIdx(headerRow, 'note');
+      const recOnIdx  = findPaymentColIdx(headerRow, 'recorded_on');
 
       console.log('fetchPayments: headers=', headerRow,
-        '| person@', personIdx, '| amount@', amountIdx,
-        '| date@', dateIdx, '| note@', noteIdx);
+        '| id@', idIdx, '| person@', personIdx, '| amount@', amountIdx,
+        '| date@', dateIdx, '| note@', noteIdx, '| recorded_on@', recOnIdx);
 
       return rows.slice(1)
         .filter(r => r.some(c => c !== '' && c !== null && c !== undefined))
         .map(r => {
           const rawNote = noteIdx >= 0 ? String(r[noteIdx] ?? '').trim() : '';
           return {
-            person:     personIdx >= 0 ? resolvePersonName(String(r[personIdx] ?? '').trim()) : '',
-            amount:     amountIdx >= 0 ? parseFloat(String(r[amountIdx] ?? '0').replace(/[^0-9.\-]/g, '')) || 0 : 0,
-            date:       dateIdx   >= 0 ? String(r[dateIdx]   ?? '') : '',
-            note:       rawNote,
-            is_opening: rawNote.toLowerCase().includes('opening')
+            id:          idIdx     >= 0 ? String(r[idIdx]     ?? '').trim() : '',
+            person:      personIdx >= 0 ? resolvePersonName(String(r[personIdx] ?? '').trim()) : '',
+            amount:      amountIdx >= 0 ? parseFloat(String(r[amountIdx] ?? '0').replace(/[^0-9.\-]/g, '')) || 0 : 0,
+            date:        dateIdx   >= 0 ? String(r[dateIdx]   ?? '').trim() : '',
+            recorded_on: recOnIdx  >= 0 ? String(r[recOnIdx]  ?? '').trim() : '',
+            note:        rawNote,
+            is_opening:  rawNote.toLowerCase().includes('opening')
           };
         });
     } catch (e) {
@@ -2021,15 +2028,39 @@
     const teamReports = team.map(name => {
       const cal = calibrations[name];
       const baseline = cal ? cal.amount : 0;
-      const calTimestamp = cal ? new Date(cal.date).getTime() : 0;
+      
+      // Calculate start of day for the calibration date so transactions on the same day are included
+      let calDayStart = 0;
+      if (cal) {
+        if (cal.displayDate && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cal.displayDate)) {
+          const [cd, cm, cy] = cal.displayDate.split('/').map(Number);
+          calDayStart = new Date(cy, cm - 1, cd, 0, 0, 0, 0).getTime();
+        } else if (cal.date) {
+          const cdObj = new Date(cal.date);
+          calDayStart = new Date(cdObj.getFullYear(), cdObj.getMonth(), cdObj.getDate(), 0, 0, 0, 0).getTime();
+        }
+      }
 
       let cashAdded = 0;
       paymentsCache.forEach(p => {
         if (resolvePersonName(p.person) !== name) return;
         if (p.is_opening && cal) return;
-        const pDate = parseInvoiceDate(p.date);
-        const pTime = pDate ? pDate.getTime() : 0;
-        if (!cal || pTime >= calTimestamp) {
+        
+        let pTime = 0;
+        if (p.id && p.id.startsWith('PAY')) {
+          const rawIdTs = parseInt(p.id.replace(/^PAY/i, ''), 10);
+          if (!isNaN(rawIdTs) && rawIdTs > 1700000000000) pTime = rawIdTs;
+        }
+        if (!pTime && p.recorded_on) {
+          const rDate = new Date(p.recorded_on);
+          if (!isNaN(rDate.getTime())) pTime = rDate.getTime();
+        }
+        if (!pTime && p.date) {
+          const pDate = parseInvoiceDate(p.date);
+          pTime = pDate ? pDate.getTime() : 0;
+        }
+        
+        if (!cal || pTime >= calDayStart) {
           cashAdded += toNum(p.amount);
         }
       });
@@ -2040,9 +2071,16 @@
       allRecords.forEach(b => {
         const pName = resolvePersonName(b.submitted_by_employee || b.purchased_by);
         if (pName !== name) return;
-        const bDate = parseInvoiceDate(b.date);
-        const bTime = bDate ? bDate.getTime() : 0;
-        if (!cal || bTime >= calTimestamp) {
+        let bTime = 0;
+        if (b.uploaded_on) {
+          const uDate = new Date(b.uploaded_on);
+          if (!isNaN(uDate.getTime())) bTime = uDate.getTime();
+        }
+        if (!bTime && b.date) {
+          const bDate = parseInvoiceDate(b.date);
+          bTime = bDate ? bDate.getTime() : 0;
+        }
+        if (!cal || bTime >= calDayStart) {
           const val = toNum(b.invoice_value);
           spendDeducted += val;
           if (b.bill_type === 'gst') gstSpent += val; else nonGstSpent += val;
@@ -2264,18 +2302,19 @@
     const vouchersXml = bills.map(b => {
       const isGst = b.bill_type === 'gst' || (!b.bill_type && b.gstin);
       const tallyDate = parseTallyDate(b.date);
-      const vendorName = escapeXml(b.vendor_name || 'Sundry Creditor');
-      const invoiceNo = escapeXml(b.bill_no || `VCH-${Date.now()}`);
-      const gstin = escapeXml(b.gstin || '');
+      const rawVendor = String(b.vendor_name || 'Sundry Creditor').trim();
+      const vendorName = escapeXml(rawVendor);
+      const invoiceNo = escapeXml(String(b.bill_no || `VCH-${Date.now()}`).trim());
+      const gstin = escapeXml(String(b.gstin || '').trim());
       const person = resolvePersonName(b.submitted_by_employee || b.purchased_by);
       const siteInfo = getSupervisorSiteInfo(person);
       const site = escapeXml(b.site || siteInfo.site);
-      const photoLink = escapeXml(b.photo_link || '');
+      const photoLink = String(b.photo_link || '').trim();
       const totalVal = toNum(b.invoice_value);
 
-      let narration = `${isGst ? 'GST Inv' : 'Non-GST'}: ${invoiceNo} | Vendor: ${vendorName}`;
-      if (gstin) narration += ` | GSTIN: ${gstin}`;
-      if (site) narration += ` | Site: ${site}`;
+      let narration = `${isGst ? 'GST Inv' : 'Non-GST'}: ${b.bill_no || 'VCH'} | Vendor: ${rawVendor}`;
+      if (b.gstin) narration += ` | GSTIN: ${b.gstin}`;
+      if (siteInfo.site) narration += ` | Site: ${siteInfo.site}`;
       if (person) narration += ` | Verified: ${person}`;
       if (photoLink && !photoLink.startsWith('Upload failed')) narration += ` | Bill Photo: ${photoLink}`;
 
@@ -2344,7 +2383,7 @@
             <VOUCHERNUMBER>${invoiceNo}</VOUCHERNUMBER>
             <PARTYLEDGERNAME>${vendorName}</PARTYLEDGERNAME>
             ${gstin ? `<PARTYGSTIN>${gstin}</PARTYGSTIN>` : ''}
-            <NARRATION>${narration}</NARRATION>
+            <NARRATION>${escapeXml(narration)}</NARRATION>
             ${entries}
           </VOUCHER>
         </TALLYMESSAGE>`;
@@ -2357,9 +2396,9 @@
             <EFFECTIVEDATE>${tallyDate}</EFFECTIVEDATE>
             <VOUCHERTYPENAME>Payment</VOUCHERTYPENAME>
             <VOUCHERNUMBER>${invoiceNo}</VOUCHERNUMBER>
-            <NARRATION>${narration}</NARRATION>
+            <NARRATION>${escapeXml(narration)}</NARRATION>
             <ALLLEDGERENTRIES.LIST>
-              <LEDGERNAME>Site Consumables & Maintenance</LEDGERNAME>
+              <LEDGERNAME>Site Consumables &amp; Maintenance</LEDGERNAME>
               <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
               <AMOUNT>-${totalVal.toFixed(2)}</AMOUNT>
               <CATEGORYLIST.LIST>
@@ -2368,7 +2407,7 @@
               </CATEGORYLIST.LIST>
             </ALLLEDGERENTRIES.LIST>
             <ALLLEDGERENTRIES.LIST>
-              <LEDGERNAME>${cashOrPayable}</LEDGERNAME>
+              <LEDGERNAME>${escapeXml(cashOrPayable)}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
               <AMOUNT>${totalVal.toFixed(2)}</AMOUNT>
             </ALLLEDGERENTRIES.LIST>
@@ -2408,7 +2447,7 @@
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    alert('✅ Tally Prime XML Downloaded!\n\nImport in Tally Prime:\n1. Open Tally Prime\n2. Press Alt + O (Import Data) -> Vouchers\n3. Select the downloaded studio5_tally_vouchers XML file.\n4. All Purchase & Expense vouchers will be recorded with GST taxes & site cost centres!');
+    alert('✅ Tally Prime XML Downloaded!\n\n⚠️ IMPORTANT:\nDo NOT open this file with Microsoft Excel! Windows often tries to open .xml files with Excel, which fails with an "XML Parse Error" because Excel is not an accounting software.\n\n👉 How to use this file in Tally Prime:\n1. Open Tally Prime\n2. Press Alt + O (Import) -> Vouchers\n3. Select this downloaded XML file\n\n(To view bills in Excel, click the "Export to Excel" or "GSTR-2B CSV" buttons instead!)');
   }
 
   function downloadGstr2bCsv() {
