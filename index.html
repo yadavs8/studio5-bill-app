@@ -2072,17 +2072,19 @@
         const pName = resolvePersonName(b.submitted_by_employee || b.purchased_by);
         if (pName !== name) return;
         let bTime = 0;
-        if (b.uploaded_on) {
+        // Prioritize the bill's own date (its transaction date)
+        if (b.date) {
+          const bDate = parseInvoiceDate(b.date);
+          if (bDate && !isNaN(bDate.getTime())) bTime = bDate.getTime();
+        }
+        // Fallback to uploaded_on if date is missing or couldn't be parsed
+        if (!bTime && b.uploaded_on) {
           const uDate = parseInvoiceDate(b.uploaded_on);
           if (uDate && !isNaN(uDate.getTime())) bTime = uDate.getTime();
           else {
             const rawU = new Date(b.uploaded_on);
             if (!isNaN(rawU.getTime())) bTime = rawU.getTime();
           }
-        }
-        if (!bTime && b.date) {
-          const bDate = parseInvoiceDate(b.date);
-          bTime = bDate ? bDate.getTime() : 0;
         }
         if (!cal || bTime >= calDayStart) {
           const val = toNum(b.invoice_value);
@@ -2727,6 +2729,7 @@
   document.getElementById('refreshDashboardBtn').addEventListener('click', async () => {
     recordsCache.gst = [];
     recordsCache.non_gst = [];
+    paymentsCache = [];
     document.getElementById('dashMonthSpend').textContent = '…';
     document.getElementById('dashMonthGst').textContent = '…';
     document.getElementById('dashTotalBills').textContent = '…';
