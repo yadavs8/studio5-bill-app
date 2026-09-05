@@ -2073,8 +2073,12 @@
         if (pName !== name) return;
         let bTime = 0;
         if (b.uploaded_on) {
-          const uDate = new Date(b.uploaded_on);
-          if (!isNaN(uDate.getTime())) bTime = uDate.getTime();
+          const uDate = parseInvoiceDate(b.uploaded_on);
+          if (uDate && !isNaN(uDate.getTime())) bTime = uDate.getTime();
+          else {
+            const rawU = new Date(b.uploaded_on);
+            if (!isNaN(rawU.getTime())) bTime = rawU.getTime();
+          }
         }
         if (!bTime && b.date) {
           const bDate = parseInvoiceDate(b.date);
