@@ -1814,8 +1814,8 @@
     return records.filter(r => {
       // 1. Person filter: checks both purchased_by and submitted_by_employee
       if (ledgerPersonFilter) {
-        const pIncurred = resolvePersonName(r.purchased_by);
-        const pSubmitter = resolvePersonName(r.submitted_by_employee);
+        const pIncurred = resolvePersonName(r.purchased_by, r);
+        const pSubmitter = resolvePersonName(r.submitted_by_employee, r);
         if (pIncurred !== ledgerPersonFilter && pSubmitter !== ledgerPersonFilter) {
           return false;
         }
@@ -1927,9 +1927,9 @@
           return `<td>${label}${overdue ? '<span class="overdue-tag">Overdue</span>' : ''}</td>`;
         }
         if (key === 'submitted_by_employee') {
-          const uploader = resolvePersonName(r.submitted_by_employee);
-          const incurred = r.purchased_by ? resolvePersonName(r.purchased_by) : uploader;
-          const siteInfo = getSupervisorSiteInfo(incurred);
+          const uploader = resolvePersonName(r.submitted_by_employee, r);
+          const incurred = r.purchased_by ? resolvePersonName(r.purchased_by, r) : uploader;
+          const siteInfo = getSupervisorSiteInfo(incurred, r);
           const proxyNote = (incurred !== uploader && uploader !== 'Central / Unattributed') ? `<div style="font-size:10px; color:var(--walnut-light);">uploaded by ${uploader}</div>` : '';
           return `<td><b>${incurred}</b> <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px; margin-left:3px;">${siteInfo.site.replace(' Site','')}</span>${proxyNote}</td>`;
         }
@@ -2035,20 +2035,30 @@
     'Kuhu Bawa':        { site: 'Design / Central', badgeClass: 'central' }
   };
 
-  function getSupervisorSiteInfo(name) {
+  function getSupervisorSiteInfo(name, contextObj) {
     if (!name) return { site: 'Central / Unassigned', badgeClass: 'central' };
     const clean = String(name).trim();
     if (SUPERVISOR_SITE_MAP[clean]) return SUPERVISOR_SITE_MAP[clean];
-    if (clean.toLowerCase() === 'sanjeev') return SUPERVISOR_SITE_MAP['Sanjeev Yadav'];
+    if (clean.toLowerCase() === 'sanjeev' || clean.toLowerCase() === 'sanjeev sherma') {
+      if (contextObj && /dehradun|lemon tree|uttarakhand|rathore|giroti|luxmi|kwality|pacific|garg|barkha|carsaw|raja babu|raju raut/i.test(JSON.stringify(contextObj))) {
+        return SUPERVISOR_SITE_MAP['Sanjeev Sharma'];
+      }
+      return SUPERVISOR_SITE_MAP['Sanjeev Yadav'];
+    }
     return { site: 'Central / Projects', badgeClass: 'central' };
   }
 
-  // Resolves names: merges bare "Sanjeev" -> "Sanjeev Yadav", maps phone numbers,
-  // and marks blank fields as "Central / Unattributed".
-  function resolvePersonName(raw) {
+  // Resolves names: merges bare "Sanjeev" -> "Sanjeev Sharma" for Dehradun context
+  // or "Sanjeev Yadav" for Gurgaon/Central, maps phone numbers, and marks blanks.
+  function resolvePersonName(raw, contextObj) {
     if (!raw) return 'Central / Unattributed';
     const trimmed = String(raw).trim();
-    if (trimmed.toLowerCase() === 'sanjeev') return 'Sanjeev Yadav';
+    if (trimmed.toLowerCase() === 'sanjeev' || trimmed.toLowerCase() === 'sanjeev sherma') {
+      if (contextObj && /dehradun|lemon tree|uttarakhand|rathore|giroti|luxmi|kwality|pacific|garg|barkha|carsaw|raja babu|raju raut/i.test(JSON.stringify(contextObj))) {
+        return 'Sanjeev Sharma';
+      }
+      return 'Sanjeev Yadav';
+    }
     if (trimmed.toLowerCase() === 'unattributed' || trimmed === '-' || trimmed.toLowerCase() === 'unknown') return 'Central / Unattributed';
     return PHONE_NAME_MAP[trimmed] || trimmed;
   }
@@ -2499,7 +2509,7 @@
       let gstSpent = 0;
       let nonGstSpent = 0;
       allRecords.forEach(b => {
-        const pName = resolvePersonName(b.purchased_by || b.submitted_by_employee);
+        const pName = resolvePersonName(b.purchased_by || b.submitted_by_employee, b);
         if (pName !== name) return;
         let bTime = 0;
         // Prioritize the bill's own date (its transaction date)
@@ -2543,7 +2553,7 @@
     let unattributedCount = 0;
     let unattributedSpend = 0;
     allRecords.forEach(b => {
-      const pName = resolvePersonName(b.purchased_by || b.submitted_by_employee);
+      const pName = resolvePersonName(b.purchased_by || b.submitted_by_employee, b);
       if (pName === 'Central / Unattributed') {
         unattributedCount++;
         unattributedSpend += toNum(b.invoice_value);
@@ -2650,8 +2660,8 @@
     let totalSpendAllSites = 0;
 
     allRecords.forEach(r => {
-      const person = resolvePersonName(r.submitted_by_employee || r.purchased_by);
-      const siteInfo = getSupervisorSiteInfo(person);
+      const person = resolvePersonName(r.submitted_by_employee || r.purchased_by, r);
+      const siteInfo = getSupervisorSiteInfo(person, r);
       const siteName = siteInfo.site;
       if (!siteStats[siteName]) {
         siteStats[siteName] = { supervisor: person || 'Field Team', spend: 0, paid: 0, unpaid: 0, count: 0, badge: siteInfo.badgeClass };
@@ -2742,8 +2752,8 @@
       const vendorName = escapeXml(rawVendor);
       const invoiceNo = escapeXml(String(b.bill_no || `VCH-${Date.now()}`).trim());
       const gstin = escapeXml(String(b.gstin || '').trim());
-      const person = resolvePersonName(b.submitted_by_employee || b.purchased_by);
-      const siteInfo = getSupervisorSiteInfo(person);
+      const person = resolvePersonName(b.submitted_by_employee || b.purchased_by, b);
+      const siteInfo = getSupervisorSiteInfo(person, b);
       const site = escapeXml(b.site || siteInfo.site);
       const photoLink = String(b.photo_link || '').trim();
       const totalVal = toNum(b.invoice_value);
@@ -2908,8 +2918,8 @@
       let taxable = toNum(b.taxable_value);
       if (taxable === 0 && total > 0) taxable = Math.max(0, total - (igst + cgst + sgst));
       const rate = taxable > 0 ? Math.round(((igst + cgst + sgst) / taxable) * 100) : 18;
-      const person = resolvePersonName(b.submitted_by_employee || b.purchased_by);
-      const site = getSupervisorSiteInfo(person).site;
+      const person = resolvePersonName(b.submitted_by_employee || b.purchased_by, b);
+      const site = getSupervisorSiteInfo(person, b).site;
       const stateCode = (b.gstin && b.gstin.length >= 2) ? b.gstin.substring(0, 2) : '';
 
       rows.push([
