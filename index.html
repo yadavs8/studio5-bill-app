@@ -651,14 +651,53 @@
     transition: background 0.15s ease;
   }
   .btn-tally:hover { background: #065f46; }
-  .btn-sm {
-    padding: 4px 10px;
-    font-size: 12px;
-    border-radius: 3px;
+  .btn-install-app {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    color: #ffffff;
+    border: none;
+    border-radius: 20px;
+    padding: 7px 15px;
+    font-size: 12.5px;
+    font-weight: 700;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+    transition: all 0.2s ease;
     font-family: inherit;
+    animation: pwaPulse 2.5s infinite;
+  }
+  .btn-install-app:hover {
+    background: linear-gradient(135deg, #0369a1, #075985);
+  }
+  @keyframes pwaPulse {
+    0%, 100% { box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35); transform: translateY(0); }
+    50% { box-shadow: 0 3px 14px rgba(2, 132, 199, 0.65); transform: translateY(-1px); }
   }
 </style>
+
+<div class="pin-overlay" id="installGuideOverlay" style="display:none; z-index:10002;">
+  <div class="pin-card" style="max-width:390px; text-align:left;">
+    <h2 style="text-align:center; margin-bottom:8px; font-size:20px;">📲 Install Studio5 App</h2>
+    <p style="font-size:13px; color:var(--ink); line-height:1.5; margin-bottom:14px; text-align:center;">
+      Save this app on your phone's home screen for instant 1-tap access with camera & full screen:
+    </p>
+    <div style="background:#f0f9ff; border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:12px; font-size:12.5px; line-height:1.6;">
+      <strong style="color:var(--walnut);">🤖 Android (Chrome):</strong><br>
+      1. Tap the <strong>three dots (⋮)</strong> at top-right of your browser.<br>
+      2. Tap <strong>"Install app"</strong> (or <em>"Add to Home screen"</em>).<br>
+      3. Tap <strong>"Install"</strong> — it will appear in your apps list!
+    </div>
+    <div style="background:#f0f9ff; border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:16px; font-size:12.5px; line-height:1.6;">
+      <strong style="color:var(--walnut);">🍏 iPhone (Safari):</strong><br>
+      1. Tap the <strong>Share button</strong> (square with arrow 📤) at the bottom.<br>
+      2. Scroll down and tap <strong>"Add to Home Screen" ➕</strong>.<br>
+      3. Tap <strong>"Add"</strong> at top-right.
+    </div>
+    <button type="button" class="btn-primary" style="width:100%;" onclick="closeInstallGuide()">Got It!</button>
+  </div>
+</div>
 
 <div class="pin-overlay" id="bossPinOverlay" style="display:none; z-index:10000;">
   <div class="pin-card">
@@ -742,6 +781,11 @@
       </div>
       <div class="brand-eyebrow">Studio5 Interiors · Internal Tool</div>
       <h1>Purchase Bill Ledger</h1>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button type="button" id="pwaInstallBtn" class="btn-install-app" style="display:none;" onclick="triggerPwaInstall()">
+        📲 Install App
+      </button>
     </div>
   </div>
 
@@ -3778,5 +3822,47 @@
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service worker registration failed:', err));
   }
+
+  // PWA Install Handling
+  let deferredInstallPrompt = null;
+  const pwaBtn = document.getElementById('pwaInstallBtn');
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  if (pwaBtn && !isStandalone) {
+    pwaBtn.style.display = 'inline-flex';
+  }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (pwaBtn && !isStandalone) {
+      pwaBtn.style.display = 'inline-flex';
+    }
+  });
+
+  window.addEventListener('appinstalled', () => {
+    if (pwaBtn) pwaBtn.style.display = 'none';
+    deferredInstallPrompt = null;
+  });
+
+  window.triggerPwaInstall = function() {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          if (pwaBtn) pwaBtn.style.display = 'none';
+        }
+        deferredInstallPrompt = null;
+      });
+    } else {
+      const guide = document.getElementById('installGuideOverlay');
+      if (guide) guide.style.display = 'flex';
+    }
+  };
+
+  window.closeInstallGuide = function() {
+    const guide = document.getElementById('installGuideOverlay');
+    if (guide) guide.style.display = 'none';
+  };
 })();
 </script>
