@@ -1457,7 +1457,8 @@
     cess: ['Cess'],
     date: ['Invoice Date', 'Bill Date', 'Date'],
     bill_no: ['Invoice No.', 'Bill/Reference No.', 'Bill No.', 'Reference No.'],
-    uploaded_on: ['Uploaded On', 'Uploaded on', 'Upload Date', 'Timestamp']
+    uploaded_on: ['Uploaded On', 'Uploaded on', 'Upload Date', 'Timestamp'],
+    photo_link: ['Photo', 'Photo Link', 'Bill Photo', 'Photo URL', 'Photo link', 'photo', 'Image', 'Drive Link', 'drive_link', 'Drive URL', 'drive_url']
   };
 
   function readWithAliases(headerRow, row, key) {
@@ -1509,6 +1510,16 @@
         }
         // Normalize phone numbers / aliases stored in submitted_by_employee back to canonical names.
         rec.submitted_by_employee = resolvePersonName(rec.submitted_by_employee);
+        // Fallback for photo_link: scan row for any Drive or image link if empty
+        if (!rec.photo_link) {
+          for (let i = 0; i < r.length; i++) {
+            const val = String(r[i] || '').trim();
+            if (val.includes('drive.google.com') || val.includes('googleusercontent.com') || (val.startsWith('http') && (val.includes('/d/') || val.includes('photo') || val.includes('image')))) {
+              rec.photo_link = val;
+              break;
+            }
+          }
+        }
         const entryIdIdx = headerRow.indexOf('Entry ID');
         rec.entry_id = entryIdIdx >= 0 ? String(r[entryIdIdx] ?? '') : '';
         return rec;
@@ -2358,15 +2369,29 @@
   // separate endpoint is the one that actually works as an <img> src.
   function driveThumbnailUrl(viewUrl) {
     if (!viewUrl || typeof viewUrl !== 'string') return null;
-    const match = viewUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-    if (!match) return null;
-    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w150`;
+    let fileId = null;
+    const matchD = viewUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (matchD) fileId = matchD[1];
+    else {
+      const matchId = viewUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (matchId) fileId = matchId[1];
+    }
+    if (fileId) {
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w150`;
+    }
+    if (viewUrl.startsWith('data:image/') || /\.(jpeg|jpg|png|webp)($|\?)/i.test(viewUrl)) {
+      return viewUrl;
+    }
+    return null;
   }
 
   function photoThumbHtml(photoLink) {
+    if (!photoLink) return '-';
     const thumbUrl = driveThumbnailUrl(photoLink);
-    if (!thumbUrl) return `<div class="thumb-fallback">🧾</div>`;
-    return `<a href="${photoLink}" target="_blank" rel="noopener"><img class="thumb" src="${thumbUrl}" alt="Bill photo" loading="lazy" onerror="this.parentElement.innerHTML='<div class=&quot;thumb-fallback&quot;>🧾</div>'"></a>`;
+    if (!thumbUrl) {
+      return `<a href="${photoLink}" target="_blank" rel="noopener" style="font-size:12px; color:var(--teal); text-decoration:underline;">View Photo ↗</a>`;
+    }
+    return `<a href="${photoLink}" target="_blank" rel="noopener"><img class="thumb" src="${thumbUrl}" alt="Bill photo" loading="lazy" onerror="this.parentElement.innerHTML='<a href=&quot;${photoLink}&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot; style=&quot;font-size:11px; color:var(--teal); text-decoration:underline;&quot;>View Photo ↗</a>'"></a>`;
   }
 
   // Parses an invoice date (any of DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY) into a real Date object.
