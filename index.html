@@ -831,6 +831,7 @@
             <select id="dashMonthSelect" style="padding:8px 12px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:13px; background:#fff;"></select>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button class="btn-tally" id="syncTallyDirectBtn" style="background:#0284c7;" title="Sync approved bills directly into Tally Prime running on this computer">🔄 Sync with Tally</button>
             <button class="btn-tally" id="exportTallyXmlBtn" title="Download standards-compliant Tally XML for Import Data -> Vouchers">📥 Export to Tally (XML)</button>
             <button class="btn-ghost" id="exportGstr2bBtn" style="font-size:13px; padding:8px 14px;" title="Download ITC reconciliation spreadsheet">📄 GSTR-2B (CSV)</button>
             <button class="btn-ghost" id="refreshDashboardBtn">Refresh</button>
@@ -1055,6 +1056,7 @@
           <div class="table-toolbar">
             <h2>Ledger <span class="count-pill" id="countPill">0 entries</span></h2>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button class="btn-tally" id="ledgerTallySyncBtn" style="background:#0284c7;" title="Sync approved bills directly into Tally Prime running on this computer">🔄 Sync with Tally</button>
               <button class="btn-tally" id="ledgerTallyExportBtn" title="Download Tally Prime XML import file">📥 Export to Tally (XML)</button>
               <button class="btn-ghost" id="ledgerGstr2bBtn" title="Download GSTR-2B compliance CSV">📄 GSTR-2B CSV</button>
               <button class="btn-ghost" id="refreshLedgerBtn">Refresh</button>
@@ -3127,6 +3129,48 @@
     alert('✅ Tally Prime XML Downloaded!\n\n⚠️ IMPORTANT:\nDo NOT open this file with Microsoft Excel! Windows often tries to open .xml files with Excel, which fails with an "XML Parse Error" because Excel is not an accounting software.\n\n👉 How to use this file in Tally Prime:\n1. Open Tally Prime\n2. Press Alt + O (Import) -> Vouchers\n3. Select this downloaded XML file\n\n(To view bills in Excel, click the "Export to Excel" or "GSTR-2B CSV" buttons instead!)');
   }
 
+  async function syncDirectlyWithTally() {
+    const all = [...recordsCache.gst, ...recordsCache.non_gst];
+    if (all.length === 0) {
+      alert('No bills loaded in ledger yet. Please refresh or upload a bill first.');
+      return;
+    }
+
+    const xml = generateTallyEnvelopeXml(all);
+    showCelebrationToast('Connecting to TallyPrime (http://localhost:9000)...');
+
+    try {
+      const res = await fetch('http://localhost:9000', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/xml;charset=utf-8' },
+        body: xml
+      });
+
+      const responseText = await res.text();
+      const createdMatch = responseText.match(/<CREATED>(\d+)<\/CREATED>/i);
+      const errorsMatch = responseText.match(/<ERRORS>(\d+)<\/ERRORS>/i);
+      const alteredMatch = responseText.match(/<ALTERED>(\d+)<\/ALTERED>/i);
+      const created = createdMatch ? parseInt(createdMatch[1], 10) : 0;
+      const errors = errorsMatch ? parseInt(errorsMatch[1], 10) : 0;
+      const altered = alteredMatch ? parseInt(alteredMatch[1], 10) : 0;
+
+      if (errors === 0 && (created > 0 || altered > 0)) {
+        showCelebrationToast(`🎉 Successfully synced ${created} vouchers into TallyPrime!`);
+        alert(`✅ TALLYPRIME SYNC COMPLETE!\n\n• Vouchers Created: ${created}\n• Vouchers Altered: ${altered}\n• Errors: 0\n\nYour approved bills are now directly inside your active company in TallyPrime!`);
+      } else if (errors > 0) {
+        const lineErr = (responseText.match(/<LINEERROR>(.*?)<\/LINEERROR>/i) || [])[1] || 'Ledger check required';
+        alert(`⚠️ Tally responded with ${errors} error(s):\n${lineErr}\n\n💡 Make sure the company (Studio5) is open in TallyPrime and party ledgers exist, or use "Export to Tally (XML)" to import with Alt+O.`);
+      } else {
+        alert('ℹ️ Tally sync finished. No new vouchers needed to be created.');
+      }
+    } catch (err) {
+      const runDesktop = confirm(`⚠️ Could not connect directly to TallyPrime at http://localhost:9000.\n\nReason: Either TallyPrime is not open, or your browser blocked direct local network requests.\n\n✅ 2 FAST WAYS TO SYNC:\n1. Open TallyPrime on this computer and double-click "Sync_With_Tally.bat" on your Desktop!\n2. Click OK to download the XML file and import in TallyPrime using Alt + O -> Vouchers.\n\nWould you like to download the XML import file now?`);
+      if (runDesktop) {
+        downloadTallyXml();
+      }
+    }
+  }
+
   function downloadGstr2bCsv() {
     const gstBills = recordsCache.gst;
     if (gstBills.length === 0) {
@@ -3344,7 +3388,12 @@
     document.getElementById('paymentOverlay').style.display = 'none';
   });
 
-  // Tally & GSTR-2B Export Buttons
+  // Tally & GSTR-2B Export & Sync Buttons
+  const syncTallyBtn = document.getElementById('syncTallyDirectBtn');
+  if (syncTallyBtn) syncTallyBtn.addEventListener('click', syncDirectlyWithTally);
+  const ledgerSyncBtn = document.getElementById('ledgerTallySyncBtn');
+  if (ledgerSyncBtn) ledgerSyncBtn.addEventListener('click', syncDirectlyWithTally);
+
   const expTallyBtn = document.getElementById('exportTallyXmlBtn');
   if (expTallyBtn) expTallyBtn.addEventListener('click', downloadTallyXml);
   const ledgerTallyBtn = document.getElementById('ledgerTallyExportBtn');
