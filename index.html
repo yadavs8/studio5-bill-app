@@ -2229,25 +2229,75 @@
     return PHONE_NAME_MAP[trimmed] || trimmed;
   }
 
-  // Live cash-in-hand calibration storage (as of today)
+  // Live cash-in-hand calibration storage (synced between cloud database and local cache)
   function getCalibratedBalances() {
+    let cals = {};
     try {
       const raw = localStorage.getItem('studio5_live_cash_calibrations');
-      return raw ? JSON.parse(raw) : {};
+      if (raw) cals = JSON.parse(raw);
     } catch (e) {
-      return {};
+      cals = {};
     }
+
+    // Populate from cloud payments if a CALIBRATION entry exists
+    if (Array.isArray(paymentsCache)) {
+      paymentsCache.forEach(p => {
+        const isCal = p.note && (p.note.toUpperCase().includes('CALIBRATION') || p.note.toUpperCase().includes('PHYSICAL CASH'));
+        if (!isCal) return;
+        const pName = resolvePersonName(p.person);
+        if (!pName) return;
+
+        let pTime = 0;
+        if (p.recorded_on) {
+          const rDate = new Date(p.recorded_on);
+          if (!isNaN(rDate.getTime())) pTime = rDate.getTime();
+        }
+        if (!pTime && p.date) {
+          const pDate = parseInvoiceDate(p.date);
+          if (pDate && !isNaN(pDate.getTime())) pTime = pDate.getTime();
+        }
+
+        const existing = cals[pName];
+        let existingTime = existing && existing.date ? new Date(existing.date).getTime() : 0;
+
+        // If cloud calibration is newer or local is missing, use cloud!
+        if (!existing || pTime >= existingTime) {
+          cals[pName] = {
+            amount: toNum(p.amount),
+            date: p.recorded_on || p.date || new Date().toISOString(),
+            displayDate: p.date || new Date().toLocaleDateString('en-GB'),
+            note: p.note
+          };
+        }
+      });
+    }
+    return cals;
   }
 
   function saveCalibratedBalance(person, amount, note) {
     const cals = getCalibratedBalances();
+    const isoNow = new Date().toISOString();
+    const displayNow = new Date().toLocaleDateString('en-GB');
     cals[person] = {
       amount: parseFloat(amount) || 0,
-      date: new Date().toISOString(),
-      displayDate: new Date().toLocaleDateString('en-GB'),
+      date: isoNow,
+      displayDate: displayNow,
       note: note || 'Calibrated as of today'
     };
     localStorage.setItem('studio5_live_cash_calibrations', JSON.stringify(cals));
+
+    // Also push to backend so it persists in Supabase and Google Sheets across all devices
+    fetch(`${BACKEND_URL}/log-payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+      body: JSON.stringify({
+        person: person,
+        amount: parseFloat(amount) || 0,
+        date: displayNow,
+        note: `CALIBRATION: ${note || 'Physical cash verified with supervisor'}`,
+        recorded_by: 'Cash Calibration'
+      })
+    }).catch(err => console.warn('Could not sync calibration to cloud:', err));
   }
   let approvalsCache = [];
 
@@ -2664,7 +2714,8 @@
       let cashAdded = 0;
       paymentsCache.forEach(p => {
         if (resolvePersonName(p.person) !== name) return;
-        if (p.is_opening && cal) return;
+        if (p.is_opening) return;
+        if (p.note && p.note.toUpperCase().includes('CALIBRATION')) return;
         
         let pTime = 0;
         if (p.id && p.id.startsWith('PAY')) {
