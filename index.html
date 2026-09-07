@@ -1560,6 +1560,56 @@
     return OWN_GSTINS.includes(gstin.trim().toUpperCase());
   }
 
+  const GST_STATE_CODES = {
+    '01': 'Jammu & Kashmir', '02': 'Himachal Pradesh', '03': 'Punjab', '04': 'Chandigarh',
+    '05': 'Uttarakhand', '06': 'Haryana', '07': 'Delhi', '08': 'Rajasthan',
+    '09': 'Uttar Pradesh', '10': 'Bihar', '11': 'Sikkim', '12': 'Arunachal Pradesh',
+    '13': 'Nagaland', '14': 'Manipur', '15': 'Mizoram', '16': 'Tripura',
+    '17': 'Meghalaya', '18': 'Assam', '19': 'West Bengal', '20': 'Jharkhand',
+    '21': 'Odisha', '22': 'Chhattisgarh', '23': 'Madhya Pradesh', '24': 'Gujarat',
+    '26': 'Dadra & Nagar Haveli and Daman & Diu', '27': 'Maharashtra', '29': 'Karnataka',
+    '30': 'Goa', '31': 'Lakshadweep', '32': 'Kerala', '33': 'Tamil Nadu',
+    '34': 'Puducherry', '35': 'Andaman & Nicobar Islands', '36': 'Telangana',
+    '37': 'Andhra Pradesh', '38': 'Ladakh'
+  };
+
+  function decodeGSTIN(gstin) {
+    if (!gstin || typeof gstin !== 'string') return null;
+    const clean = gstin.trim().toUpperCase();
+    if (clean.length < 2) return null;
+    const stateCode = clean.slice(0, 2);
+    const stateName = GST_STATE_CODES[stateCode] || `State ${stateCode}`;
+    const pan = clean.length >= 12 ? clean.slice(2, 12) : '';
+    const isChecksumValid = isValidGSTINChecksum(clean);
+    const isOwn = isOwnGSTIN(clean);
+    return {
+      gstin: clean,
+      stateCode,
+      stateName,
+      pan,
+      isChecksumValid,
+      isOwn
+    };
+  }
+
+  function verifyGstinOnPortal(gstin) {
+    const clean = (gstin || '').trim().toUpperCase();
+    if (!clean) {
+      alert('No GSTIN to verify.');
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(clean).then(() => {
+        showCelebrationToast(`Copied ${clean} to clipboard! Opening Govt GST portal...`);
+      }).catch(() => {
+        showCelebrationToast(`Opening Govt GST portal...`);
+      });
+    } else {
+      showCelebrationToast(`Opening Govt GST portal...`);
+    }
+    window.open('https://services.gst.gov.in/services/searchtp', '_blank');
+  }
+
   function isValidGSTINChecksum(gstin) {
     if (!gstin || gstin.length !== 15) return false;
     const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -1593,9 +1643,17 @@
         : '⚠ Checksum doesn\'t match — this GSTIN likely has a typo. Please compare it character-by-character against the photo.';
       return `
       <div class="field ${dimmed ? 'dimmed' : ''} ${gstinBad ? 'gstin-invalid' : ''}" ${isGstinField ? 'id="gstinFieldWrap"' : ''}>
-        <label>${label}</label>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <label style="margin-bottom:0;">${label}</label>
+          ${isGstinField && isGst ? `
+            <button type="button" id="verifyGstinPortalBtn" style="background:#eef5fc; color:#1868b7; border:1px solid #c2daf5; border-radius:4px; font-size:11px; font-weight:600; padding:2px 8px; cursor:pointer; display:${extracted.gstin ? 'inline-flex' : 'none'}; align-items:center; gap:4px;" title="Copy GSTIN & verify on Govt Portal">
+              <span>🔍 Verify on Govt Portal ↗</span>
+            </button>` : ''}
+        </div>
         <input data-key="${key}" ${dimmed ? 'disabled' : ''} value="${(extracted[key] ?? '').toString().replace(/"/g,'&quot;')}" />
-        ${isGstinField ? `<div class="gstin-warning" id="gstinWarningText">${gstinMsg}</div>` : ''}
+        ${isGstinField ? `
+          <div id="gstinMetaBadge" style="font-size:11.5px; margin-top:4px; font-weight:600; display:${extracted.gstin ? 'block' : 'none'};"></div>
+          <div class="gstin-warning" id="gstinWarningText">${gstinMsg}</div>` : ''}
       </div>`;
     }).join('');
 
@@ -1657,17 +1715,51 @@
     if (gstinWrap && isGst) {
       const gstinInput = gstinWrap.querySelector('input');
       const gstinWarningEl = document.getElementById('gstinWarningText');
-      gstinInput.addEventListener('input', () => {
-        const val = gstinInput.value;
-        const isOwn = val && isOwnGSTIN(val);
-        const checksumBad = val && !isValidGSTINChecksum(val);
+      const gstinMetaBadge = document.getElementById('gstinMetaBadge');
+      const verifyBtn = document.getElementById('verifyGstinPortalBtn');
+
+      function updateGstinState() {
+        const val = (gstinInput.value || '').trim().toUpperCase();
+        if (verifyBtn) {
+          verifyBtn.style.display = val.length >= 3 ? 'inline-flex' : 'none';
+        }
+        if (!val) {
+          gstinWrap.classList.remove('gstin-invalid');
+          if (gstinMetaBadge) { gstinMetaBadge.style.display = 'none'; gstinMetaBadge.innerHTML = ''; }
+          return;
+        }
+        const decoded = decodeGSTIN(val);
+        const isOwn = isOwnGSTIN(val);
+        const checksumBad = !isValidGSTINChecksum(val);
         gstinWrap.classList.toggle('gstin-invalid', !!(isOwn || checksumBad));
+
+        if (gstinMetaBadge && decoded) {
+          gstinMetaBadge.style.display = 'block';
+          if (isOwn) {
+            gstinMetaBadge.innerHTML = `<span style="color:#b91c1c;">🏢 Studio5 Buyer GSTIN (${decoded.stateName})</span>`;
+          } else if (checksumBad) {
+            gstinMetaBadge.innerHTML = `<span style="color:#b91c1c;">❌ Invalid Checksum · ${decoded.stateName} · PAN: ${decoded.pan || '-'}</span>`;
+          } else {
+            gstinMetaBadge.innerHTML = `<span style="color:#15803d;">✓ Valid Checksum · ${decoded.stateName} · PAN: ${decoded.pan}</span>`;
+          }
+        }
+
         if (gstinWarningEl) {
           gstinWarningEl.textContent = isOwn
             ? '⚠ This is Studio5\'s OWN GSTIN, not the seller\'s. Please replace it with the vendor\'s actual GSTIN.'
             : '⚠ Checksum doesn\'t match — this GSTIN likely has a typo. Please compare it character-by-character against the photo.';
         }
-      });
+      }
+
+      if (verifyBtn) {
+        verifyBtn.onclick = (e) => {
+          e.preventDefault();
+          verifyGstinOnPortal(gstinInput.value);
+        };
+      }
+
+      gstinInput.addEventListener('input', updateGstinState);
+      updateGstinState();
     }
 
     reviewArea.querySelectorAll('.payment-btn').forEach(btn => {
@@ -1984,12 +2076,22 @@
           const label = r[key] === 'paid' ? 'Paid' : r[key] === 'unpaid' ? 'Not Paid' : '-';
           return `<td>${label}${overdue ? '<span class="overdue-tag">Overdue</span>' : ''}</td>`;
         }
+        if (key === 'gstin') {
+          const g = (r[key] || '').trim();
+          if (!g) return '<td>-</td>';
+          return `<td><div style="display:flex; align-items:center; gap:4px;"><span style="font-family:monospace; font-size:11.5px;">${g}</span><button type="button" class="btn-verify-gstin-table" data-gstin="${g}" style="border:none; background:transparent; cursor:pointer; font-size:12px; padding:0 2px;" title="Copy GSTIN & verify on Govt Portal">🔍</button></div></td>`;
+        }
         if (key === 'submitted_by_employee') {
-          const uploader = resolvePersonName(r.submitted_by_employee, r);
+          const rawUploader = r.submitted_by_employee || '';
+          const isWhatsApp = rawUploader.toLowerCase().includes('whatsapp') || r.channel === 'whatsapp';
+          const uploader = resolvePersonName(rawUploader, r);
           const incurred = r.purchased_by ? resolvePersonName(r.purchased_by, r) : uploader;
           const siteInfo = getSupervisorSiteInfo(incurred, r);
           const proxyNote = (incurred !== uploader && uploader !== 'Central / Unattributed') ? `<div style="font-size:10px; color:var(--walnut-light);">uploaded by ${uploader}</div>` : '';
-          return `<td><b>${incurred}</b> <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px; margin-left:3px;">${siteInfo.site.replace(' Site','')}</span>${proxyNote}</td>`;
+          const sourceBadge = isWhatsApp
+            ? `<span style="display:inline-flex; align-items:center; background:#e8f5e9; color:#2e7d32; font-size:9.5px; padding:1px 5px; border-radius:8px; font-weight:600; margin-left:3px;" title="Uploaded via WhatsApp">WhatsApp</span>`
+            : '';
+          return `<td><b>${incurred}</b> <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px; margin-left:3px;">${siteInfo.site.replace(' Site','')}</span>${sourceBadge}${proxyNote}</td>`;
         }
         return `<td>${r[key] ?? ''}</td>`;
       }).join('');
@@ -2002,6 +2104,12 @@
 
     tableArea.querySelectorAll('.del-btn').forEach(btn => {
       btn.onclick = () => requestLedgerDelete(btn.dataset.entryId, btn.dataset.billType, btn);
+    });
+    tableArea.querySelectorAll('.btn-verify-gstin-table').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        verifyGstinOnPortal(btn.dataset.gstin);
+      };
     });
   }
 
@@ -2110,7 +2218,7 @@
   // or "Sanjeev Yadav" for Gurgaon/Central, maps phone numbers, and marks blanks.
   function resolvePersonName(raw, contextObj) {
     if (!raw) return 'Central / Unattributed';
-    const trimmed = String(raw).trim();
+    let trimmed = String(raw).trim().replace(/\s*\(whatsapp\)/i, '').trim();
     if (trimmed.toLowerCase() === 'sanjeev' || trimmed.toLowerCase() === 'sanjeev sherma') {
       if (contextObj && /dehradun|lemon tree|uttarakhand|rathore|giroti|luxmi|kwality|pacific|garg|barkha|carsaw|raja babu|raju raut/i.test(JSON.stringify(contextObj))) {
         return 'Sanjeev Sharma';
@@ -3503,8 +3611,34 @@
         </div>
         <div class="approval-grid">
           <div><b>Amount</b>₹${item.invoice_value || '-'}</div>
-          ${isGst ? `<div><b>GSTIN</b>${item.gstin || '-'}</div>` : ''}
-          <div><b>Submitted by</b>${item.submitted_by_employee || '-'}</div>
+          ${isGst ? `
+            <div>
+              <b>GSTIN</b>
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span style="font-family:monospace; font-weight:700; font-size:12px;">${item.gstin || '-'}</span>
+                ${item.gstin ? `
+                  <button type="button" class="btn-verify-gstin-card" data-gstin="${item.gstin}" style="background:#eef5fc; color:#1868b7; border:1px solid #c2daf5; border-radius:4px; font-size:10.5px; font-weight:600; padding:1px 6px; cursor:pointer;" title="Copy & verify on Govt Portal">🔍 Verify ↗</button>` : ''}
+              </div>
+              ${item.gstin ? `
+                <div style="font-size:11px; margin-top:2px;">
+                  ${(() => {
+                    const dec = decodeGSTIN(item.gstin);
+                    if (!dec) return '';
+                    if (dec.isOwn) return '<span style="color:#b91c1c; font-weight:600;">⚠ Studio5 Buyer GSTIN</span>';
+                    if (!dec.isChecksumValid) return `<span style="color:#b91c1c;">❌ Invalid Checksum · ${dec.stateName}</span>`;
+                    return `<span style="color:#15803d; font-weight:600;">✓ ${dec.stateName}</span> · PAN: ${dec.pan}`;
+                  })()}
+                </div>` : ''}
+            </div>` : ''}
+          <div>
+            <b>Submitted by</b>
+            <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+              <span>${item.submitted_by_employee || '-'}</span>
+              ${(String(item.submitted_by_employee || '').toLowerCase().includes('whatsapp') || item.channel === 'whatsapp')
+                ? `<span style="display:inline-flex; align-items:center; gap:3px; background:#e8f5e9; color:#2e7d32; font-size:10.5px; padding:1px 6px; border-radius:10px; font-weight:600;">🟢 WhatsApp</span>`
+                : `<span style="display:inline-flex; align-items:center; gap:3px; background:#e0f2fe; color:#0369a1; font-size:10.5px; padding:1px 6px; border-radius:10px; font-weight:600;">🌐 Web App</span>`}
+            </div>
+          </div>
           <div><b>Photo</b>${item.photo_link ? photoThumbHtml(item.photo_link) : '-'}</div>
         </div>
         <div class="approval-actions">
@@ -3518,6 +3652,13 @@
         </div>
       </div>`;
     }).join('');
+
+    area.querySelectorAll('.btn-verify-gstin-card').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        verifyGstinOnPortal(btn.dataset.gstin);
+      };
+    });
 
     area.querySelectorAll('.approval-card').forEach(card => {
       const id = card.dataset.id;
