@@ -2978,6 +2978,21 @@
   }
 
   function generateTallyEnvelopeXml(bills) {
+    const vendorNames = new Set();
+    bills.forEach(b => {
+      const v = (b.vendor_name || '').trim();
+      if (v) vendorNames.add(v);
+    });
+
+    const masterLedgersXml = Array.from(vendorNames).map(name => `
+      <TALLYMESSAGE xmlns:UDF="TallyUDF">
+        <LEDGER NAME="${escapeXml(name)}" ACTION="Create">
+          <NAME>${escapeXml(name)}</NAME>
+          <PARENT>Sundry Creditors</PARENT>
+          <ISBILLWISEON>Yes</ISBILLWISEON>
+        </LEDGER>
+      </TALLYMESSAGE>`).join('\n');
+
     const vouchersXml = bills.map(b => {
       const isGst = b.bill_type === 'gst' || (!b.bill_type && b.gstin);
       const tallyDate = parseTallyDate(b.date);
@@ -3006,6 +3021,51 @@
           taxableVal = Math.max(0, totalVal - (igst + cgst + sgst));
         }
 
+        const isIgst = igst > 0;
+        let taxRate = 18;
+        if (taxableVal > 0) {
+          taxRate = Math.round(((cgst + sgst + igst) / taxableVal) * 100);
+        }
+
+        let purchaseLedger = 'Local Purchase 18%';
+        let cgstLedger = 'Input CGST 9%';
+        let sgstLedger = 'Input SGST 9%';
+        let igstLedger = 'Input IGST 18%';
+
+        if (isIgst) {
+          if (taxRate <= 5) {
+            purchaseLedger = 'Central Purchase 5%';
+            igstLedger = 'Input IGST 5%';
+          } else if (taxRate <= 12) {
+            purchaseLedger = 'Central Purchase 12%';
+            igstLedger = 'IGST Input 12%';
+          } else if (taxRate >= 24) {
+            purchaseLedger = 'Central Purchase 28%';
+            igstLedger = 'Input Igst 28%';
+          } else {
+            purchaseLedger = 'Central Purchase 18%';
+            igstLedger = 'Input IGST 18%';
+          }
+        } else {
+          if (taxRate <= 5) {
+            purchaseLedger = 'Local Purchase 5%';
+            cgstLedger = 'Input CGST 2.5%';
+            sgstLedger = 'Input SGST 2.5%';
+          } else if (taxRate <= 12) {
+            purchaseLedger = 'Local Purchase 12%';
+            cgstLedger = 'Input CGST 6%';
+            sgstLedger = 'Input SGST 6%';
+          } else if (taxRate >= 24) {
+            purchaseLedger = 'Local Purchase 28%';
+            cgstLedger = 'Input CGST 14%';
+            sgstLedger = 'Input SGST 14%';
+          } else {
+            purchaseLedger = 'Local Purchase 18%';
+            cgstLedger = 'Input CGST 9%';
+            sgstLedger = 'Input SGST 9%';
+          }
+        }
+
         let entries = `
           <ALLLEDGERENTRIES.LIST>
             <LEDGERNAME>${vendorName}</LEDGERNAME>
@@ -3018,7 +3078,7 @@
             </BILLALLOCATIONS.LIST>
           </ALLLEDGERENTRIES.LIST>
           <ALLLEDGERENTRIES.LIST>
-            <LEDGERNAME>GST Purchases</LEDGERNAME>
+            <LEDGERNAME>${escapeXml(purchaseLedger)}</LEDGERNAME>
             <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
             <AMOUNT>-${taxableVal.toFixed(2)}</AMOUNT>
             <CATEGORYLIST.LIST>
@@ -3030,7 +3090,7 @@
         if (cgst > 0) {
           entries += `
           <ALLLEDGERENTRIES.LIST>
-            <LEDGERNAME>Input CGST</LEDGERNAME>
+            <LEDGERNAME>${escapeXml(cgstLedger)}</LEDGERNAME>
             <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
             <AMOUNT>-${cgst.toFixed(2)}</AMOUNT>
           </ALLLEDGERENTRIES.LIST>`;
@@ -3038,7 +3098,7 @@
         if (sgst > 0) {
           entries += `
           <ALLLEDGERENTRIES.LIST>
-            <LEDGERNAME>Input SGST</LEDGERNAME>
+            <LEDGERNAME>${escapeXml(sgstLedger)}</LEDGERNAME>
             <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
             <AMOUNT>-${sgst.toFixed(2)}</AMOUNT>
           </ALLLEDGERENTRIES.LIST>`;
@@ -3046,7 +3106,7 @@
         if (igst > 0) {
           entries += `
           <ALLLEDGERENTRIES.LIST>
-            <LEDGERNAME>Input IGST</LEDGERNAME>
+            <LEDGERNAME>${escapeXml(igstLedger)}</LEDGERNAME>
             <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
             <AMOUNT>-${igst.toFixed(2)}</AMOUNT>
           </ALLLEDGERENTRIES.LIST>`;
@@ -3067,7 +3127,8 @@
           </VOUCHER>
         </TALLYMESSAGE>`;
       } else {
-        const cashOrPayable = b.payment_status === 'paid' ? 'Cash in Hand' : 'Site Expenses Payable';
+        const cashOrPayable = 'Cash';
+        const expenseLedger = 'Site Exp (Construction)';
         return `
         <TALLYMESSAGE xmlns:UDF="TallyUDF">
           <VOUCHER VCHTYPE="Payment" ACTION="Create">
@@ -3077,7 +3138,7 @@
             <VOUCHERNUMBER>${invoiceNo}</VOUCHERNUMBER>
             <NARRATION>${escapeXml(narration)}</NARRATION>
             <ALLLEDGERENTRIES.LIST>
-              <LEDGERNAME>Site Consumables &amp; Maintenance</LEDGERNAME>
+              <LEDGERNAME>${escapeXml(expenseLedger)}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
               <AMOUNT>-${totalVal.toFixed(2)}</AMOUNT>
               <CATEGORYLIST.LIST>
@@ -3102,9 +3163,9 @@
     <IMPORTDATA>
       <REQUESTDESC>
         <REPORTNAME>Vouchers</REPORTNAME>
-        <STATICVARIABLES><SVCURRENTCOMPANY>Studio5 Interiors Private Limited</SVCURRENTCOMPANY></STATICVARIABLES>
       </REQUESTDESC>
       <REQUESTDATA>
+        ${masterLedgersXml}
         ${vouchersXml}
       </REQUESTDATA>
     </IMPORTDATA>
