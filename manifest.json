@@ -2,21 +2,21 @@
   "name": "Studio5 Interiors - Bill Ledger",
   "short_name": "Studio5 Bills",
   "description": "Upload vendor bills, auto-extract GST details, and manage site expenses with live Tally sync.",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "/studio5-bill-app/",
+  "scope": "/studio5-bill-app/",
   "display": "standalone",
   "background_color": "#f0f9ff",
   "theme_color": "#0c4a6e",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/studio5-bill-app/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "/studio5-bill-app/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

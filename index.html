@@ -1,13 +1,20 @@
+<script>
+  // Ensure trailing slash on GitHub Pages subdirectory so iOS Safari bookmarks / WebClips resolve start_url correctly
+  if (window.location.pathname === '/studio5-bill-app') {
+    window.location.replace('/studio5-bill-app/' + window.location.search + window.location.hash);
+  }
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0c4a6e">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Studio5 Bills">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
-<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+<link rel="canonical" href="https://yadavs8.github.io/studio5-bill-app/">
+<link rel="manifest" href="/studio5-bill-app/manifest.json">
+<link rel="apple-touch-icon" href="/studio5-bill-app/icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="/studio5-bill-app/icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="/studio5-bill-app/icon-512.png">
 <style>
   :root {
     --walnut: #0c4a6e;
