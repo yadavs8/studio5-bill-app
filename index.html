@@ -810,7 +810,7 @@
   <div class="identity-bar">
     <div class="identity-tag">
       <span>👤 Logged in:</span>
-      <span class="identity-pill" id="activeUserNameBadge">Sanjeev Yadav</span>
+      <span class="identity-pill" id="activeUserNameBadge">...</span>
       <button type="button" id="switchUserBtn" class="btn-ghost" style="padding:3px 8px; font-size:11.5px;" title="Switch logged-in employee">Switch</button>
     </div>
     <div style="display:flex; align-items:center; gap:8px;">
@@ -1150,13 +1150,36 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
-(function() {
-  // Simple shared access code — keeps casual/uninvited visitors out of the ledger.
-  // Note: this is a deterrent, not real security — anyone who views this page's
-  // source code can see the PIN. Good enough to stop a random person with the link
-  // from browsing your bills; not a substitute for proper per-employee login.
-  const ACCESS_PIN = '1112'; // change this to whatever code you want your team to use
+// Master team roster and per-employee login PINs
+const TEAM_MEMBERS = ['Sanjeev Yadav', 'Sanjeev Sharma', 'Prince', 'Anil Kori', 'Rajiv Bawa', 'Kuhu Bawa', 'Vishal'];
+const USER_PINS = {
+  '1112': 'Sanjeev Yadav',
+  '2221': 'Prince',
+  '3331': 'Anil Kori',
+  '4441': 'Sanjeev Sharma',
+  '5551': 'Vishal',
+  '6661': 'Rajiv Bawa',
+  '7771': 'Kuhu Bawa'
+};
+const MASTER_PIN = '1112';
 
+// 1. Auto-detect user from URL query parameter (e.g. ?user=Prince or ?name=Sharma)
+(function checkUrlUser() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const u = params.get('user') || params.get('name') || params.get('u');
+    if (u) {
+      const clean = u.trim().toLowerCase();
+      const matched = TEAM_MEMBERS.find(m => m.toLowerCase() === clean || m.toLowerCase().includes(clean));
+      if (matched) {
+        localStorage.setItem('studio5_employee_name', matched);
+        console.log('[Auto-Login] Detected employee from URL:', matched);
+      }
+    }
+  } catch (e) {}
+})();
+
+(function() {
   const pinOverlay = document.getElementById('pinOverlay');
   const mainApp = document.getElementById('mainApp');
   const pinInput = document.getElementById('pinInput');
@@ -1168,24 +1191,33 @@
     mainApp.style.display = '';
     sessionStorage.setItem('bill_app_unlocked', 'yes');
     startLogoIdleLoop();
+    if (typeof updateIdentityDisplay === 'function') {
+      updateIdentityDisplay();
+    }
   }
 
   function startLogoIdleLoop() {
     document.querySelectorAll('.logo-panel').forEach((panel, i) => {
       panel.addEventListener('animationend', function onDropEnd(e) {
-        if (e.animationName !== 'panelDrop') return; // ignore the idle animation's own end events
+        if (e.animationName !== 'panelDrop') return;
         panel.removeEventListener('animationend', onDropEnd);
-        panel.style.animationDelay = `${i * 0.12}s`; // rolling stagger for the ongoing wave
+        panel.style.animationDelay = `${i * 0.12}s`;
         panel.classList.add('idle');
       }, { once: false });
     });
   }
 
   function tryUnlock() {
-    if (pinInput.value.trim() === ACCESS_PIN) {
+    const entered = pinInput.value.trim();
+    const matchedUser = USER_PINS[entered];
+
+    if (matchedUser) {
+      localStorage.setItem('studio5_employee_name', matchedUser);
+      unlock();
+    } else if (entered === MASTER_PIN) {
       unlock();
     } else {
-      pinError.textContent = 'Incorrect code — check with your admin.';
+      pinError.textContent = 'Incorrect PIN — enter your 4-digit team code.';
       pinInput.value = '';
       pinInput.focus();
     }
@@ -1198,14 +1230,13 @@
   pinSubmit.addEventListener('click', tryUnlock);
   pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
   pinInput.addEventListener('input', () => {
-    if (pinInput.value.length === ACCESS_PIN.length) tryUnlock();
+    if (pinInput.value.length >= 4) tryUnlock();
   });
 })();
 
 (function(){
   const BACKEND_URL = 'https://studio5-bill-backened.onrender.com';
   const APP_SECRET = 'studio5-field-2026'; // must exactly match APP_SHARED_SECRET on Render
-  const TEAM_MEMBERS = ['Sanjeev Yadav', 'Sanjeev Sharma', 'Prince', 'Anil Kori', 'Rajiv Bawa', 'Kuhu Bawa', 'Vishal'];
   const fileInput = document.getElementById('fileInput');
   const dropZone = document.getElementById('dropZone');
   const uploadLabel = document.getElementById('uploadLabel');
@@ -1922,25 +1953,59 @@
   }
 
   function setEmployeeName(name) {
-    if (name) localStorage.setItem('studio5_employee_name', name);
+    if (name) {
+      localStorage.setItem('studio5_employee_name', name);
+    }
     updateIdentityDisplay();
   }
 
   function getSubmittingForPerson() {
     const el = document.getElementById('submittingForSelect');
-    if (!el || el.value === '__SELF__') return getEmployeeName() || 'Sanjeev Yadav';
+    const current = getEmployeeName() || 'Sanjeev Yadav';
+    if (!el || el.value === '__SELF__') return current;
     if (el.value === '__OTHER__') {
       const custom = prompt('Enter the name of the person who incurred this expense:');
-      return custom && custom.trim() ? custom.trim() : (getEmployeeName() || 'Sanjeev Yadav');
+      return custom && custom.trim() ? custom.trim() : current;
     }
     return el.value;
   }
 
   function updateIdentityDisplay() {
-    const name = getEmployeeName() || 'Sanjeev Yadav';
+    const name = getEmployeeName();
     const badge = document.getElementById('activeUserNameBadge');
-    if (badge) badge.textContent = name;
+    if (badge) {
+      badge.textContent = name || 'Select User ▾';
+      badge.style.cursor = 'pointer';
+      badge.title = 'Click to switch active employee';
+      badge.onclick = () => {
+        const switchBtn = document.getElementById('switchUserBtn');
+        if (switchBtn) switchBtn.click();
+      };
+    }
+
+    // Automatically update Quick Cash Voucher "Incurred By" dropdown to active employee
+    const incurSelect = document.getElementById('voucherIncurredBySelect');
+    if (incurSelect && name) {
+      for (const opt of incurSelect.options) {
+        if (opt.value === name || opt.value.startsWith(name)) {
+          incurSelect.value = opt.value;
+          break;
+        }
+      }
+    }
+
+    // Automatically update Quick Cash Voucher "Paid From" default
+    const paidFromSelect = document.getElementById('voucherPaidFromSelect');
+    if (paidFromSelect && name && name !== 'Sanjeev Yadav' && name !== 'Rajiv Bawa') {
+      paidFromSelect.value = 'Supervisor Cash (From Hand)';
+    }
+
+    // If no user is identified on this device yet, prompt once to select profile
+    if (!name && sessionStorage.getItem('bill_app_unlocked') === 'yes') {
+      ensureEmployeeNameThenRun(() => {});
+    }
   }
+  window.updateIdentityDisplay = updateIdentityDisplay;
 
   function showCelebrationToast(msg) {
     const toast = document.createElement('div');
