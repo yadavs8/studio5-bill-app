@@ -1,21 +1,27 @@
-<script>
-  // Ensure trailing slash on GitHub Pages subdirectory so iOS Safari bookmarks / WebClips resolve start_url correctly
-  if (window.location.pathname === '/studio5-bill-app') {
-    window.location.replace('/studio5-bill-app/' + window.location.search + window.location.hash);
-  }
-</script>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0c4a6e">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Studio5 Bills">
-<link rel="canonical" href="https://yadavs8.github.io/studio5-bill-app/">
-<link rel="manifest" href="/studio5-bill-app/manifest.json">
-<link rel="apple-touch-icon" href="/studio5-bill-app/icon-192.png">
-<link rel="apple-touch-icon" sizes="192x192" href="/studio5-bill-app/icon-192.png">
-<link rel="apple-touch-icon" sizes="512x512" href="/studio5-bill-app/icon-512.png">
-<style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Studio5 Interiors - Bill Ledger</title>
+  <script>
+    // Ensure trailing slash on GitHub Pages subdirectory so iOS Safari bookmarks / WebClips resolve start_url correctly
+    if (window.location.pathname === '/studio5-bill-app') {
+      window.location.replace('/studio5-bill-app/' + window.location.search + window.location.hash);
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0c4a6e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Studio5 Bills">
+  <link rel="canonical" href="https://yadavs8.github.io/studio5-bill-app/">
+  <link rel="manifest" href="/studio5-bill-app/manifest.json">
+  <link rel="icon" type="image/png" href="/studio5-bill-app/icon-192.png">
+  <link rel="apple-touch-icon" href="/studio5-bill-app/icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/studio5-bill-app/icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="/studio5-bill-app/icon-512.png">
+  <style>
   :root {
     --walnut: #0c4a6e;
     --walnut-light: #0369a1;
@@ -686,6 +692,8 @@
     50% { box-shadow: 0 3px 14px rgba(2, 132, 199, 0.65); transform: translateY(-1px); }
   }
 </style>
+</head>
+<body>
 
 <div class="pin-overlay" id="installGuideOverlay" style="display:none; z-index:10002;">
   <div class="pin-card" style="max-width:390px; text-align:left;">
@@ -1301,6 +1309,72 @@
     });
   }
 
+  // Client-side image compression: downscales large smartphone photos (8MB-15MB)
+  // to max 1920px width/height and ~350KB JPEG without losing any OCR clarity.
+  function compressImageIfNeeded(file, maxDim = 1920, quality = 0.82) {
+    return new Promise((resolve) => {
+      if (!file || !file.type || !file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+        return resolve(file);
+      }
+      if (file.size < 600 * 1024) {
+        return resolve(file); // Already lightweight
+      }
+
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let w = img.width;
+        let h = img.height;
+
+        if (w <= maxDim && h <= maxDim && file.size < 900 * 1024) {
+          return resolve(file);
+        }
+
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+
+          canvas.toBlob((blob) => {
+            if (!blob || blob.size >= file.size) {
+              resolve(file);
+            } else {
+              const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              console.log(`[Compression] ${file.name}: ${(file.size/1024).toFixed(0)}KB -> ${(compressed.size/1024).toFixed(0)}KB`);
+              resolve(compressed);
+            }
+          }, 'image/jpeg', quality);
+        } catch (e) {
+          console.warn('Canvas compression error:', e);
+          resolve(file);
+        }
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(file);
+      };
+
+      img.src = url;
+    });
+  }
+
   let fileQueue = [];
   let currentFileBase64 = null;
   let currentFileMediaType = null;
@@ -1355,8 +1429,9 @@
     statusArea.innerHTML = `<div class="status-row"><div class="spinner"></div> Reading ${isPdf ? 'PDF' : 'bill photo'}${queuePos}, checking for GST details…</div>`;
 
     try {
-      const base64 = await fileToBase64(file);
-      const mediaType = file.type || 'image/jpeg';
+      const processedFile = await compressImageIfNeeded(file);
+      const base64 = await fileToBase64(processedFile);
+      const mediaType = processedFile.type || 'image/jpeg';
       currentFileBase64 = base64;
       currentFileMediaType = mediaType;
 
@@ -1543,15 +1618,29 @@
           if (
             rec.gstin && ex.gstin &&
             ex.gstin.trim().toLowerCase() === rec.gstin.trim().toLowerCase() &&
+            rec.bill_no && ex.bill_no &&
             ex.bill_no.trim().toLowerCase() === rec.bill_no.trim().toLowerCase()
           ) return ex;
         } else {
-          if (
-            ex.vendor_name.trim().toLowerCase() === rec.vendor_name.trim().toLowerCase() &&
-            ex.bill_no.trim().toLowerCase() === rec.bill_no.trim().toLowerCase() &&
-            ex.date.trim() === rec.date.trim() &&
-            rec.bill_no.trim() !== ''
-          ) return ex;
+          const v1 = (rec.vendor_name || '').trim().toLowerCase();
+          const v2 = (ex.vendor_name || '').trim().toLowerCase();
+          const b1 = (rec.bill_no || '').trim().toLowerCase();
+          const b2 = (ex.bill_no || '').trim().toLowerCase();
+          const d1 = (rec.date || '').trim();
+          const d2 = (ex.date || '').trim();
+
+          const toVal = (o) => parseFloat(String(o.invoice_value || o.taxable_value || o.total || '0').replace(/[^0-9.]/g, '')) || 0;
+          const a1 = toVal(rec);
+          const a2 = toVal(ex);
+
+          // If bill_no is present: match on vendor + bill_no + date
+          if (b1 !== '' && b2 !== '' && b1 === b2 && v1 === v2 && d1 === d2) {
+            return ex;
+          }
+          // If bill_no is blank or missing: match on vendor + date + amount
+          if ((b1 === '' || b2 === '') && v1 !== '' && v1 === v2 && d1 !== '' && d1 === d2 && a1 > 0 && Math.abs(a1 - a2) < 0.5) {
+            return ex;
+          }
         }
       }
     } catch (e) {
@@ -1771,6 +1860,37 @@
       updateGstinState();
     }
 
+    // Live tax & total auto-calculation: recalculates invoice_value when taxable_value or taxes change
+    if (isGst) {
+      const taxableInp = reviewArea.querySelector('input[data-key="taxable_value"]');
+      const igstInp = reviewArea.querySelector('input[data-key="igst"]');
+      const cgstInp = reviewArea.querySelector('input[data-key="cgst"]');
+      const sgstInp = reviewArea.querySelector('input[data-key="sgst"]');
+      const cessInp = reviewArea.querySelector('input[data-key="cess"]');
+      const totalInp = reviewArea.querySelector('input[data-key="invoice_value"]');
+
+      function recalculateTotal() {
+        if (!taxableInp || !totalInp) return;
+        const parseNum = (v) => parseFloat(String(v || '0').replace(/[^0-9.]/g, '')) || 0;
+        const t = parseNum(taxableInp.value);
+        const i = parseNum(igstInp ? igstInp.value : 0);
+        const c = parseNum(cgstInp ? cgstInp.value : 0);
+        const s = parseNum(sgstInp ? sgstInp.value : 0);
+        const cs = parseNum(cessInp ? cessInp.value : 0);
+
+        if (t > 0 || i > 0 || c > 0 || s > 0 || cs > 0) {
+          const sum = Math.round((t + i + c + s + cs) * 100) / 100;
+          if (sum > 0) {
+            totalInp.value = sum.toFixed(2);
+          }
+        }
+      }
+
+      [taxableInp, igstInp, cgstInp, sgstInp, cessInp].forEach(inp => {
+        if (inp) inp.addEventListener('input', recalculateTotal);
+      });
+    }
+
     reviewArea.querySelectorAll('.payment-btn').forEach(btn => {
       btn.onclick = () => {
         extracted.payment_status = btn.dataset.pay;
@@ -1951,7 +2071,7 @@
   }
 
   async function loadRecords() {
-    tableArea.innerHTML = `<div class="empty-state">Loading ledger from Google Sheets…</div>`;
+    tableArea.innerHTML = `<div class="empty-state">Loading ledger from Cloud Database…</div>`;
     try {
       [recordsCache.gst, recordsCache.non_gst] = await Promise.all([
         fetchRecords('gst'),
@@ -2146,7 +2266,7 @@
   }
 
   document.getElementById('refreshLedgerBtn').addEventListener('click', async () => {
-    tableArea.innerHTML = `<div class="empty-state">Refreshing from Google Sheets…</div>`;
+    tableArea.innerHTML = `<div class="empty-state">Refreshing from Cloud Database…</div>`;
     recordsCache.gst = [];
     recordsCache.non_gst = [];
     await loadRecords();
@@ -2837,7 +2957,7 @@
         <tr style="background:#f8fafc; font-size:12.5px;">
           <td colspan="2">
             <b>Central / Unattributed Bills</b>
-            <div style="font-size:11px; color:var(--walnut-light);">${unattributedCount} bills where 'Submitted By' was left blank in the Google Sheet.</div>
+            <div style="font-size:11px; color:var(--walnut-light);">${unattributedCount} bills where 'Submitted By' was left blank in the ledger.</div>
           </td>
           <td style="text-align:right;">–</td>
           <td style="text-align:right; color:var(--danger); font-weight:600;">-${money(unattributedSpend)}</td>
@@ -3932,8 +4052,9 @@
           if (photoPreview) photoPreview.style.display = 'none';
           return;
         }
-        voucherPhotoMediaType = file.type || 'image/jpeg';
-        voucherPhotoBase64 = await fileToBase64(file);
+        const processed = await compressImageIfNeeded(file);
+        voucherPhotoMediaType = processed.type || 'image/jpeg';
+        voucherPhotoBase64 = await fileToBase64(processed);
         if (photoPreview) {
           photoPreview.innerHTML = `<img src="data:${voucherPhotoMediaType};base64,${voucherPhotoBase64}" style="width:100%; border-radius:4px; border:1px solid var(--line);" />`;
           photoPreview.style.display = 'block';
@@ -4203,3 +4324,5 @@
   };
 })();
 </script>
+</body>
+</html>
