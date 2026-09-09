@@ -834,6 +834,7 @@
     <button class="nav-btn" data-view="upload">Upload</button>
     <button class="nav-btn" data-view="ledger">Ledger</button>
     <button class="nav-btn" data-view="approvals">Approvals <span class="nav-badge" id="approvalsBadge" style="display:none;">0</span></button>
+    <button class="nav-btn" data-view="bank">🏦 Bank</button>
   </div>
 
   <div class="view-viewport">
@@ -1049,11 +1050,19 @@
                 </div>
               </div>
 
-              <!-- 5. Optional photo attach -->
-              <div style="margin-bottom:20px;">
-                <label style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--walnut-light); display:block; margin-bottom:6px;">Attach Photo of Slip / Note (Optional)</label>
-                <input type="file" id="voucherPhotoInput" accept="image/*" style="font-size:13px;" />
-                <div id="voucherPhotoPreview" style="margin-top:8px; display:none; max-width:140px;"></div>
+              <!-- 5. Optional photo attach & Option B Receiver Signed Proof -->
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:20px;">
+                <div>
+                  <label style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--walnut-light); display:block; margin-bottom:6px;">Attach Photo of Receipt / Note (Optional)</label>
+                  <input type="file" id="voucherPhotoInput" accept="image/*" style="font-size:13px;" />
+                  <div id="voucherPhotoPreview" style="margin-top:8px; display:none; max-width:140px;"></div>
+                </div>
+                <div>
+                  <label style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#1a237e; display:block; margin-bottom:6px;">✍️ Option B: Receiver Signed Slip Photo (Proof)</label>
+                  <input type="file" id="voucherProofInput" accept="image/*" style="font-size:13px;" />
+                  <div style="font-size:11px; color:#666; margin-top:3px;">Snaps physical paper slip with receiver signature to embed in PDF voucher</div>
+                  <div id="voucherProofPreview" style="margin-top:8px; display:none; max-width:140px;"></div>
+                </div>
               </div>
 
               <!-- Action button -->
@@ -1142,6 +1151,67 @@
           <div id="approvalsArea"><div class="empty-state">Enter the manager PIN to view pending bills.</div></div>
         </div>
       </div>
+
+      <!-- ═══ BANK TRACKER VIEW ═══════════════════════════════════════════════ -->
+      <div class="view" id="view-bank">
+        <div class="panel">
+          <div class="table-toolbar" style="flex-wrap:wrap; gap:10px;">
+            <h2>🏦 Bank Tracker</h2>
+            <button class="btn-ghost" id="refreshBankBtn" style="font-size:13px; padding:8px 14px;">🔄 Refresh</button>
+          </div>
+
+          <!-- Summary Cards -->
+          <div id="bankSummaryCards" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-bottom:20px;">
+            <div class="dash-card" style="background:#fff8e1;">
+              <div class="dash-number" id="bankTotalDebit" style="color:#e67e22;">—</div>
+              <div class="dash-label">Total Debits (Month)</div>
+            </div>
+            <div class="dash-card" style="background:#fce4ec;">
+              <div class="dash-number" id="bankUnmatched" style="color:#c62828;">—</div>
+              <div class="dash-label">Unreconciled Amount</div>
+            </div>
+            <div class="dash-card" style="background:#e8f5e9;">
+              <div class="dash-number" id="bankSynced" style="color:#2e7d32;">—</div>
+              <div class="dash-label">Tally Synced</div>
+            </div>
+            <div class="dash-card" style="background:#e3f2fd;">
+              <div class="dash-number" id="bankPending" style="color:#1565c0;">—</div>
+              <div class="dash-label">Pending Clarification</div>
+            </div>
+          </div>
+
+          <!-- Filter Tabs -->
+          <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+            <button class="tab-btn active" data-bankfilter="ALL" id="bankFilterAll">All</button>
+            <button class="tab-btn" data-bankfilter="UNMATCHED" id="bankFilterUnmatched">🔴 Unmatched</button>
+            <button class="tab-btn" data-bankfilter="PENDING_CLARIFICATION" id="bankFilterPending">🟡 Pending</button>
+            <button class="tab-btn" data-bankfilter="RECONCILED" id="bankFilterReconciled">🟢 Reconciled</button>
+            <button class="tab-btn" data-bankfilter="TALLY_SYNCED" id="bankFilterSynced">✅ Tally Synced</button>
+          </div>
+
+          <!-- Transactions Table -->
+          <div style="overflow-x:auto;">
+            <table class="ledger-table" style="min-width:700px;">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Bank</th>
+                  <th>Type</th>
+                  <th style="text-align:right;">Amount (₹)</th>
+                  <th>Beneficiary</th>
+                  <th>UTR</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="bankTxnTableBody">
+                <tr><td colspan="8" class="empty-state">Loading bank transactions...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
 
     </div>
   </div>
@@ -1728,7 +1798,11 @@
   async function renderReview(extracted) {
     const dup = await checkDuplicate(extracted);
     const isGst = extracted.bill_type === 'gst';
-    extracted.payment_status = ''; // must be explicitly chosen before submitting
+    if (extracted.paid_stamp_detected) {
+      extracted.payment_status = 'paid';
+    } else {
+      extracted.payment_status = ''; // must be explicitly chosen if not detected
+    }
 
     let fieldsHtml = ALL_FIELDS.map(([key, label, scope]) => {
       const dimmed = scope === 'gst' && !isGst;
@@ -2224,9 +2298,9 @@
         }
         return `<td>${r[key] ?? ''}</td>`;
       }).join('');
-      const deleteCell = r.entry_id
-        ? `<td><button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button></td>`
-        : `<td></td>`;
+      const isVoucher = !r.gstin || r.bill_type === 'non_gst';
+      const voucherBtn = isVoucher ? `<button type="button" class="btn-ghost" style="font-size:11px; padding:3px 8px; margin-right:4px;" onclick='openDigitalVoucher(${JSON.stringify(r).replace(/'/g, "&#39;")})'>📄 Voucher</button>` : '';
+      const deleteCell = `<td><div style="display:flex; align-items:center;">${voucherBtn}${r.entry_id ? `<button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button>` : ''}</div></td>`;
       return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}${deleteCell}</tr>`;
     }).join('');
     tableArea.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
@@ -2680,6 +2754,24 @@
     }
     return `<a href="${photoLink}" target="_blank" rel="noopener"><img class="thumb" src="${thumbUrl}" alt="Bill photo" loading="lazy" onerror="this.parentElement.innerHTML='<a href=&quot;${photoLink}&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot; style=&quot;font-size:11px; color:var(--teal); text-decoration:underline;&quot;>View Photo ↗</a>'"></a>`;
   }
+
+  async function openDigitalVoucher(record) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/voucher/generate-html`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+        body: JSON.stringify(record)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const html = await res.text();
+      const win = window.open('', '_blank');
+      win.document.write(html);
+      win.document.close();
+    } catch (e) {
+      alert('Could not generate voucher: ' + e.message);
+    }
+  }
+  window.openDigitalVoucher = openDigitalVoucher;
 
   // Parses an invoice date (any of DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY) into a real Date object.
   function parseInvoiceDate(dateStr) {
@@ -4043,6 +4135,10 @@
     let voucherPhotoBase64 = null;
     let voucherPhotoMediaType = null;
 
+    const proofInput = document.getElementById('voucherProofInput');
+    const proofPreview = document.getElementById('voucherProofPreview');
+    let voucherProofBase64 = null;
+
     if (photoInput) {
       photoInput.addEventListener('change', async () => {
         const file = photoInput.files[0];
@@ -4058,6 +4154,23 @@
         if (photoPreview) {
           photoPreview.innerHTML = `<img src="data:${voucherPhotoMediaType};base64,${voucherPhotoBase64}" style="width:100%; border-radius:4px; border:1px solid var(--line);" />`;
           photoPreview.style.display = 'block';
+        }
+      });
+    }
+
+    if (proofInput) {
+      proofInput.addEventListener('change', async () => {
+        const file = proofInput.files[0];
+        if (!file) {
+          voucherProofBase64 = null;
+          if (proofPreview) proofPreview.style.display = 'none';
+          return;
+        }
+        const base64 = await fileToBase64(file);
+        voucherProofBase64 = `data:${file.type || 'image/jpeg'};base64,${base64}`;
+        if (proofPreview) {
+          proofPreview.innerHTML = `<img src="${voucherProofBase64}" style="width:100%; border-radius:4px; border:1px solid var(--line);" />`;
+          proofPreview.style.display = 'block';
         }
       });
     }
@@ -4112,7 +4225,8 @@
           submitted_by_employee: uploader,
           purchased_by: incurredPerson,
           incurred_by: incurredPerson,
-          bill_no: `VOUCH-${Date.now().toString().slice(-6)}`
+          bill_no: `VOUCH-${Date.now().toString().slice(-6)}`,
+          receiver_proof_link: voucherProofBase64 || ''
         };
 
         if (voucherPhotoBase64) {
@@ -4146,11 +4260,15 @@
           if (noteInput) noteInput.value = '';
           if (photoInput) photoInput.value = '';
           if (photoPreview) photoPreview.style.display = 'none';
+          if (proofInput) proofInput.value = '';
+          if (proofPreview) proofPreview.style.display = 'none';
           voucherPhotoBase64 = null;
           voucherPhotoMediaType = null;
+          voucherProofBase64 = null;
 
           loadRecords();
         } catch (err) {
+
           console.error('Voucher save failed:', err);
           if (statusText) {
             statusText.style.color = 'var(--danger)';
@@ -4322,6 +4440,124 @@
     const guide = document.getElementById('installGuideOverlay');
     if (guide) guide.style.display = 'none';
   };
+  // ─── Bank Tracker ───────────────────────────────────────────────────────────
+
+  let allBankTxns = [];
+  let bankCurrentFilter = 'ALL';
+
+  const BANK_STATUS_BADGE = {
+    'UNMATCHED':             '<span style="background:#fce4ec; color:#c62828; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600;">🔴 Unmatched</span>',
+    'PENDING_CLARIFICATION': '<span style="background:#fff8e1; color:#e65100; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600;">🟡 Pending</span>',
+    'RECONCILED':            '<span style="background:#e8f5e9; color:#2e7d32; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600;">🟢 Reconciled</span>',
+    'TALLY_SYNCED':          '<span style="background:#e3f2fd; color:#1565c0; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600;">✅ Synced</span>',
+    'IGNORED':               '<span style="background:#f5f5f5; color:#757575; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600;">⏭ Ignored</span>'
+  };
+
+  async function loadBankTransactions() {
+    const tbody = document.getElementById('bankTxnTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:16px; color:#888;">Loading...</td></tr>';
+    try {
+      const url = bankCurrentFilter === 'ALL'
+        ? `${BACKEND_URL}/bank/transactions`
+        : `${BACKEND_URL}/bank/transactions?status=${bankCurrentFilter}`;
+      const res = await fetch(url, { headers: { 'x-app-secret': APP_SECRET } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      allBankTxns = data.transactions || [];
+      renderBankTable(allBankTxns);
+      renderBankSummary(allBankTxns);
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Could not load bank transactions: ${e.message}</td></tr>`;
+    }
+  }
+
+  function renderBankSummary(txns) {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const thisMonth = txns.filter(t => new Date(t.txn_timestamp) >= monthStart && t.txn_type === 'DEBIT');
+    const totalDebit = thisMonth.reduce((s, t) => s + parseFloat(t.amount||0), 0);
+    const unmatchedAmt = txns.filter(t => t.status === 'UNMATCHED' || t.status === 'PENDING_CLARIFICATION')
+                             .reduce((s, t) => s + parseFloat(t.amount||0), 0);
+    const syncedCount = txns.filter(t => t.status === 'TALLY_SYNCED').length;
+    const pendingCount = txns.filter(t => t.status === 'PENDING_CLARIFICATION').length;
+
+    const fmt = n => '₹' + Math.round(n).toLocaleString('en-IN');
+    document.getElementById('bankTotalDebit').textContent = fmt(totalDebit);
+    document.getElementById('bankUnmatched').textContent = fmt(unmatchedAmt);
+    document.getElementById('bankSynced').textContent = syncedCount;
+    document.getElementById('bankPending').textContent = pendingCount;
+  }
+
+  function renderBankTable(txns) {
+    const tbody = document.getElementById('bankTxnTableBody');
+    if (!txns.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No transactions found.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = txns.map(t => {
+      const dt = t.txn_timestamp ? new Date(t.txn_timestamp).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+      const badge = BANK_STATUS_BADGE[t.status] || t.status;
+      const canCategorize = t.status === 'UNMATCHED' || t.status === 'PENDING_CLARIFICATION';
+      const actionBtn = canCategorize
+        ? `<button onclick="openBankCategorize(${t.id}, '${(t.beneficiary||'').replace(/'/g,'')}')" style="font-size:11px; padding:4px 10px; background:#1a237e; color:#fff; border:none; border-radius:4px; cursor:pointer;">Categorize</button>`
+        : `<span style="font-size:11px; color:#aaa;">${t.reconcile_type || '—'}</span>`;
+      return `<tr>
+        <td style="white-space:nowrap; font-size:12px;">${dt}</td>
+        <td style="font-size:12px;">${t.bank_name||'—'}</td>
+        <td style="font-size:12px; font-weight:600; color:${t.txn_type==='DEBIT'?'#c62828':'#2e7d32'};">${t.txn_type}</td>
+        <td style="text-align:right; font-weight:600;">₹${parseFloat(t.amount||0).toLocaleString('en-IN')}</td>
+        <td style="font-size:12px; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${t.beneficiary||''}">${t.beneficiary||t.narration?.substring(0,30)||'—'}</td>
+        <td style="font-size:11px; color:#555;">${t.utr||'—'}</td>
+        <td>${badge}</td>
+        <td>${actionBtn}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function openBankCategorize(txnId, beneficiary) {
+    const type = prompt(
+      `Categorize bank transaction (ID: ${txnId})\nBeneficiary: ${beneficiary}\n\nEnter:\n  V = Vendor payment\n  I = Imprest/advance\n  O = Overhead expense`,
+      'V'
+    );
+    if (!type) return;
+    const t = type.trim().toUpperCase();
+    if (!['V','I','O'].includes(t)) { alert('Invalid type. Use V, I, or O.'); return; }
+    let extra = {};
+    if (t === 'V') { extra.vendor_name = prompt('Vendor name (for reference):') || beneficiary; }
+    if (t === 'I') { extra.person = prompt('Person name (supervisor):') || beneficiary; }
+    if (t === 'O') { extra.category = prompt('Expense category (Rent / Freight / Misc):') || 'Miscellaneous Expenses'; }
+    fetch(`${BACKEND_URL}/bank/manual-categorize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+      body: JSON.stringify({ txn_id: txnId, type: t, ...extra })
+    }).then(r => r.json()).then(d => {
+      alert(`✅ Tagged as ${d.reconcile_type}. Will sync to Tally next cycle.`);
+      loadBankTransactions();
+    }).catch(e => alert('Error: ' + e.message));
+  }
+  window.openBankCategorize = openBankCategorize;
+
+  // Bank filter tab buttons
+  document.querySelectorAll('[data-bankfilter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-bankfilter]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      bankCurrentFilter = btn.dataset.bankfilter;
+      loadBankTransactions();
+    });
+  });
+
+  // Refresh button
+  const refreshBankBtn = document.getElementById('refreshBankBtn');
+  if (refreshBankBtn) refreshBankBtn.addEventListener('click', loadBankTransactions);
+
+  // Auto-load when navigating to the Bank tab
+  document.querySelectorAll('.nav-btn[data-view="bank"]').forEach(btn => {
+    btn.addEventListener('click', () => setTimeout(loadBankTransactions, 100));
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
 })();
 </script>
 </body>
