@@ -1214,8 +1214,21 @@
           <canvas id="trendChart" height="90"></canvas>
         </div>
 
+        <!-- Tracked Material Purchases & Rate Radar Widget -->
+        <div class="panel" style="margin-bottom:20px; border-left:4px solid #4f46e5;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+            <div>
+              <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:#4f46e5; font-weight:700;">Goods & Consumables Catalog</span>
+              <h2 style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin:2px 0 0;">📦 Material Purchases & Price Radar</h2>
+            </div>
+            <button class="btn-primary" onclick="openMaterialRatesModal()" style="font-size:13px; padding:7px 14px; background:#4f46e5;">📊 Price Radar & Search</button>
+          </div>
+          <div id="dashMaterialsArea"><div class="empty-state">Loading material purchases…</div></div>
+        </div>
+
         <div class="panel">
           <h2 style="font-family:Georgia,serif; font-size:18px; color:var(--walnut); margin-bottom:16px;">Top Vendors This Month</h2>
+
           <div id="topVendorsArea"><div class="empty-state">No spend recorded this month yet.</div></div>
         </div>
       </div>
@@ -2945,7 +2958,40 @@
     `;
 
     let itemsHtml = '';
-    if (r.description) {
+    if (Array.isArray(r.items) && r.items.length > 0) {
+      const itemRowsHtml = r.items.map(it => `
+        <tr style="border-bottom:1px solid #e2e8f0; font-size:12px;">
+          <td style="padding:6px 8px; font-weight:600; color:#1e293b;">${it.item_name || it.name || '—'}</td>
+          <td style="padding:6px 8px; text-align:center; color:#475569;">${it.quantity || 1} ${it.unit || 'Pcs'}</td>
+          <td style="padding:6px 8px; text-align:right; color:#475569;">₹${parseFloat(it.unit_price || it.rate || 0).toLocaleString('en-IN')}</td>
+          <td style="padding:6px 8px; text-align:right; font-weight:700; color:#0f172a;">₹${parseFloat(it.total_amount || it.amount || 0).toLocaleString('en-IN')}</td>
+        </tr>
+      `).join('');
+
+      itemsHtml = `
+        <div style="margin-top:14px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid #cbd5e1;">
+          <div style="font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+            <span>📦 Line Items Breakdown (${r.items.length})</span>
+            <span style="font-size:10.5px; color:#64748b; font-weight:normal;">Extracted via AI Vision</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr style="background:#e2e8f0; font-size:11px; color:#475569; text-align:left;">
+                  <th style="padding:6px 8px;">Product / Material</th>
+                  <th style="padding:6px 8px; text-align:center;">Qty</th>
+                  <th style="padding:6px 8px; text-align:right;">Rate (₹)</th>
+                  <th style="padding:6px 8px; text-align:right;">Total (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemRowsHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    } else if (r.description) {
       itemsHtml = `
         <div style="margin-top:12px; padding:10px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0;">
           <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:4px;">Description / Items</div>
@@ -2953,6 +2999,7 @@
         </div>
       `;
     }
+
 
     let photoHtml = '';
     if (r.photo_link) {
@@ -3104,10 +3151,76 @@
               ${sourceBadge}
             </div>
           </td>
+      let itemsBadgeHtml = '';
+      let expandableSubRow = '';
+      const subRowId = `items-subrow-${r.entry_id || Math.floor(Math.random()*100000)}`;
+      if (Array.isArray(r.items) && r.items.length > 0) {
+        const count = r.items.length;
+        const previewText = r.items.map(it => it.item_name || it.name).filter(Boolean).slice(0, 2).join(', ');
+        itemsBadgeHtml = `
+          <div style="margin-top:4px;">
+            <button type="button" class="btn-toggle-items" onclick="toggleRowItems('${subRowId}')" style="background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:12px; font-size:10.5px; font-weight:700; padding:2px 8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+              📦 ${count} ${count === 1 ? 'Material' : 'Materials'} <span style="font-weight:normal; color:#4338ca;">(${previewText}${count > 2 ? '...' : ''})</span>
+            </button>
+          </div>
+        `;
+
+        const itemSubRows = r.items.map(it => `
+          <tr style="border-bottom:1px solid #e2e8f0; font-size:11.5px;">
+            <td style="padding:5px 8px; font-weight:600; color:#1e293b;">${it.item_name || it.name || '—'}</td>
+            <td style="padding:5px 8px; text-align:center; color:#475569;">${it.quantity || 1} ${it.unit || 'Pcs'}</td>
+            <td style="padding:5px 8px; text-align:right; color:#475569;">₹${parseFloat(it.unit_price || it.rate || 0).toLocaleString('en-IN')}</td>
+            <td style="padding:5px 8px; text-align:right; font-weight:700; color:#0f172a;">₹${parseFloat(it.total_amount || it.amount || 0).toLocaleString('en-IN')}</td>
+          </tr>
+        `).join('');
+
+        expandableSubRow = `
+          <tr id="${subRowId}" style="display:none; background:#f8fafc;">
+            <td colspan="8" style="padding:8px 14px; border-bottom:1px solid #cbd5e1;">
+              <div style="background:#fff; border:1px solid #c7d2fe; border-radius:6px; padding:8px 12px;">
+                <div style="font-size:11px; font-weight:700; color:#3730a3; text-transform:uppercase; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>📦 Goods & Material Line Items (${count} items)</span>
+                  <span style="font-size:10px; color:#6366f1;">Invoice #${r.bill_no || '—'}</span>
+                </div>
+                <table style="width:100%; border-collapse:collapse;">
+                  <thead>
+                    <tr style="background:#e0e7ff; font-size:10.5px; color:#3730a3; text-align:left;">
+                      <th style="padding:4px 8px;">Product / Material Name</th>
+                      <th style="padding:4px 8px; text-align:center;">Qty & Unit</th>
+                      <th style="padding:4px 8px; text-align:right;">Unit Rate (₹)</th>
+                      <th style="padding:4px 8px; text-align:right;">Line Total (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>${itemSubRows}</tbody>
+                </table>
+              </div>
+            </td>
+          </tr>
+        `;
+      }
+
+      rows.push(`
+        <tr style="${overdue ? 'background:#fff5f5;' : ''}">
+          <td style="white-space:nowrap; vertical-align:top;">
+            <div style="font-weight:700; color:#1e293b; font-size:12.5px;">${dt}</div>
+            <div style="font-family:monospace; font-size:11px; color:#64748b; margin-top:2px;" title="Invoice No">${r.bill_no || '—'}</div>
+          </td>
+          <td style="vertical-align:top;">
+            <div style="font-weight:700; color:#0f172a; font-size:13px;">${r.vendor_name || '—'}</div>
+            ${gstinHtml}
+          </td>
+          <td style="vertical-align:top;">
+            <div style="font-weight:600; color:#1e293b; font-size:12.5px;">${incurred}</div>
+            <div style="margin-top:3px;">
+              <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px;">${siteInfo.site.replace(' Site','')}</span>
+              ${sourceBadge}
+            </div>
+          </td>
           <td style="vertical-align:top;">
             <div style="font-size:12px; color:#334155; max-width:260px; line-height:1.4;" title="${r.description || ''}">
               ${r.description || '—'}
             </div>
+            ${itemsBadgeHtml}
           </td>
           <td style="text-align:right; vertical-align:top; white-space:nowrap;">
             ${amountHtml}
@@ -3128,7 +3241,9 @@
             </div>
           </td>
         </tr>
+        ${expandableSubRow}
       `);
+
     });
 
     return `
@@ -3152,8 +3267,59 @@
     `;
   }
 
+  function toggleRowItems(subRowId) {
+    const el = document.getElementById(subRowId);
+    if (el) {
+      el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+    }
+  }
+  window.toggleRowItems = toggleRowItems;
+
+  async function loadDashboardMaterialsSummary() {
+    const el = document.getElementById('dashMaterialsArea');
+    if (!el) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/materials/summary`, {
+        headers: { 'x-app-secret': APP_SECRET }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const materials = data.materials || [];
+      if (materials.length === 0) {
+        el.innerHTML = `<div class="empty-state">No materials tracked in catalog yet. Scan GST bills to populate material rates!</div>`;
+        return;
+      }
+      const top5 = materials.slice(0, 5);
+      const cardHtml = top5.map(m => `
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <div style="font-weight:700; font-size:13.5px; color:#1e293b;">${m.name}</div>
+            <div style="font-size:11.5px; color:#64748b; margin-top:2px;">
+              ${m.transactions_count} purchases · Vendors: ${m.vendors.slice(0,2).join(', ')}${m.vendors.length > 2 ? ' +' + (m.vendors.length - 2) + ' more' : ''}
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:14px; font-weight:800; color:#4f46e5;">₹${m.latest_rate.toLocaleString('en-IN')} <span style="font-size:11px; font-weight:normal; color:#64748b;">/${m.unit || 'unit'}</span></div>
+            <div style="font-size:10.5px; color:#047857; margin-top:2px;">Avg Rate: ₹${m.avg_rate.toLocaleString('en-IN')}</div>
+          </div>
+        </div>
+      `).join('');
+
+      el.innerHTML = `
+        <div style="font-size:12px; color:#475569; margin-bottom:10px; font-weight:600;">
+          Tracking <b>${materials.length} distinct materials</b> across all vendor GST bills:
+        </div>
+        ${cardHtml}
+      `;
+    } catch (err) {
+      console.warn('loadDashboardMaterialsSummary error:', err.message);
+    }
+  }
+
   function renderTable() {
+    loadDashboardMaterialsSummary();
     const rawList = recordsCache[activeTab] || [];
+
     const filtered = filterRecordsList(rawList);
     const allGst = filterRecordsList(recordsCache.gst || []);
     const allNonGst = filterRecordsList(recordsCache.non_gst || []);
