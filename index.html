@@ -1295,6 +1295,7 @@
     ['seller_address','Seller Address'],
     ['seller_phone','Seller Phone'],
     ['gstin','GSTIN'],
+    ['gstin_status','GSTIN Status'],
     ['bill_no','Invoice No.'],
     ['date','Invoice Date'],
     ['time','Time'],
@@ -1336,6 +1337,7 @@
     ['seller_address','Seller Address', 'both'],
     ['seller_phone','Seller Phone', 'both'],
     ['gstin','GSTIN', 'gst'],
+    ['gstin_status','GSTIN Status', 'gst'],
     ['bill_no','Invoice No.', 'both'],
     ['date','Invoice Date', 'both'],
     ['time','Time', 'both'],
@@ -1603,6 +1605,7 @@
   const EMPLOYEE_HEADER_ALIASES = ['Submitted By (Employee)', 'Submitted by', 'Submitted By Employee', 'Employee', 'Employee Name'];
 
   const FIELD_HEADER_ALIASES = {
+    gstin_status: ['GSTIN Status', 'Gstin Status', 'Status (GSTIN)', 'GST Status'],
     invoice_value: ['Invoice Value', 'Amount', 'Total', 'Total Amount', 'Bill Amount'],
     taxable_value: ['Taxable Value', 'Taxable Amount'],
     igst: ['IGST'],
@@ -1728,6 +1731,15 @@
     return OWN_GSTINS.includes(gstin.trim().toUpperCase());
   }
 
+  // Pre-seeded list of known cancelled GSTINs observed by the team
+  const KNOWN_CANCELLED_GSTINS = ['07AAVFM3193K1ZK'];
+  function isCancelledGSTIN(gstin, status, desc) {
+    if (status && /cancel/i.test(status)) return true;
+    if (desc && desc.includes('[GSTIN: CANCELLED]')) return true;
+    if (!gstin) return false;
+    return KNOWN_CANCELLED_GSTINS.includes(gstin.trim().toUpperCase());
+  }
+
   const GST_STATE_CODES = {
     '01': 'Jammu & Kashmir', '02': 'Himachal Pradesh', '03': 'Punjab', '04': 'Chandigarh',
     '05': 'Uttarakhand', '06': 'Haryana', '07': 'Delhi', '08': 'Rajasthan',
@@ -1807,6 +1819,31 @@
     let fieldsHtml = ALL_FIELDS.map(([key, label, scope]) => {
       const dimmed = scope === 'gst' && !isGst;
       const isGstinField = key === 'gstin';
+      const isGstinStatusField = key === 'gstin_status';
+
+      if (isGstinStatusField) {
+        if (!isGst) return '';
+        const initialStatus = extracted.gstin_status || (isCancelledGSTIN(extracted.gstin) ? 'Cancelled' : 'Unverified');
+        return `
+        <div class="field" id="gstinStatusFieldWrap" style="grid-column: 1 / -1; margin-top: 2px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <label style="margin-bottom:0; font-weight:700;">GSTIN Status (Govt Portal)</label>
+            <span id="gstinStatusHelp" style="font-size:11px; color:#64748b;">Tap to mark verified status</span>
+          </div>
+          <input type="hidden" data-key="gstin_status" id="gstinStatusInput" value="${initialStatus.replace(/"/g,'&quot;')}" />
+          <div class="gstin-status-picker" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+            <button type="button" class="btn-gstin-status" data-status="Active" style="flex:1; min-width:80px; padding:7px 10px; border:1.5px solid #86efac; border-radius:5px; font-size:12px; font-weight:700; cursor:pointer; background:#fff; color:#15803d; transition:all 0.15s ease;">🟢 Active</button>
+            <button type="button" class="btn-gstin-status" data-status="Cancelled" style="flex:1; min-width:85px; padding:7px 10px; border:1.5px solid #fca5a5; border-radius:5px; font-size:12px; font-weight:700; cursor:pointer; background:#fff; color:#b91c1c; transition:all 0.15s ease;">🔴 Cancelled</button>
+            <button type="button" class="btn-gstin-status" data-status="Suspended" style="flex:1; min-width:85px; padding:7px 10px; border:1.5px solid #fde047; border-radius:5px; font-size:12px; font-weight:700; cursor:pointer; background:#fff; color:#b45309; transition:all 0.15s ease;">🟡 Suspended</button>
+            <button type="button" class="btn-gstin-status" data-status="Unverified" style="flex:1; min-width:80px; padding:7px 10px; border:1.5px solid #cbd5e1; border-radius:5px; font-size:12px; font-weight:600; cursor:pointer; background:#fff; color:#64748b; transition:all 0.15s ease;">⚪ Unverified</button>
+          </div>
+          <div id="gstinStatusWarning" style="margin-top:6px; font-size:12px; font-weight:700; color:#b91c1c; display:none; background:#fef2f2; border:1px solid #fca5a5; padding:8px 10px; border-radius:5px; line-height:1.4;">
+            🚨 <b>WARNING: Vendor GSTIN is CANCELLED on Govt Portal!</b><br>
+            Studio5 cannot legally claim ITC on this bill. Rajiv Bawa will be alerted before approval.
+          </div>
+        </div>`;
+      }
+
       const gstinIsOwn = isGstinField && isGst && isOwnGSTIN(extracted.gstin);
       const gstinChecksumBad = isGstinField && isGst && extracted.gstin && !isValidGSTINChecksum(extracted.gstin);
       const gstinBad = gstinIsOwn || gstinChecksumBad;
@@ -1889,6 +1926,61 @@
       const gstinWarningEl = document.getElementById('gstinWarningText');
       const gstinMetaBadge = document.getElementById('gstinMetaBadge');
       const verifyBtn = document.getElementById('verifyGstinPortalBtn');
+      const gstinStatusInput = document.getElementById('gstinStatusInput');
+      const gstinStatusWarning = document.getElementById('gstinStatusWarning');
+      const statusButtons = reviewArea.querySelectorAll('.btn-gstin-status');
+
+      function setGstinStatusUI(status) {
+        const s = (status || 'Unverified').trim();
+        if (gstinStatusInput) gstinStatusInput.value = s;
+        statusButtons.forEach(btn => {
+          const isSelected = btn.dataset.status.toLowerCase() === s.toLowerCase();
+          if (btn.dataset.status === 'Active') {
+            btn.style.background = isSelected ? '#15803d' : '#fff';
+            btn.style.color = isSelected ? '#fff' : '#15803d';
+            btn.style.borderColor = isSelected ? '#15803d' : '#86efac';
+          } else if (btn.dataset.status === 'Cancelled') {
+            btn.style.background = isSelected ? '#b91c1c' : '#fff';
+            btn.style.color = isSelected ? '#fff' : '#b91c1c';
+            btn.style.borderColor = isSelected ? '#b91c1c' : '#fca5a5';
+          } else if (btn.dataset.status === 'Suspended') {
+            btn.style.background = isSelected ? '#b45309' : '#fff';
+            btn.style.color = isSelected ? '#fff' : '#b45309';
+            btn.style.borderColor = isSelected ? '#b45309' : '#fde047';
+          } else {
+            btn.style.background = isSelected ? '#475569' : '#fff';
+            btn.style.color = isSelected ? '#fff' : '#64748b';
+            btn.style.borderColor = isSelected ? '#475569' : '#cbd5e1';
+          }
+        });
+        if (gstinStatusWarning) {
+          gstinStatusWarning.style.display = /cancel/i.test(s) ? 'block' : 'none';
+        }
+      }
+
+      statusButtons.forEach(btn => {
+        btn.onclick = (e) => {
+          e.preventDefault();
+          setGstinStatusUI(btn.dataset.status);
+        };
+      });
+
+      let lookupTimer = null;
+      function checkGstinStatusApi(gstin) {
+        if (!gstin || gstin.length !== 15) return;
+        if (isCancelledGSTIN(gstin)) {
+          setGstinStatusUI('Cancelled');
+          return;
+        }
+        fetch(`${BACKEND_URL}/gstin-status/${encodeURIComponent(gstin)}`)
+          .then(r => r.json())
+          .then(res => {
+            if (res && res.status && res.status !== 'Unverified') {
+              setGstinStatusUI(res.status);
+            }
+          })
+          .catch(() => {});
+      }
 
       function updateGstinState() {
         const val = (gstinInput.value || '').trim().toUpperCase();
@@ -1903,16 +1995,19 @@
         const decoded = decodeGSTIN(val);
         const isOwn = isOwnGSTIN(val);
         const checksumBad = !isValidGSTINChecksum(val);
+        const isCancelled = isCancelledGSTIN(val, gstinStatusInput ? gstinStatusInput.value : '');
         gstinWrap.classList.toggle('gstin-invalid', !!(isOwn || checksumBad));
 
         if (gstinMetaBadge && decoded) {
           gstinMetaBadge.style.display = 'block';
           if (isOwn) {
             gstinMetaBadge.innerHTML = `<span style="color:#b91c1c;">🏢 Studio5 Buyer GSTIN (${decoded.stateName})</span>`;
+          } else if (isCancelled) {
+            gstinMetaBadge.innerHTML = `<span style="color:#b91c1c;">🚨 GSTIN CANCELLED ON GOVT PORTAL ❌ · ${decoded.stateName}</span>`;
           } else if (checksumBad) {
             gstinMetaBadge.innerHTML = `<span style="color:#b91c1c;">❌ Invalid Checksum · ${decoded.stateName} · PAN: ${decoded.pan || '-'}</span>`;
           } else {
-            gstinMetaBadge.innerHTML = `<span style="color:#15803d;">✓ Valid Checksum · ${decoded.stateName} · PAN: ${decoded.pan}</span>`;
+            gstinMetaBadge.innerHTML = `<span style="color:#15803d;">✓ Valid Format · ${decoded.stateName} · PAN: ${decoded.pan}</span>`;
           }
         }
 
@@ -1920,6 +2015,11 @@
           gstinWarningEl.textContent = isOwn
             ? '⚠ This is Studio5\'s OWN GSTIN, not the seller\'s. Please replace it with the vendor\'s actual GSTIN.'
             : '⚠ Checksum doesn\'t match — this GSTIN likely has a typo. Please compare it character-by-character against the photo.';
+        }
+
+        clearTimeout(lookupTimer);
+        if (val.length === 15) {
+          lookupTimer = setTimeout(() => checkGstinStatusApi(val), 250);
         }
       }
 
@@ -1931,6 +2031,8 @@
       }
 
       gstinInput.addEventListener('input', updateGstinState);
+      const initStatus = extracted.gstin_status || (isCancelledGSTIN(extracted.gstin) ? 'Cancelled' : 'Unverified');
+      setGstinStatusUI(initStatus);
       updateGstinState();
     }
 
@@ -2283,6 +2385,22 @@
           const g = (r[key] || '').trim();
           if (!g) return '<td>-</td>';
           return `<td><div style="display:flex; align-items:center; gap:4px;"><span style="font-family:monospace; font-size:11.5px;">${g}</span><button type="button" class="btn-verify-gstin-table" data-gstin="${g}" style="border:none; background:transparent; cursor:pointer; font-size:12px; padding:0 2px;" title="Copy GSTIN & verify on Govt Portal">🔍</button></div></td>`;
+        }
+        if (key === 'gstin_status') {
+          const st = (r[key] || '').trim();
+          const isCan = isCancelledGSTIN(r.gstin, st, r.description);
+          const isAct = /active/i.test(st);
+          const isSusp = /suspend/i.test(st);
+          if (isCan) {
+            return `<td><span style="background:#fee2e2; color:#b91c1c; font-weight:700; font-size:10.5px; padding:2px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;" title="${r.gstin_status_detail || 'Cancelled on Govt Portal'}">🚨 Cancelled</span></td>`;
+          }
+          if (isAct) {
+            return `<td><span style="background:#dcfce7; color:#15803d; font-weight:600; font-size:10.5px; padding:2px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;">🟢 Active</span></td>`;
+          }
+          if (isSusp) {
+            return `<td><span style="background:#fef3c7; color:#b45309; font-weight:600; font-size:10.5px; padding:2px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;">🟡 Suspended</span></td>`;
+          }
+          return `<td><span style="color:#94a3b8; font-size:11px;">${st || 'Unverified'}</span></td>`;
         }
         if (key === 'submitted_by_employee') {
           const rawUploader = r.submitted_by_employee || '';
@@ -2889,7 +3007,7 @@
     const overdueBills = allRecords.filter(isOverdue);
     const overdueAmount = overdueBills.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
     const eligibleItc = allRecords
-      .filter(r => r.bill_type === 'gst')
+      .filter(r => r.bill_type === 'gst' && !isCancelledGSTIN(r.gstin, r.gstin_status, r.description))
       .reduce((sum, r) => sum + toNum(r.igst) + toNum(r.cgst) + toNum(r.sgst), 0);
 
     const elTotal = document.getElementById('financierTotalSpend');
@@ -3477,6 +3595,9 @@
       const site = getSupervisorSiteInfo(person, b).site;
       const stateCode = (b.gstin && b.gstin.length >= 2) ? b.gstin.substring(0, 2) : '';
 
+      const isCancelledGstin = isCancelledGSTIN(b.gstin, b.gstin_status, b.description);
+      const itcAvailable = isCancelledGstin ? '"N"' : '"Y"';
+
       rows.push([
         `"${b.gstin || ''}"`,
         `"${(b.vendor_name || '').replace(/"/g, '""')}"`,
@@ -3492,7 +3613,7 @@
         cgst,
         sgst,
         cess,
-        `"Y"`,
+        itcAvailable,
         `"${site}"`,
         `"${person}"`
       ].join(','));
@@ -3993,7 +4114,7 @@
           <div><b>Amount</b>₹${item.invoice_value || '-'}</div>
           ${isGst ? `
             <div>
-              <b>GSTIN</b>
+              <b>GSTIN & Status</b>
               <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                 <span style="font-family:monospace; font-weight:700; font-size:12px;">${item.gstin || '-'}</span>
                 ${item.gstin ? `
@@ -4003,10 +4124,23 @@
                 <div style="font-size:11px; margin-top:2px;">
                   ${(() => {
                     const dec = decodeGSTIN(item.gstin);
-                    if (!dec) return '';
-                    if (dec.isOwn) return '<span style="color:#b91c1c; font-weight:600;">⚠ Studio5 Buyer GSTIN</span>';
-                    if (!dec.isChecksumValid) return `<span style="color:#b91c1c;">❌ Invalid Checksum · ${dec.stateName}</span>`;
-                    return `<span style="color:#15803d; font-weight:600;">✓ ${dec.stateName}</span> · PAN: ${dec.pan}`;
+                    const isCancelled = isCancelledGSTIN(item.gstin, item.gstin_status, item.description);
+                    const isActive = /active/i.test(item.gstin_status || '');
+                    const isSuspended = /suspend/i.test(item.gstin_status || '');
+                    let statusHtml = '';
+                    if (isCancelled) {
+                      statusHtml = `<div style="margin-top:4px; background:#fee2e2; border:1px solid #fca5a5; color:#b91c1c; padding:3px 6px; border-radius:4px; font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:4px;">🚨 GSTIN CANCELLED ON PORTAL ❌ (NO ITC)</div>`;
+                    } else if (isActive) {
+                      statusHtml = `<div style="margin-top:3px; color:#15803d; font-weight:700; font-size:10.5px;">🟢 Portal Status: Active</div>`;
+                    } else if (isSuspended) {
+                      statusHtml = `<div style="margin-top:3px; color:#b45309; font-weight:700; font-size:10.5px;">🟡 Portal Status: Suspended</div>`;
+                    } else {
+                      statusHtml = `<div style="margin-top:2px; color:#64748b; font-size:10.5px;">Portal Status: Unverified</div>`;
+                    }
+                    if (!dec) return statusHtml;
+                    if (dec.isOwn) return '<span style="color:#b91c1c; font-weight:600;">⚠ Studio5 Buyer GSTIN</span>' + statusHtml;
+                    if (dec.isChecksumValid) return `<span style="color:#15803d; font-weight:600;">✓ ${dec.stateName}</span> · PAN: ${dec.pan}` + statusHtml;
+                    return `<span style="color:#b91c1c;">❌ Invalid Checksum · ${dec.stateName}</span>` + statusHtml;
                   })()}
                 </div>` : ''}
             </div>` : ''}
