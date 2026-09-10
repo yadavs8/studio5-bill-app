@@ -1361,7 +1361,6 @@
     ['seller_address','Seller Address', 'both'],
     ['seller_phone','Seller Phone', 'both'],
     ['gstin','GSTIN', 'gst'],
-    ['gstin_status','GSTIN Status', 'gst'],
     ['bill_no','Invoice No.', 'both'],
     ['date','Invoice Date', 'both'],
     ['time','Time', 'both'],
@@ -1844,30 +1843,6 @@
     let fieldsHtml = ALL_FIELDS.map(([key, label, scope]) => {
       const dimmed = scope === 'gst' && !isGst;
       const isGstinField = key === 'gstin';
-      const isGstinStatusField = key === 'gstin_status';
-
-      if (isGstinStatusField) {
-        if (!isGst) return '';
-        const initialStatus = extracted.gstin_status || (isCancelledGSTIN(extracted.gstin) ? 'Cancelled' : 'Unverified');
-        return `
-        <div class="field" id="gstinStatusFieldWrap" style="grid-column: 1 / -1; margin-top: 2px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <label style="margin-bottom:0; font-weight:700;">GSTIN Status (Govt Portal)</label>
-            <span id="gstinStatusHelp" style="font-size:11px; color:#64748b;">Tap to mark verified status</span>
-          </div>
-          <input type="hidden" data-key="gstin_status" id="gstinStatusInput" value="${initialStatus.replace(/"/g,'&quot;')}" />
-          <div class="gstin-status-picker" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
-            <button type="button" class="btn-gstin-status" data-status="Active" style="flex:1; min-width:80px; padding:7px 10px; border:1.5px solid #86efac; border-radius:5px; font-size:12px; font-weight:700; cursor:pointer; background:#fff; color:#15803d; transition:all 0.15s ease;">🟢 Active</button>
-            <button type="button" class="btn-gstin-status" data-status="Cancelled" style="flex:1; min-width:85px; padding:7px 10px; border:1.5px solid #fca5a5; border-radius:5px; font-size:12px; font-weight:700; cursor:pointer; background:#fff; color:#b91c1c; transition:all 0.15s ease;">🔴 Cancelled</button>
-            <button type="button" class="btn-gstin-status" data-status="Suspended" style="flex:1; min-width:85px; padding:7px 10px; border:1.5px solid #fde047; border-radius:5px; font-size:12px; font-weight:700; cursor:pointer; background:#fff; color:#b45309; transition:all 0.15s ease;">🟡 Suspended</button>
-            <button type="button" class="btn-gstin-status" data-status="Unverified" style="flex:1; min-width:80px; padding:7px 10px; border:1.5px solid #cbd5e1; border-radius:5px; font-size:12px; font-weight:600; cursor:pointer; background:#fff; color:#64748b; transition:all 0.15s ease;">⚪ Unverified</button>
-          </div>
-          <div id="gstinStatusWarning" style="margin-top:6px; font-size:12px; font-weight:700; color:#b91c1c; display:none; background:#fef2f2; border:1px solid #fca5a5; padding:8px 10px; border-radius:5px; line-height:1.4;">
-            🚨 <b>WARNING: Vendor GSTIN is CANCELLED on Govt Portal!</b><br>
-            Studio5 cannot legally claim ITC on this bill. Rajiv Bawa will be alerted before approval.
-          </div>
-        </div>`;
-      }
 
       const gstinIsOwn = isGstinField && isGst && isOwnGSTIN(extracted.gstin);
       const gstinChecksumBad = isGstinField && isGst && extracted.gstin && !isValidGSTINChecksum(extracted.gstin);
@@ -1875,18 +1850,33 @@
       const gstinMsg = gstinIsOwn
         ? '⚠ This is Studio5\'s OWN GSTIN, not the seller\'s. The bot likely picked up the wrong one from the bill — please replace it with the vendor\'s actual GSTIN.'
         : '⚠ Checksum doesn\'t match — this GSTIN likely has a typo. Please compare it character-by-character against the photo.';
+
+      let initialStatus = 'Active';
+      if (isGstinField && isGst) {
+        if (extracted.gstin_status) {
+          initialStatus = extracted.gstin_status;
+        } else if (isCancelledGSTIN(extracted.gstin)) {
+          initialStatus = 'Cancelled';
+        } else if (gstinChecksumBad || gstinIsOwn) {
+          initialStatus = 'Unverified';
+        } else {
+          initialStatus = 'Active';
+        }
+      }
+
       return `
       <div class="field ${dimmed ? 'dimmed' : ''} ${gstinBad ? 'gstin-invalid' : ''}" ${isGstinField ? 'id="gstinFieldWrap"' : ''}>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
           <label style="margin-bottom:0;">${label}</label>
           ${isGstinField && isGst ? `
             <button type="button" id="verifyGstinPortalBtn" style="background:#eef5fc; color:#1868b7; border:1px solid #c2daf5; border-radius:4px; font-size:11px; font-weight:600; padding:2px 8px; cursor:pointer; display:${extracted.gstin ? 'inline-flex' : 'none'}; align-items:center; gap:4px;" title="Copy GSTIN & verify on Govt Portal">
-              <span>🔍 Verify on Govt Portal ↗</span>
+              <span>🔍 Govt Portal ↗</span>
             </button>` : ''}
         </div>
         <input data-key="${key}" ${dimmed ? 'disabled' : ''} value="${(extracted[key] ?? '').toString().replace(/"/g,'&quot;')}" />
         ${isGstinField ? `
-          <div id="gstinMetaBadge" style="font-size:11.5px; margin-top:4px; font-weight:600; display:${extracted.gstin ? 'block' : 'none'};"></div>
+          <input type="hidden" data-key="gstin_status" id="gstinStatusInput" value="${initialStatus.replace(/"/g,'&quot;')}" />
+          <div id="gstinMetaBadge" style="font-size:11.5px; margin-top:5px; font-weight:600; display:${extracted.gstin ? 'block' : 'none'};"></div>
           <div class="gstin-warning" id="gstinWarningText">${gstinMsg}</div>` : ''}
       </div>`;
     }).join('');
@@ -2012,61 +2002,26 @@
 
     const gstinWrap = document.getElementById('gstinFieldWrap');
     if (gstinWrap && isGst) {
-      const gstinInput = gstinWrap.querySelector('input');
+      const gstinInput = gstinWrap.querySelector('input[data-key="gstin"]');
       const gstinWarningEl = document.getElementById('gstinWarningText');
       const gstinMetaBadge = document.getElementById('gstinMetaBadge');
       const verifyBtn = document.getElementById('verifyGstinPortalBtn');
       const gstinStatusInput = document.getElementById('gstinStatusInput');
-      const gstinStatusWarning = document.getElementById('gstinStatusWarning');
-      const statusButtons = reviewArea.querySelectorAll('.btn-gstin-status');
-
-      function setGstinStatusUI(status) {
-        const s = (status || 'Unverified').trim();
-        if (gstinStatusInput) gstinStatusInput.value = s;
-        statusButtons.forEach(btn => {
-          const isSelected = btn.dataset.status.toLowerCase() === s.toLowerCase();
-          if (btn.dataset.status === 'Active') {
-            btn.style.background = isSelected ? '#15803d' : '#fff';
-            btn.style.color = isSelected ? '#fff' : '#15803d';
-            btn.style.borderColor = isSelected ? '#15803d' : '#86efac';
-          } else if (btn.dataset.status === 'Cancelled') {
-            btn.style.background = isSelected ? '#b91c1c' : '#fff';
-            btn.style.color = isSelected ? '#fff' : '#b91c1c';
-            btn.style.borderColor = isSelected ? '#b91c1c' : '#fca5a5';
-          } else if (btn.dataset.status === 'Suspended') {
-            btn.style.background = isSelected ? '#b45309' : '#fff';
-            btn.style.color = isSelected ? '#fff' : '#b45309';
-            btn.style.borderColor = isSelected ? '#b45309' : '#fde047';
-          } else {
-            btn.style.background = isSelected ? '#475569' : '#fff';
-            btn.style.color = isSelected ? '#fff' : '#64748b';
-            btn.style.borderColor = isSelected ? '#475569' : '#cbd5e1';
-          }
-        });
-        if (gstinStatusWarning) {
-          gstinStatusWarning.style.display = /cancel/i.test(s) ? 'block' : 'none';
-        }
-      }
-
-      statusButtons.forEach(btn => {
-        btn.onclick = (e) => {
-          e.preventDefault();
-          setGstinStatusUI(btn.dataset.status);
-        };
-      });
 
       let lookupTimer = null;
       function checkGstinStatusApi(gstin) {
         if (!gstin || gstin.length !== 15) return;
         if (isCancelledGSTIN(gstin)) {
-          setGstinStatusUI('Cancelled');
+          if (gstinStatusInput) gstinStatusInput.value = 'Cancelled';
+          updateGstinState();
           return;
         }
         fetch(`${BACKEND_URL}/gstin-status/${encodeURIComponent(gstin)}`)
           .then(r => r.json())
           .then(res => {
             if (res && res.status && res.status !== 'Unverified') {
-              setGstinStatusUI(res.status);
+              if (gstinStatusInput) gstinStatusInput.value = res.status;
+              updateGstinState();
             }
           })
           .catch(() => {});
@@ -2079,25 +2034,55 @@
         }
         if (!val) {
           gstinWrap.classList.remove('gstin-invalid');
+          if (gstinStatusInput) gstinStatusInput.value = '';
           if (gstinMetaBadge) { gstinMetaBadge.style.display = 'none'; gstinMetaBadge.innerHTML = ''; }
           return;
         }
         const decoded = decodeGSTIN(val);
         const isOwn = isOwnGSTIN(val);
         const checksumBad = !isValidGSTINChecksum(val);
-        const isCancelled = isCancelledGSTIN(val, gstinStatusInput ? gstinStatusInput.value : '');
+        const currentKnownStatus = gstinStatusInput ? gstinStatusInput.value : '';
+        const isCancelled = isCancelledGSTIN(val, currentKnownStatus);
         gstinWrap.classList.toggle('gstin-invalid', !!(isOwn || checksumBad));
+
+        let autoStatus = 'Active';
+        if (isCancelled) {
+          autoStatus = 'Cancelled';
+        } else if (isOwn || checksumBad) {
+          autoStatus = 'Unverified';
+        } else if (currentKnownStatus && currentKnownStatus !== 'Unverified') {
+          autoStatus = currentKnownStatus;
+        } else {
+          autoStatus = 'Active';
+        }
+        if (gstinStatusInput) gstinStatusInput.value = autoStatus;
 
         if (gstinMetaBadge && decoded) {
           gstinMetaBadge.style.display = 'block';
           if (isOwn) {
-            gstinMetaBadge.innerHTML = `<span style="color:#b91c1c;">🏢 Studio5 Buyer GSTIN (${decoded.stateName})</span>`;
+            gstinMetaBadge.innerHTML = `
+              <div style="background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; padding:6px 10px; border-radius:5px; font-size:11.5px; line-height:1.4;">
+                🏢 <b>Studio5 Buyer GSTIN Detected (${decoded.stateName})</b><br>
+                <span style="font-weight:normal;">This is Studio5's own GSTIN, not the seller's. Please enter seller's actual GSTIN.</span>
+              </div>`;
           } else if (isCancelled) {
-            gstinMetaBadge.innerHTML = `<span style="color:#b91c1c;">🚨 GSTIN CANCELLED ON GOVT PORTAL ❌ · ${decoded.stateName}</span>`;
+            gstinMetaBadge.innerHTML = `
+              <div style="background:#fee2e2; border:1.5px solid #ef4444; color:#991b1b; padding:7px 10px; border-radius:5px; font-size:12px; line-height:1.4;">
+                🚨 <b>GSTIN CANCELLED ON GOVT PORTAL (No ITC Allowed)</b><br>
+                <span style="font-size:11px; font-weight:normal; color:#b91c1c;">State: ${decoded.stateName} · PAN: ${decoded.pan || '-'} · System will flag this bill to Rajiv Bawa.</span>
+              </div>`;
           } else if (checksumBad) {
-            gstinMetaBadge.innerHTML = `<span style="color:#b91c1c;">❌ Invalid Checksum · ${decoded.stateName} · PAN: ${decoded.pan || '-'}</span>`;
+            gstinMetaBadge.innerHTML = `
+              <div style="background:#fffbeb; border:1px solid #fde047; color:#92400e; padding:6px 10px; border-radius:5px; font-size:11.5px; line-height:1.4;">
+                ⚠️ <b>Checksum Mismatch (Potential Typo)</b><br>
+                <span style="font-size:11px; font-weight:normal;">State: ${decoded.stateName} · PAN: ${decoded.pan || '-'} · Check character-by-character against bill photo.</span>
+              </div>`;
           } else {
-            gstinMetaBadge.innerHTML = `<span style="color:#15803d;">✓ Valid Format · ${decoded.stateName} · PAN: ${decoded.pan}</span>`;
+            gstinMetaBadge.innerHTML = `
+              <div style="background:#f0fdf4; border:1.5px solid #86efac; color:#166534; padding:7px 10px; border-radius:5px; font-size:12px; line-height:1.4;">
+                🟢 <b>Auto-Verified: Active Taxpayer</b><br>
+                <span style="font-size:11px; font-weight:normal; color:#15803d;">State: ${decoded.stateName} · PAN: ${decoded.pan} · Format & Checksum Valid</span>
+              </div>`;
           }
         }
 
@@ -2108,8 +2093,8 @@
         }
 
         clearTimeout(lookupTimer);
-        if (val.length === 15) {
-          lookupTimer = setTimeout(() => checkGstinStatusApi(val), 250);
+        if (val.length === 15 && !isCancelled) {
+          lookupTimer = setTimeout(() => checkGstinStatusApi(val), 300);
         }
       }
 
@@ -2121,8 +2106,6 @@
       }
 
       gstinInput.addEventListener('input', updateGstinState);
-      const initStatus = extracted.gstin_status || (isCancelledGSTIN(extracted.gstin) ? 'Cancelled' : 'Unverified');
-      setGstinStatusUI(initStatus);
       updateGstinState();
     }
 
