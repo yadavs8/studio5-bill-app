@@ -691,6 +691,71 @@
     0%, 100% { box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35); transform: translateY(0); }
     50% { box-shadow: 0 3px 14px rgba(2, 132, 199, 0.65); transform: translateY(-1px); }
   }
+
+  /* ─── Month Navigation & Smart Ledger Styles ───────────────────────── */
+  .ledger-month-pill {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 20px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .ledger-month-pill:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+  }
+  .ledger-month-pill.active {
+    background: var(--walnut) !important;
+    color: #fff !important;
+    border-color: var(--walnut) !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 5px rgba(12, 74, 110, 0.25);
+  }
+  .ledger-month-pill .pill-count {
+    font-size: 11px;
+    opacity: 0.85;
+  }
+  .view-toggle-btn.active {
+    background: var(--walnut) !important;
+    color: #fff !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .smart-ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: #fff;
+  }
+  .smart-ledger-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #475569;
+    font-weight: 700;
+    padding: 10px 8px;
+    border-bottom: 2px solid #cbd5e1;
+    background: #f8fafc;
+  }
+  .smart-ledger-table td {
+    padding: 8px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+  }
+  .smart-ledger-table tr:hover td {
+    background: #f8fafc;
+  }
+  .bill-row-clickable {
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -933,6 +998,23 @@
     <div style="display:flex; gap:8px; padding-top:12px; border-top:1px solid #e2e8f0;">
       <button type="button" class="btn-primary" id="processBankUploadBtn" disabled style="flex:1; padding:10px; font-size:14px;">Reconcile Statement</button>
       <button type="button" class="btn-ghost" id="cancelBankUploadBtn" style="padding:10px 14px;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="pin-overlay" id="billDetailModalOverlay" style="display:none; z-index:10000;">
+  <div class="pin-card" style="max-width:620px; width:95%; text-align:left; max-height:90vh; display:flex; flex-direction:column; background:#fff; border-radius:12px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.2);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:12px;">
+      <div>
+        <h2 style="margin:0; font-size:17px; color:#0c4a6e; display:flex; align-items:center; gap:8px;">
+          <span>📑</span> <span id="modalBillTitle">Invoice Details</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:12px; color:#64748b;" id="modalBillSubtitle">Full breakdown</p>
+      </div>
+      <button type="button" id="closeBillDetailModalBtn" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+    <div id="billDetailModalBody" style="overflow-y:auto; flex:1; font-size:13px;">
+      <!-- Content populated dynamically -->
     </div>
   </div>
 </div>
@@ -1266,8 +1348,79 @@
             </div>
           </div>
 
-          <!-- Manager Analysis Filter Toolbar -->
-          <div class="ledger-filters">
+          <!-- 1. Interactive Month Navigation Bar -->
+          <div id="ledgerMonthBar" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap; padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.04em;">📅 Month:</span>
+              <div id="ledgerMonthPills" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                <!-- Dynamically populated month pills -->
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label for="ledgerMonthSelect" style="font-size:11.5px; font-weight:600; color:#64748b;">All Periods:</label>
+              <select id="ledgerMonthSelect" style="padding:6px 12px; border-radius:6px; border:1px solid #cbd5e1; font-family:inherit; font-size:12.5px; font-weight:600; background:#fff; color:#1e293b; cursor:pointer;">
+                <!-- Dynamically populated month options -->
+              </select>
+            </div>
+          </div>
+
+          <!-- 2. Front-Screen Executive Glance Strip (Always visible for selected period) -->
+          <div id="ledgerGlanceStrip" style="margin-bottom:14px; padding:14px 18px; background:linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%); border:1px solid #bae6fd; border-radius:10px; box-shadow:0 2px 4px rgba(0,0,0,0.03);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px; border-bottom:1px solid #e0f2fe; padding-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:20px;">📊</span>
+                <div>
+                  <div id="glanceMonthTitle" style="font-size:15px; font-weight:700; color:#0c4a6e;">Expenses Overview</div>
+                  <div id="glanceMonthSubtitle" style="font-size:12px; color:#0369a1;">Showing active transactions</div>
+                </div>
+              </div>
+              <!-- View Switcher Toggle: Smart View vs Full 22-Column View -->
+              <div style="display:flex; align-items:center; gap:4px; background:#e0f2fe; padding:3px; border-radius:6px;">
+                <button type="button" class="view-toggle-btn active" id="viewToggleSmart" style="padding:5px 12px; font-size:12px; font-weight:700; border:none; border-radius:4px; cursor:pointer; background:#0c4a6e; color:#fff;">⚡ Smart View (Fits Screen)</button>
+                <button type="button" class="view-toggle-btn" id="viewToggleFull" style="padding:5px 12px; font-size:12px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:#0369a1;">📊 Full 22 Columns</button>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:12px;">
+              <div style="background:#fff; padding:10px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="font-size:10.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Net Spend</div>
+                <div id="glanceTotalSpend" style="font-size:18px; font-weight:800; color:#0c4a6e; margin-top:2px;">₹0</div>
+                <div id="glanceReturnsSubtext" style="font-size:10.5px; color:#d97706; margin-top:1px; display:none;">-₹0 returns</div>
+              </div>
+              <div style="background:#f0fdf4; padding:10px 14px; border-radius:8px; border:1px solid #bbf7d0;">
+                <div style="font-size:10.5px; font-weight:700; color:#166534; text-transform:uppercase;">🟢 Paid</div>
+                <div id="glancePaidSpend" style="font-size:18px; font-weight:800; color:#15803d; margin-top:2px;">₹0</div>
+                <div id="glancePaidCount" style="font-size:10.5px; color:#166534; margin-top:1px;">0 bills</div>
+              </div>
+              <div style="background:#fef2f2; padding:10px 14px; border-radius:8px; border:1px solid #fecaca;">
+                <div style="font-size:10.5px; font-weight:700; color:#991b1b; text-transform:uppercase;">🔴 Pending Due</div>
+                <div id="glanceDueSpend" style="font-size:18px; font-weight:800; color:#b91c1c; margin-top:2px;">₹0</div>
+                <div id="glanceDueCount" style="font-size:10.5px; color:#991b1b; margin-top:1px;">0 bills</div>
+              </div>
+              <div style="background:#fff; padding:10px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="font-size:10.5px; font-weight:700; color:#64748b; text-transform:uppercase;">GST vs Non-GST</div>
+                <div id="glanceGstSplit" style="font-size:13px; font-weight:700; color:#1e293b; margin-top:4px;">₹0 / ₹0</div>
+                <div id="glanceGstCount" style="font-size:10.5px; color:#64748b; margin-top:1px;">0 GST · 0 Non-GST</div>
+              </div>
+              <div style="background:#fff; padding:10px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="font-size:10.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Top Site / Area</div>
+                <div id="glanceTopSite" style="font-size:13.5px; font-weight:700; color:#0c4a6e; margin-top:4px;">—</div>
+                <div id="glanceTopSiteSpend" style="font-size:10.5px; color:#64748b; margin-top:1px;">₹0</div>
+              </div>
+            </div>
+
+            <!-- Quick Filter Pills -->
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding-top:8px; border-top:1px dashed #cbd5e1;">
+              <span style="font-size:11.5px; font-weight:700; color:#475569; margin-right:2px;">Quick Filter:</span>
+              <button type="button" class="glance-filter-btn active" data-statusfilter="ALL" style="padding:4px 10px; font-size:11.5px; font-weight:700; border-radius:12px; border:1px solid #cbd5e1; background:#0c4a6e; color:#fff; cursor:pointer;">All (<span id="qfAllCount">0</span>)</button>
+              <button type="button" class="glance-filter-btn" data-statusfilter="DUE" style="padding:4px 10px; font-size:11.5px; font-weight:600; border-radius:12px; border:1px solid #fecaca; background:#fff; color:#b91c1c; cursor:pointer;">🔴 Unpaid Due (<span id="qfDueCount">0</span>)</button>
+              <button type="button" class="glance-filter-btn" data-statusfilter="PAID" style="padding:4px 10px; font-size:11.5px; font-weight:600; border-radius:12px; border:1px solid #bbf7d0; background:#fff; color:#15803d; cursor:pointer;">🟢 Paid (<span id="qfPaidCount">0</span>)</button>
+              <button type="button" class="glance-filter-btn" data-statusfilter="RETURNS" style="padding:4px 10px; font-size:11.5px; font-weight:600; border-radius:12px; border:1px solid #fde68a; background:#fff; color:#92400e; cursor:pointer;">🔄 With Returns (<span id="qfReturnsCount">0</span>)</button>
+            </div>
+          </div>
+
+          <!-- Secondary Filters (Team Member & Search) -->
+          <div class="ledger-filters" style="margin-bottom:12px;">
             <div style="display:flex; align-items:center; gap:6px;">
               <label for="ledgerPersonFilter" style="font-size:12px; font-weight:600; color:var(--walnut-light);">👤 Person:</label>
               <select id="ledgerPersonFilter" style="padding:6px 10px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:13px; font-weight:600; background:#fff;">
@@ -1282,35 +1435,10 @@
               </select>
             </div>
             <div style="display:flex; align-items:center; gap:6px;">
-              <label for="ledgerMonthFilter" style="font-size:12px; font-weight:600; color:var(--walnut-light);">📅 Period:</label>
-              <select id="ledgerMonthFilter" style="padding:6px 10px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:13px; font-weight:600; background:#fff;">
-                <option value="">All Time</option>
-                <option value="THIS_MONTH">This Month</option>
-                <option value="LAST_MONTH">Last Month</option>
-                <option value="LAST_2_MONTHS">Last 2 Months (This + Last)</option>
-              </select>
-            </div>
-            <div style="display:flex; align-items:center; gap:6px;">
               <label for="ledgerSearchInput" style="font-size:12px; font-weight:600; color:var(--walnut-light);">🔍 Search:</label>
-              <input type="text" id="ledgerSearchInput" placeholder="Vendor, note, amount..." style="padding:6px 10px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:12.5px; background:#fff; width:170px;" />
+              <input type="text" id="ledgerSearchInput" placeholder="Vendor, item, bill #, note..." style="padding:6px 10px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:12.5px; background:#fff; width:220px;" />
             </div>
             <button class="btn-ghost" id="clearLedgerFiltersBtn" style="font-size:11.5px; padding:6px 10px;">Reset Filters</button>
-          </div>
-
-          <!-- Manager Analysis KPI Card (Dynamic calculation for filtered person & timeframe) -->
-          <div id="ledgerAnalysisSummary" style="display:none; margin-bottom:16px; padding:14px 18px; background:#fff; border-left:4px solid var(--brass); border-radius:4px; border-top:1px solid var(--line); border-right:1px solid var(--line); border-bottom:1px solid var(--line);">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-              <div>
-                <span id="analysisTitle" style="font-size:14px; font-weight:700; color:var(--walnut);">Expenses Analysis</span>
-                <div id="analysisSubtitle" style="font-size:12px; color:var(--walnut-light); margin-top:2px;">Showing filtered transactions</div>
-              </div>
-              <div style="display:flex; gap:20px; flex-wrap:wrap;">
-                <div><span style="font-size:10.5px; color:var(--walnut-light); text-transform:uppercase; font-weight:700;">Total Spend</span><div id="analysisTotalSpend" style="font-size:17px; font-weight:700; color:var(--walnut);">₹0</div></div>
-                <div><span style="font-size:10.5px; color:var(--walnut-light); text-transform:uppercase; font-weight:700;">GST Bills</span><div id="analysisGstSpend" style="font-size:17px; font-weight:700; color:var(--walnut);">₹0 (0)</div></div>
-                <div><span style="font-size:10.5px; color:var(--walnut-light); text-transform:uppercase; font-weight:700;">Non-GST & Cash</span><div id="analysisNonGstSpend" style="font-size:17px; font-weight:700; color:var(--walnut);">₹0 (0)</div></div>
-                <div><span style="font-size:10.5px; color:var(--walnut-light); text-transform:uppercase; font-weight:700;">Unpaid</span><div id="analysisUnpaid" style="font-size:17px; font-weight:700; color:var(--danger);">₹0</div></div>
-              </div>
-            </div>
           </div>
 
           <div class="tabs">
@@ -2532,17 +2660,96 @@
       tableArea.innerHTML = `<div class="empty-state">Couldn't load the ledger (${e.message}). Check the backend is awake and the Sheet tab names are correct.</div>`;
       return;
     }
+    const allRecords = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
+    populateLedgerMonthBar(allRecords);
     renderTable();
   }
 
   let ledgerPersonFilter = '';
-  let ledgerMonthFilter = '';
+  let ledgerSelectedMonthKey = ''; // 'ALL_TIME' or 'YYYY-MM'
+  let ledgerMonthFilter = ''; // alias for exports
   let ledgerSearchQuery = '';
+  let ledgerStatusFilter = 'ALL'; // 'ALL', 'DUE', 'PAID', 'RETURNS'
+  let ledgerViewMode = 'smart'; // 'smart' (fits screen) or 'full' (all 22 columns)
+
+  function populateLedgerMonthBar(allRecords) {
+    const pillsContainer = document.getElementById('ledgerMonthPills');
+    const monthSelect = document.getElementById('ledgerMonthSelect');
+    if (!pillsContainer || !monthSelect) return;
+
+    const now = new Date();
+    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const keysWithData = new Set(allRecords.map(getMonthKey).filter(Boolean));
+    keysWithData.add(currentKey);
+    const sortedKeys = Array.from(keysWithData).sort().reverse();
+
+    if (!ledgerSelectedMonthKey) {
+      const firstWithData = sortedKeys.find(k => allRecords.some(r => getMonthKey(r) === k));
+      ledgerSelectedMonthKey = firstWithData || currentKey;
+      ledgerMonthFilter = ledgerSelectedMonthKey;
+    }
+
+    const totalAll = allRecords.length;
+
+    const optionsHtml = [
+      `<option value="ALL_TIME" ${ledgerSelectedMonthKey === 'ALL_TIME' ? 'selected' : ''}>All Months (${totalAll} bills)</option>`
+    ];
+
+    let pillsHtml = `
+      <button type="button" class="ledger-month-pill ${ledgerSelectedMonthKey === 'ALL_TIME' ? 'active' : ''}" data-month="ALL_TIME">
+        All Time <span class="pill-count">(${totalAll})</span>
+      </button>
+    `;
+
+    sortedKeys.forEach((key, idx) => {
+      const count = allRecords.filter(r => getMonthKey(r) === key).length;
+      const [y, m] = key.split('-');
+      const dateObj = new Date(parseInt(y), parseInt(m) - 1, 1);
+      const monthName = dateObj.toLocaleString('en-IN', { month: 'short' });
+      const label = `${monthName} ${y}`;
+      const isCurrent = key === currentKey;
+      const displayLabel = isCurrent ? `${label} (Current)` : label;
+
+      optionsHtml.push(`<option value="${key}" ${key === ledgerSelectedMonthKey ? 'selected' : ''}>${displayLabel} — ${count} bills</option>`);
+
+      if (idx < 5) {
+        pillsHtml += `
+          <button type="button" class="ledger-month-pill ${key === ledgerSelectedMonthKey ? 'active' : ''}" data-month="${key}">
+            ${label} <span class="pill-count">(${count})</span>
+          </button>
+        `;
+      }
+    });
+
+    monthSelect.innerHTML = optionsHtml.join('');
+    pillsContainer.innerHTML = pillsHtml;
+
+    pillsContainer.querySelectorAll('.ledger-month-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        ledgerSelectedMonthKey = pill.dataset.month;
+        ledgerMonthFilter = ledgerSelectedMonthKey;
+        monthSelect.value = ledgerSelectedMonthKey;
+        pillsContainer.querySelectorAll('.ledger-month-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        renderTable();
+      });
+    });
+
+    monthSelect.onchange = () => {
+      ledgerSelectedMonthKey = monthSelect.value;
+      ledgerMonthFilter = ledgerSelectedMonthKey;
+      pillsContainer.querySelectorAll('.ledger-month-pill').forEach(p => {
+        p.classList.toggle('active', p.dataset.month === ledgerSelectedMonthKey);
+      });
+      renderTable();
+    };
+  }
 
   function filterRecordsList(records) {
     if (!records) return [];
     return records.filter(r => {
-      // 1. Person filter: checks both purchased_by and submitted_by_employee
+      // 1. Person filter
       if (ledgerPersonFilter) {
         const pIncurred = resolvePersonName(r.purchased_by, r);
         const pSubmitter = resolvePersonName(r.submitted_by_employee, r);
@@ -2550,170 +2757,485 @@
           return false;
         }
       }
-      // 2. Month filter: checks date or uploaded_on
-      if (ledgerMonthFilter) {
-        const d = parseInvoiceDate(r.date) || parseInvoiceDate(r.uploaded_on);
-        if (!d) return false;
-        const now = new Date();
-        const thisYear = now.getFullYear();
-        const thisMonth = now.getMonth();
-        const recYear = d.getFullYear();
-        const recMonth = d.getMonth();
-
-        if (ledgerMonthFilter === 'THIS_MONTH') {
-          if (recYear !== thisYear || recMonth !== thisMonth) return false;
-        } else if (ledgerMonthFilter === 'LAST_MONTH') {
-          const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
-          const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
-          if (recYear !== lastMonthYear || recMonth !== lastMonth) return false;
-        } else if (ledgerMonthFilter === 'LAST_2_MONTHS') {
-          const diffMonths = (thisYear - recYear) * 12 + (thisMonth - recMonth);
-          if (diffMonths < 0 || diffMonths > 1) return false;
+      // 2. Month filter
+      if (ledgerSelectedMonthKey && ledgerSelectedMonthKey !== 'ALL_TIME') {
+        const mKey = getMonthKey(r);
+        if (mKey !== ledgerSelectedMonthKey) {
+          return false;
         }
       }
-      // 3. Search query
+      // 3. Quick status filter (Due, Paid, Returns)
+      if (ledgerStatusFilter === 'DUE') {
+        if (r.payment_status === 'paid') return false;
+      } else if (ledgerStatusFilter === 'PAID') {
+        if (r.payment_status !== 'paid') return false;
+      } else if (ledgerStatusFilter === 'RETURNS') {
+        const hasReturn = returnsCache.some(ret =>
+          (ret.bill_id && r.entry_id && String(ret.bill_id) === String(r.entry_id)) ||
+          (ret.bill_no && r.bill_no && ret.bill_no.toLowerCase() === String(r.bill_no).toLowerCase() && ret.vendor_name.toLowerCase() === String(r.vendor_name || '').toLowerCase())
+        );
+        if (!hasReturn) return false;
+      }
+      // 4. Search query
       if (ledgerSearchQuery) {
         const q = ledgerSearchQuery.toLowerCase();
         const match = (r.vendor_name || '').toLowerCase().includes(q)
           || (r.description || '').toLowerCase().includes(q)
           || (r.invoice_value || '').toString().includes(q)
           || (r.bill_no || '').toLowerCase().includes(q)
-          || (r.purchased_by || '').toLowerCase().includes(q);
+          || (r.purchased_by || '').toLowerCase().includes(q)
+          || (r.gstin || '').toLowerCase().includes(q);
         if (!match) return false;
       }
       return true;
     });
   }
 
-  function updateLedgerAnalysisSummary() {
-    const summaryCard = document.getElementById('ledgerAnalysisSummary');
-    if (!summaryCard) return;
+  function updateLedgerGlanceStrip(allFiltered) {
+    const strip = document.getElementById('ledgerGlanceStrip');
+    if (!strip) return;
 
-    if (!ledgerPersonFilter && !ledgerMonthFilter && !ledgerSearchQuery) {
-      summaryCard.style.display = 'none';
-      return;
+    let monthTitle = 'All Time Overview';
+    if (ledgerSelectedMonthKey && ledgerSelectedMonthKey !== 'ALL_TIME') {
+      const [y, m] = ledgerSelectedMonthKey.split('-');
+      const dateObj = new Date(parseInt(y), parseInt(m) - 1, 1);
+      const fullMonth = dateObj.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+      monthTitle = `${fullMonth} Overview`;
+    }
+    const titleEl = document.getElementById('glanceMonthTitle');
+    const subEl = document.getElementById('glanceMonthSubtitle');
+    if (titleEl) titleEl.textContent = monthTitle;
+    if (subEl) subEl.textContent = `${allFiltered.length} bills recorded`;
+
+    let totalGross = 0;
+    let totalReturns = 0;
+    let paidSpend = 0;
+    let paidCount = 0;
+    let dueSpend = 0;
+    let dueCount = 0;
+    let gstSpend = 0;
+    let gstCount = 0;
+    let nonGstSpend = 0;
+    let nonGstCount = 0;
+    let returnsCount = 0;
+    const siteSpends = {};
+
+    allFiltered.forEach(r => {
+      const origVal = parseFloat(String(r.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0;
+      const billRet = returnsCache.find(ret =>
+        (ret.bill_id && r.entry_id && String(ret.bill_id) === String(r.entry_id)) ||
+        (ret.bill_no && r.bill_no && ret.bill_no.toLowerCase() === String(r.bill_no).toLowerCase() && ret.vendor_name.toLowerCase() === String(r.vendor_name || '').toLowerCase())
+      );
+
+      const retAmt = billRet ? billRet.return_amount : 0;
+      const netVal = billRet ? billRet.net_amount : origVal;
+
+      totalGross += origVal;
+      totalReturns += retAmt;
+      if (billRet) returnsCount++;
+
+      const isPaid = r.payment_status === 'paid';
+      if (isPaid) {
+        paidSpend += netVal;
+        paidCount++;
+      } else {
+        dueSpend += netVal;
+        dueCount++;
+      }
+
+      if (r.bill_type === 'gst' || r.gstin) {
+        gstSpend += netVal;
+        gstCount++;
+      } else {
+        nonGstSpend += netVal;
+        nonGstCount++;
+      }
+
+      const incurred = r.purchased_by ? resolvePersonName(r.purchased_by, r) : resolvePersonName(r.submitted_by_employee, r);
+      const siteInfo = getSupervisorSiteInfo(incurred, r);
+      const siteKey = siteInfo.site.replace(' Site', '');
+      siteSpends[siteKey] = (siteSpends[siteKey] || 0) + netVal;
+    });
+
+    const totalNet = totalGross - totalReturns;
+    const fmt = n => '₹' + Math.round(n).toLocaleString('en-IN');
+
+    const totalEl = document.getElementById('glanceTotalSpend');
+    if (totalEl) totalEl.textContent = fmt(totalNet);
+
+    const retSubEl = document.getElementById('glanceReturnsSubtext');
+    if (retSubEl) {
+      if (totalReturns > 0) {
+        retSubEl.textContent = `-₹${Math.round(totalReturns).toLocaleString('en-IN')} returns deducted`;
+        retSubEl.style.display = 'block';
+      } else {
+        retSubEl.style.display = 'none';
+      }
     }
 
-    summaryCard.style.display = 'block';
-    const allGst = filterRecordsList(recordsCache.gst || []);
-    const allNonGst = filterRecordsList(recordsCache.non_gst || []);
-    const allFiltered = [...allGst, ...allNonGst];
+    const paidEl = document.getElementById('glancePaidSpend');
+    const paidCountEl = document.getElementById('glancePaidCount');
+    if (paidEl) paidEl.textContent = fmt(paidSpend);
+    if (paidCountEl) paidCountEl.textContent = `${paidCount} bills`;
 
-    const titleEl = document.getElementById('analysisTitle');
-    const subEl = document.getElementById('analysisSubtitle');
-    const totalEl = document.getElementById('analysisTotalSpend');
-    const gstEl = document.getElementById('analysisGstSpend');
-    const nonGstEl = document.getElementById('analysisNonGstSpend');
-    const unpaidEl = document.getElementById('analysisUnpaid');
+    const dueEl = document.getElementById('glanceDueSpend');
+    const dueCountEl = document.getElementById('glanceDueCount');
+    if (dueEl) dueEl.textContent = fmt(dueSpend);
+    if (dueCountEl) dueCountEl.textContent = `${dueCount} bills`;
 
-    const personLabel = ledgerPersonFilter || 'All Team Members';
-    let periodLabel = 'All Time';
-    if (ledgerMonthFilter === 'THIS_MONTH') periodLabel = 'This Month';
-    else if (ledgerMonthFilter === 'LAST_MONTH') periodLabel = 'Last Month';
-    else if (ledgerMonthFilter === 'LAST_2_MONTHS') periodLabel = 'Last 2 Months (This + Last)';
+    const gstSplitEl = document.getElementById('glanceGstSplit');
+    const gstCountEl = document.getElementById('glanceGstCount');
+    if (gstSplitEl) gstSplitEl.textContent = `${fmt(gstSpend)} / ${fmt(nonGstSpend)}`;
+    if (gstCountEl) gstCountEl.textContent = `${gstCount} GST · ${nonGstCount} Non-GST`;
 
-    if (titleEl) titleEl.textContent = `Expenses for ${personLabel}`;
-    if (subEl) subEl.textContent = `${periodLabel} · ${allFiltered.length} total entries`;
+    const siteEntries = Object.entries(siteSpends).sort((a, b) => b[1] - a[1]);
+    const topSiteEl = document.getElementById('glanceTopSite');
+    const topSiteSpendEl = document.getElementById('glanceTopSiteSpend');
+    if (topSiteEl) topSiteEl.textContent = siteEntries.length > 0 ? siteEntries[0][0] : '—';
+    if (topSiteSpendEl) topSiteSpendEl.textContent = siteEntries.length > 0 ? fmt(siteEntries[0][1]) : '₹0';
 
-    const money = n => '₹' + Math.round(n).toLocaleString('en-IN');
-    const gstSpend = allGst.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
-    const nonGstSpend = allNonGst.reduce((sum, r) => sum + toNum(r.invoice_value), 0);
-    const totalSpend = gstSpend + nonGstSpend;
-    const unpaidSpend = allFiltered.filter(r => r.payment_status === 'unpaid').reduce((sum, r) => sum + toNum(r.invoice_value), 0);
+    const qfAll = document.getElementById('qfAllCount');
+    const qfDue = document.getElementById('qfDueCount');
+    const qfPaid = document.getElementById('qfPaidCount');
+    const qfReturns = document.getElementById('qfReturnsCount');
+    if (qfAll) qfAll.textContent = allFiltered.length;
+    if (qfDue) qfDue.textContent = dueCount;
+    if (qfPaid) qfPaid.textContent = paidCount;
+    if (qfReturns) qfReturns.textContent = returnsCount;
+  }
 
-    if (totalEl) totalEl.textContent = money(totalSpend);
-    if (gstEl) gstEl.textContent = `${money(gstSpend)} (${allGst.length})`;
-    if (nonGstEl) nonGstEl.textContent = `${money(nonGstSpend)} (${allNonGst.length})`;
-    if (unpaidEl) unpaidEl.textContent = money(unpaidSpend);
+  function openBillDetailModal(r) {
+    const modal = document.getElementById('billDetailModalOverlay');
+    const titleEl = document.getElementById('modalBillTitle');
+    const subtitleEl = document.getElementById('modalBillSubtitle');
+    const bodyEl = document.getElementById('billDetailModalBody');
+    if (!modal || !bodyEl) return;
+
+    const origVal = parseFloat(String(r.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0;
+    const billRet = returnsCache.find(ret =>
+      (ret.bill_id && r.entry_id && String(ret.bill_id) === String(r.entry_id)) ||
+      (ret.bill_no && r.bill_no && ret.bill_no.toLowerCase() === String(r.bill_no).toLowerCase() && ret.vendor_name.toLowerCase() === String(r.vendor_name || '').toLowerCase())
+    );
+    const netVal = billRet ? billRet.net_amount : origVal;
+
+    if (titleEl) titleEl.textContent = r.vendor_name || 'Bill Details';
+    if (subtitleEl) subtitleEl.textContent = `Invoice #${r.bill_no || '—'} · ${r.date || '—'}`;
+
+    const row = (label, val) => `
+      <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:13px;">
+        <span style="font-weight:600; color:#64748b;">${label}</span>
+        <span style="font-weight:700; color:#1e293b; text-align:right; max-width:65%; word-break:break-word;">${val || '—'}</span>
+      </div>
+    `;
+
+    let itemsHtml = '';
+    if (r.description) {
+      itemsHtml = `
+        <div style="margin-top:12px; padding:10px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0;">
+          <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:4px;">Description / Items</div>
+          <div style="font-size:13px; color:#1e293b; line-height:1.5;">${r.description}</div>
+        </div>
+      `;
+    }
+
+    let photoHtml = '';
+    if (r.photo_link) {
+      photoHtml = `
+        <div style="margin-top:14px; text-align:center;">
+          <a href="${r.photo_link}" target="_blank" rel="noopener" style="display:inline-block; border:1px solid #cbd5e1; border-radius:6px; padding:4px; background:#f8fafc;">
+            <img src="${r.photo_link}" style="max-height:180px; max-width:100%; border-radius:4px; object-fit:contain;" alt="Bill Image" />
+            <div style="font-size:11.5px; font-weight:600; color:#0284c7; margin-top:4px;">🔍 Click to View Full Photo / PDF</div>
+          </a>
+        </div>
+      `;
+    }
+
+    bodyEl.innerHTML = `
+      <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px 16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-size:11px; font-weight:700; color:#0369a1; text-transform:uppercase;">Net Payable</div>
+          <div style="font-size:22px; font-weight:800; color:#0c4a6e;">₹${netVal.toLocaleString('en-IN')}</div>
+          ${billRet ? `<div style="font-size:11px; color:#b45309;">Original: ₹${origVal.toLocaleString('en-IN')} · Return: -₹${billRet.return_amount.toLocaleString('en-IN')}</div>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <span style="display:inline-block; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:700; background:${r.payment_status === 'paid' ? '#dcfce7; color:#15803d;' : '#fee2e2; color:#b91c1c;'}">
+            ${r.payment_status === 'paid' ? 'PAID' : 'DUE / UNPAID'}
+          </span>
+        </div>
+      </div>
+
+      ${row('Vendor Name', r.vendor_name)}
+      ${row('GSTIN', r.gstin ? `${r.gstin} (${r.gstin_status || 'Unverified'})` : 'Non-GST')}
+      ${row('Invoice Number', r.bill_no)}
+      ${row('Invoice Date', r.date)}
+      ${row('Incurred By', r.purchased_by)}
+      ${row('Submitted By', r.submitted_by_employee)}
+      ${row('Taxable Value', r.taxable_value ? `₹${parseFloat(r.taxable_value).toLocaleString('en-IN')}` : '—')}
+      ${row('CGST / SGST / IGST', `${r.cgst ? 'CGST: ₹' + r.cgst : ''} ${r.sgst ? 'SGST: ₹' + r.sgst : ''} ${r.igst ? 'IGST: ₹' + r.igst : ''}`.trim() || '—')}
+      ${row('Seller Phone', r.seller_phone)}
+      ${row('Seller Address', r.seller_address)}
+      ${row('Place of Supply', r.place_of_supply)}
+      ${row('Uploaded On', r.uploaded_on)}
+
+      ${itemsHtml}
+      ${photoHtml}
+    `;
+
+    modal.style.display = 'flex';
+  }
+  window.openBillDetailModal = openBillDetailModal;
+
+  function renderSmartTable(filtered) {
+    const isAllTime = ledgerSelectedMonthKey === 'ALL_TIME';
+    let currentGroup = '';
+    const rows = [];
+
+    filtered.forEach(r => {
+      const overdue = isOverdue(r);
+      const mKey = getMonthKey(r) || 'Unspecified';
+
+      if (isAllTime && mKey !== currentGroup) {
+        currentGroup = mKey;
+        const [gy, gm] = currentGroup.split('-');
+        const gDate = (gy && gm) ? new Date(parseInt(gy), parseInt(gm) - 1, 1) : null;
+        const gLabel = gDate ? gDate.toLocaleString('en-IN', { month: 'long', year: 'numeric' }) : currentGroup;
+        const gBills = filtered.filter(x => getMonthKey(x) === currentGroup);
+        const gSpend = gBills.reduce((s, x) => s + (parseFloat(String(x.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0), 0);
+
+        rows.push(`
+          <tr style="background:#f1f5f9; border-top:2px solid #cbd5e1; border-bottom:1px solid #cbd5e1;">
+            <td colspan="8" style="padding:10px 12px; font-weight:800; font-size:12.5px; color:#0c4a6e;">
+              📅 ${gLabel} — ${gBills.length} bills · ₹${Math.round(gSpend).toLocaleString('en-IN')}
+            </td>
+          </tr>
+        `);
+      }
+
+      const dt = r.date || (r.uploaded_on ? String(r.uploaded_on).split(' ')[0] : '—');
+      const origVal = parseFloat(String(r.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0;
+      const billRet = returnsCache.find(ret =>
+        (ret.bill_id && r.entry_id && String(ret.bill_id) === String(r.entry_id)) ||
+        (ret.bill_no && r.bill_no && ret.bill_no.toLowerCase() === String(r.bill_no).toLowerCase() && ret.vendor_name.toLowerCase() === String(r.vendor_name || '').toLowerCase())
+      );
+      const netVal = billRet ? billRet.net_amount : origVal;
+
+      let gstinHtml = '';
+      if (r.gstin) {
+        const g = (r.gstin || '').trim();
+        const st = (r.gstin_status || '').trim();
+        const isCan = isCancelledGSTIN(r.gstin, st, r.description);
+        const isAct = /active/i.test(st);
+        let stBadge = `<span style="color:#94a3b8; font-size:10px;">${st || 'Unverified'}</span>`;
+        if (isCan) stBadge = `<span style="background:#fee2e2; color:#b91c1c; font-weight:700; font-size:10px; padding:1px 5px; border-radius:3px;">🚨 Cancelled</span>`;
+        else if (isAct) stBadge = `<span style="background:#dcfce7; color:#15803d; font-weight:600; font-size:10px; padding:1px 5px; border-radius:3px;">🟢 Active</span>`;
+
+        gstinHtml = `
+          <div style="display:flex; align-items:center; gap:4px; margin-top:3px; flex-wrap:wrap;">
+            <span style="font-family:monospace; font-size:11px; color:#475569;">${g}</span>
+            ${stBadge}
+            <button type="button" class="btn-verify-gstin-table" data-gstin="${g}" style="border:none; background:transparent; cursor:pointer; font-size:11px; padding:0 2px;" title="Copy GSTIN & verify">🔍</button>
+          </div>
+        `;
+      } else {
+        gstinHtml = `<div style="margin-top:3px;"><span style="background:#fef3c7; color:#92400e; font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px;">NON-GST / CASH</span></div>`;
+      }
+
+      const rawUploader = r.submitted_by_employee || '';
+      const isWhatsApp = rawUploader.toLowerCase().includes('whatsapp') || r.channel === 'whatsapp';
+      const uploader = resolvePersonName(rawUploader, r);
+      const incurred = r.purchased_by ? resolvePersonName(r.purchased_by, r) : uploader;
+      const siteInfo = getSupervisorSiteInfo(incurred, r);
+      const sourceBadge = isWhatsApp
+        ? `<span style="background:#e8f5e9; color:#2e7d32; font-size:9.5px; padding:1px 4px; border-radius:6px; font-weight:600; margin-left:2px;">WhatsApp</span>`
+        : '';
+
+      let amountHtml = `<div style="font-size:14px; font-weight:800; color:#0f172a;">₹${netVal.toLocaleString('en-IN')}</div>`;
+      if (billRet) {
+        amountHtml += `
+          <div style="font-size:10.5px; color:#b45309; text-decoration:line-through;">₹${origVal.toLocaleString('en-IN')}</div>
+          <div><span style="background:#fef3c7; color:#92400e; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; display:inline-block; margin-top:2px;" title="${billRet.reason || 'Goods Return'}">🔄 -₹${billRet.return_amount.toLocaleString('en-IN')} Ret</span></div>
+        `;
+      }
+      if (r.taxable_value && parseFloat(r.taxable_value) > 0) {
+        amountHtml += `<div style="font-size:10px; color:#64748b; margin-top:2px;">Taxable: ₹${parseFloat(r.taxable_value).toLocaleString('en-IN')}</div>`;
+      }
+
+      const isPaid = r.payment_status === 'paid';
+      const payBadge = isPaid
+        ? `<span style="background:#dcfce7; color:#15803d; font-size:11px; font-weight:700; padding:3px 8px; border-radius:4px; display:inline-block;">PAID</span>`
+        : `<span style="background:#fee2e2; color:#b91c1c; font-size:11px; font-weight:700; padding:3px 8px; border-radius:4px; display:inline-block;">DUE</span>`;
+
+      const isVoucher = !r.gstin || r.bill_type === 'non_gst';
+      const voucherBtn = isVoucher ? `<button type="button" class="btn-ghost" style="font-size:11px; padding:3px 7px;" onclick='openDigitalVoucher(${JSON.stringify(r).replace(/'/g, "&#39;")})' title="View / Print Digital Voucher">📄</button>` : '';
+      const returnBtn = `<button type="button" class="btn-ghost btn-return-bill" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; color:#92400e; border-color:#fde68a; background:#fffbeb;" title="Record Goods Return / Debit Note">🔄</button>`;
+      const detailBtn = `<button type="button" class="btn-ghost btn-view-detail" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px;" title="View Complete Bill Details">👁</button>`;
+      const delBtn = r.entry_id ? `<button type="button" class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete" style="font-size:11px; padding:3px 6px;">✕</button>` : '';
+
+      rows.push(`
+        <tr style="${overdue ? 'background:#fff5f5;' : ''}">
+          <td style="white-space:nowrap; vertical-align:top;">
+            <div style="font-weight:700; color:#1e293b; font-size:12.5px;">${dt}</div>
+            <div style="font-family:monospace; font-size:11px; color:#64748b; margin-top:2px;" title="Invoice No">${r.bill_no || '—'}</div>
+          </td>
+          <td style="vertical-align:top;">
+            <div style="font-weight:700; color:#0f172a; font-size:13px;">${r.vendor_name || '—'}</div>
+            ${gstinHtml}
+          </td>
+          <td style="vertical-align:top;">
+            <div style="font-weight:600; color:#1e293b; font-size:12.5px;">${incurred}</div>
+            <div style="margin-top:3px;">
+              <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px;">${siteInfo.site.replace(' Site','')}</span>
+              ${sourceBadge}
+            </div>
+          </td>
+          <td style="vertical-align:top;">
+            <div style="font-size:12px; color:#334155; max-width:260px; line-height:1.4;" title="${r.description || ''}">
+              ${r.description || '—'}
+            </div>
+          </td>
+          <td style="text-align:right; vertical-align:top; white-space:nowrap;">
+            ${amountHtml}
+          </td>
+          <td style="text-align:center; vertical-align:top; white-space:nowrap;">
+            ${payBadge}
+            ${overdue ? '<div style="font-size:9.5px; color:#b91c1c; font-weight:700; margin-top:3px;">Overdue</div>' : ''}
+          </td>
+          <td style="text-align:center; vertical-align:top;">
+            ${r.photo_link ? photoThumbHtml(r.photo_link) : '-'}
+          </td>
+          <td style="text-align:right; vertical-align:top; white-space:nowrap;">
+            <div style="display:flex; justify-content:flex-end; align-items:center; gap:3px;">
+              ${detailBtn}
+              ${voucherBtn}
+              ${returnBtn}
+              ${delBtn}
+            </div>
+          </td>
+        </tr>
+      `);
+    });
+
+    return `
+      <table class="smart-ledger-table">
+        <thead>
+          <tr>
+            <th style="width:105px;">Date & Inv #</th>
+            <th style="min-width:180px;">Vendor & GSTIN</th>
+            <th style="width:140px;">Site / Supervisor</th>
+            <th style="min-width:160px;">Description / Items</th>
+            <th style="width:130px; text-align:right;">Amount</th>
+            <th style="width:85px; text-align:center;">Payment</th>
+            <th style="width:55px; text-align:center;">Bill</th>
+            <th style="width:125px; text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.join('')}
+        </tbody>
+      </table>
+    `;
   }
 
   function renderTable() {
     const rawList = recordsCache[activeTab] || [];
     const filtered = filterRecordsList(rawList);
-    const totalFiltered = filterRecordsList(recordsCache.gst || []).length + filterRecordsList(recordsCache.non_gst || []).length;
+    const allGst = filterRecordsList(recordsCache.gst || []);
+    const allNonGst = filterRecordsList(recordsCache.non_gst || []);
+    const allFiltered = [...allGst, ...allNonGst];
+
     const totalRaw = recordsCache.gst.length + recordsCache.non_gst.length;
+    countPill.textContent = `${allFiltered.length} of ${totalRaw} entries`;
 
-    countPill.textContent = (ledgerPersonFilter || ledgerMonthFilter || ledgerSearchQuery)
-      ? `${totalFiltered} of ${totalRaw} entries`
-      : `${totalRaw} entr${totalRaw === 1 ? 'y' : 'ies'} total`;
-
-    updateLedgerAnalysisSummary();
-
-    const fields = activeTab === 'gst' ? GST_FIELDS : NON_GST_FIELDS;
+    updateLedgerGlanceStrip(allFiltered);
 
     if (filtered.length === 0) {
-      tableArea.innerHTML = `<div class="empty-state">No matching ${activeTab === 'gst' ? 'GST' : 'non-GST'} bills found for this filter.</div>`;
+      tableArea.innerHTML = `<div class="empty-state">No matching ${activeTab === 'gst' ? 'GST' : 'non-GST'} bills found for this month / filter.</div>`;
       return;
     }
-    const headers = fields.map(([,label]) => `<th>${label}</th>`).join('') + '<th></th>';
-    const rows = filtered.map(r => {
-      const overdue = isOverdue(r);
-      const cells = fields.map(([key]) => {
-        if (key === 'photo_link') {
-          return `<td>${r[key] ? photoThumbHtml(r[key]) : '-'}</td>`;
-        }
-        if (key === 'payment_status') {
-          const label = r[key] === 'paid' ? 'Paid' : r[key] === 'unpaid' ? 'Not Paid' : '-';
-          return `<td>${label}${overdue ? '<span class="overdue-tag">Overdue</span>' : ''}</td>`;
-        }
-        if (key === 'gstin') {
-          const g = (r[key] || '').trim();
-          if (!g) return '<td>-</td>';
-          return `<td><div style="display:flex; align-items:center; gap:4px;"><span style="font-family:monospace; font-size:11.5px;">${g}</span><button type="button" class="btn-verify-gstin-table" data-gstin="${g}" style="border:none; background:transparent; cursor:pointer; font-size:12px; padding:0 2px;" title="Copy GSTIN & verify on Govt Portal">🔍</button></div></td>`;
-        }
-        if (key === 'gstin_status') {
-          const st = (r[key] || '').trim();
-          const isCan = isCancelledGSTIN(r.gstin, st, r.description);
-          const isAct = /active/i.test(st);
-          const isSusp = /suspend/i.test(st);
-          if (isCan) {
-            return `<td><span style="background:#fee2e2; color:#b91c1c; font-weight:700; font-size:10.5px; padding:2px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;" title="${r.gstin_status_detail || 'Cancelled on Govt Portal'}">🚨 Cancelled</span></td>`;
-          }
-          if (isAct) {
-            return `<td><span style="background:#dcfce7; color:#15803d; font-weight:600; font-size:10.5px; padding:2px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;">🟢 Active</span></td>`;
-          }
-          if (isSusp) {
-            return `<td><span style="background:#fef3c7; color:#b45309; font-weight:600; font-size:10.5px; padding:2px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;">🟡 Suspended</span></td>`;
-          }
-          return `<td><span style="color:#94a3b8; font-size:11px;">${st || 'Unverified'}</span></td>`;
-        }
-        if (key === 'submitted_by_employee') {
-          const rawUploader = r.submitted_by_employee || '';
-          const isWhatsApp = rawUploader.toLowerCase().includes('whatsapp') || r.channel === 'whatsapp';
-          const uploader = resolvePersonName(rawUploader, r);
-          const incurred = r.purchased_by ? resolvePersonName(r.purchased_by, r) : uploader;
-          const siteInfo = getSupervisorSiteInfo(incurred, r);
-          const proxyNote = (incurred !== uploader && uploader !== 'Central / Unattributed') ? `<div style="font-size:10px; color:var(--walnut-light);">uploaded by ${uploader}</div>` : '';
-          const sourceBadge = isWhatsApp
-            ? `<span style="display:inline-flex; align-items:center; background:#e8f5e9; color:#2e7d32; font-size:9.5px; padding:1px 5px; border-radius:8px; font-weight:600; margin-left:3px;" title="Uploaded via WhatsApp">WhatsApp</span>`
-            : '';
-          return `<td><b>${incurred}</b> <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px; margin-left:3px;">${siteInfo.site.replace(' Site','')}</span>${sourceBadge}${proxyNote}</td>`;
-        }
-        if (key === 'invoice_value') {
-          const origVal = parseFloat(String(r[key] || '0').replace(/[^0-9.]/g, '')) || 0;
-          const billRet = returnsCache.find(ret =>
-            (ret.bill_id && r.entry_id && String(ret.bill_id) === String(r.entry_id)) ||
-            (ret.bill_no && r.bill_no && ret.bill_no.toLowerCase() === String(r.bill_no).toLowerCase() && ret.vendor_name.toLowerCase() === String(r.vendor_name || '').toLowerCase())
-          );
-          if (billRet) {
-            return `<td>
-              <div style="font-weight:700; color:#0f172a;">₹${billRet.net_amount.toLocaleString('en-IN')}</div>
-              <div style="font-size:10.5px; color:#b45309; text-decoration:line-through;">₹${origVal.toLocaleString('en-IN')}</div>
-              <span style="background:#fef3c7; color:#92400e; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; display:inline-flex; align-items:center; gap:2px;" title="${billRet.reason || 'Goods Return'}">🔄 -₹${billRet.return_amount.toLocaleString('en-IN')}</span>
-            </td>`;
-          }
-          return `<td>₹${origVal ? origVal.toLocaleString('en-IN') : (r[key] || '-')}</td>`;
-        }
-        return `<td>${r[key] ?? ''}</td>`;
-      }).join('');
-      const isVoucher = !r.gstin || r.bill_type === 'non_gst';
-      const voucherBtn = isVoucher ? `<button type="button" class="btn-ghost" style="font-size:11px; padding:3px 8px; margin-right:4px;" onclick='openDigitalVoucher(${JSON.stringify(r).replace(/'/g, "&#39;")})'>📄 Voucher</button>` : '';
-      const returnBtn = `<button type="button" class="btn-ghost btn-return-bill" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#92400e; border-color:#fde68a; background:#fffbeb;" title="Record Goods Return / Debit Note">🔄 Return</button>`;
-      const deleteCell = `<td><div style="display:flex; align-items:center;">${voucherBtn}${returnBtn}${r.entry_id ? `<button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button>` : ''}</div></td>`;
-      return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}${deleteCell}</tr>`;
-    }).join('');
-    tableArea.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
 
+    if (ledgerViewMode === 'smart') {
+      tableArea.innerHTML = renderSmartTable(filtered);
+    } else {
+      const fields = activeTab === 'gst' ? GST_FIELDS : NON_GST_FIELDS;
+      const headers = fields.map(([,label]) => `<th>${label}</th>`).join('') + '<th></th>';
+      const rows = filtered.map(r => {
+        const overdue = isOverdue(r);
+        const cells = fields.map(([key]) => {
+          if (key === 'photo_link') {
+            return `<td>${r[key] ? photoThumbHtml(r[key]) : '-'}</td>`;
+          }
+          if (key === 'payment_status') {
+            const label = r[key] === 'paid' ? 'Paid' : r[key] === 'unpaid' ? 'Not Paid' : '-';
+            return `<td>${label}${overdue ? '<span class="overdue-tag">Overdue</span>' : ''}</td>`;
+          }
+          if (key === 'gstin') {
+            const g = (r[key] || '').trim();
+            if (!g) return '<td>-</td>';
+            return `<td><div style="display:flex; align-items:center; gap:4px;"><span style="font-family:monospace; font-size:11.5px;">${g}</span><button type="button" class="btn-verify-gstin-table" data-gstin="${g}" style="border:none; background:transparent; cursor:pointer; font-size:12px; padding:0 2px;" title="Copy GSTIN & verify on Govt Portal">🔍</button></div></td>`;
+          }
+          if (key === 'gstin_status') {
+            const st = (r[key] || '').trim();
+            const isCan = isCancelledGSTIN(r.gstin, st, r.description);
+            const isAct = /active/i.test(st);
+            const isSusp = /suspend/i.test(st);
+            if (isCan) {
+              return `<td><span style="background:#fee2e2; color:#b91c1c; font-weight:700; font-size:10.5px; padding:2px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;" title="${r.gstin_status_detail || 'Cancelled on Govt Portal'}">🚨 Cancelled</span></td>`;
+            }
+            if (isAct) {
+              return `<td><span style="background:#dcfce7; color:#15803d; font-weight:600; font-size:10.5px; padding:2px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;">🟢 Active</span></td>`;
+            }
+            if (isSusp) {
+              return `<td><span style="background:#fef3c7; color:#b45309; font-weight:600; font-size:10.5px; padding:2px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;">🟡 Suspended</span></td>`;
+            }
+            return `<td><span style="color:#94a3b8; font-size:11px;">${st || 'Unverified'}</span></td>`;
+          }
+          if (key === 'submitted_by_employee') {
+            const rawUploader = r.submitted_by_employee || '';
+            const isWhatsApp = rawUploader.toLowerCase().includes('whatsapp') || r.channel === 'whatsapp';
+            const uploader = resolvePersonName(rawUploader, r);
+            const incurred = r.purchased_by ? resolvePersonName(r.purchased_by, r) : uploader;
+            const siteInfo = getSupervisorSiteInfo(incurred, r);
+            const proxyNote = (incurred !== uploader && uploader !== 'Central / Unattributed') ? `<div style="font-size:10px; color:var(--walnut-light);">uploaded by ${uploader}</div>` : '';
+            const sourceBadge = isWhatsApp
+              ? `<span style="display:inline-flex; align-items:center; background:#e8f5e9; color:#2e7d32; font-size:9.5px; padding:1px 5px; border-radius:8px; font-weight:600; margin-left:3px;" title="Uploaded via WhatsApp">WhatsApp</span>`
+              : '';
+            return `<td><b>${incurred}</b> <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px; margin-left:3px;">${siteInfo.site.replace(' Site','')}</span>${sourceBadge}${proxyNote}</td>`;
+          }
+          if (key === 'invoice_value') {
+            const origVal = parseFloat(String(r[key] || '0').replace(/[^0-9.]/g, '')) || 0;
+            const billRet = returnsCache.find(ret =>
+              (ret.bill_id && r.entry_id && String(ret.bill_id) === String(r.entry_id)) ||
+              (ret.bill_no && r.bill_no && ret.bill_no.toLowerCase() === String(r.bill_no).toLowerCase() && ret.vendor_name.toLowerCase() === String(r.vendor_name || '').toLowerCase())
+            );
+            if (billRet) {
+              return `<td>
+                <div style="font-weight:700; color:#0f172a;">₹${billRet.net_amount.toLocaleString('en-IN')}</div>
+                <div style="font-size:10.5px; color:#b45309; text-decoration:line-through;">₹${origVal.toLocaleString('en-IN')}</div>
+                <span style="background:#fef3c7; color:#92400e; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; display:inline-flex; align-items:center; gap:2px;" title="${billRet.reason || 'Goods Return'}">🔄 -₹${billRet.return_amount.toLocaleString('en-IN')}</span>
+              </td>`;
+            }
+            return `<td>₹${origVal ? origVal.toLocaleString('en-IN') : (r[key] || '-')}</td>`;
+          }
+          return `<td>${r[key] ?? ''}</td>`;
+        }).join('');
+        const isVoucher = !r.gstin || r.bill_type === 'non_gst';
+        const voucherBtn = isVoucher ? `<button type="button" class="btn-ghost" style="font-size:11px; padding:3px 8px; margin-right:4px;" onclick='openDigitalVoucher(${JSON.stringify(r).replace(/'/g, "&#39;")})'>📄 Voucher</button>` : '';
+        const returnBtn = `<button type="button" class="btn-ghost btn-return-bill" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#92400e; border-color:#fde68a; background:#fffbeb;" title="Record Goods Return / Debit Note">🔄 Return</button>`;
+        const detailBtn = `<button type="button" class="btn-ghost btn-view-detail" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px;" title="View Complete Bill Details">👁 Details</button>`;
+        const deleteCell = `<td><div style="display:flex; align-items:center;">${detailBtn}${voucherBtn}${returnBtn}${r.entry_id ? `<button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button>` : ''}</div></td>`;
+        return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}${deleteCell}</tr>`;
+      }).join('');
+      tableArea.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    tableArea.querySelectorAll('.btn-view-detail').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const entryId = btn.dataset.entryId;
+        const matchRec = filtered.find(x => String(x.entry_id) === String(entryId));
+        if (matchRec) openBillDetailModal(matchRec);
+      };
+    });
     tableArea.querySelectorAll('.btn-return-bill').forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
@@ -4773,19 +5295,14 @@
 
   function setupLedgerFilters() {
     const personSelect = document.getElementById('ledgerPersonFilter');
-    const monthSelect = document.getElementById('ledgerMonthFilter');
     const searchInput = document.getElementById('ledgerSearchInput');
     const resetBtn = document.getElementById('clearLedgerFiltersBtn');
+    const viewToggleSmart = document.getElementById('viewToggleSmart');
+    const viewToggleFull = document.getElementById('viewToggleFull');
 
     if (personSelect) {
       personSelect.addEventListener('change', () => {
         ledgerPersonFilter = personSelect.value;
-        renderTable();
-      });
-    }
-    if (monthSelect) {
-      monthSelect.addEventListener('change', () => {
-        ledgerMonthFilter = monthSelect.value;
         renderTable();
       });
     }
@@ -4798,12 +5315,61 @@
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
         ledgerPersonFilter = '';
-        ledgerMonthFilter = '';
         ledgerSearchQuery = '';
+        ledgerStatusFilter = 'ALL';
         if (personSelect) personSelect.value = '';
-        if (monthSelect) monthSelect.value = '';
         if (searchInput) searchInput.value = '';
+
+        document.querySelectorAll('.glance-filter-btn').forEach(b => {
+          const isAll = b.dataset.statusfilter === 'ALL';
+          b.classList.toggle('active', isAll);
+          b.style.background = isAll ? '#0c4a6e' : '#fff';
+          b.style.color = isAll ? '#fff' : (b.dataset.statusfilter === 'DUE' ? '#b91c1c' : b.dataset.statusfilter === 'PAID' ? '#15803d' : b.dataset.statusfilter === 'RETURNS' ? '#92400e' : '#475569');
+        });
+
         renderTable();
+      });
+    }
+
+    // View toggle
+    if (viewToggleSmart && viewToggleFull) {
+      viewToggleSmart.addEventListener('click', () => {
+        ledgerViewMode = 'smart';
+        viewToggleSmart.classList.add('active');
+        viewToggleFull.classList.remove('active');
+        renderTable();
+      });
+      viewToggleFull.addEventListener('click', () => {
+        ledgerViewMode = 'full';
+        viewToggleFull.classList.add('active');
+        viewToggleSmart.classList.remove('active');
+        renderTable();
+      });
+    }
+
+    // Quick filter buttons in Glance Strip
+    document.querySelectorAll('.glance-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.glance-filter-btn').forEach(b => {
+          b.classList.remove('active');
+          b.style.background = '#fff';
+          b.style.color = b.dataset.statusfilter === 'DUE' ? '#b91c1c' : b.dataset.statusfilter === 'PAID' ? '#15803d' : b.dataset.statusfilter === 'RETURNS' ? '#92400e' : '#475569';
+        });
+        btn.classList.add('active');
+        btn.style.background = '#0c4a6e';
+        btn.style.color = '#fff';
+        ledgerStatusFilter = btn.dataset.statusfilter;
+        renderTable();
+      });
+    });
+
+    // Bill detail modal close
+    const detailModal = document.getElementById('billDetailModalOverlay');
+    const closeDetailBtn = document.getElementById('closeBillDetailModalBtn');
+    if (closeDetailBtn && detailModal) {
+      closeDetailBtn.addEventListener('click', () => { detailModal.style.display = 'none'; });
+      detailModal.addEventListener('click', (e) => {
+        if (e.target === detailModal) detailModal.style.display = 'none';
       });
     }
   }
