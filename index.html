@@ -3104,7 +3104,7 @@
         const g = (r.gstin || '').trim();
         const st = (r.gstin_status || '').trim();
         const isCan = isCancelledGSTIN(r.gstin, st, r.description);
-        const isAct = /active/i.test(st);
+        const isAct = /active/i.test(st) || (!st && isValidGSTINChecksum(g) && !isOwnGSTIN(g));
         let stBadge = `<span style="color:#94a3b8; font-size:10px;">${st || 'Unverified'}</span>`;
         if (isCan) stBadge = `<span style="background:#fee2e2; color:#b91c1c; font-weight:700; font-size:10px; padding:1px 5px; border-radius:3px;">🚨 Cancelled</span>`;
         else if (isAct) stBadge = `<span style="background:#dcfce7; color:#15803d; font-weight:600; font-size:10px; padding:1px 5px; border-radius:3px;">🟢 Active</span>`;
