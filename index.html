@@ -760,6 +760,29 @@
   </div>
 </div>
 
+<div class="pin-overlay" id="materialRatesOverlay" style="display:none; z-index:10000;">
+  <div class="pin-card" style="max-width:560px; text-align:left; max-height:88vh; display:flex; flex-direction:column; background:#ffffff; border-radius:12px; padding:20px; box-shadow:0 20px 25px -5px rgba(0, 0, 0, 0.2);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+      <div>
+        <h2 style="margin:0; font-size:18px; color:#1e293b; display:flex; align-items:center; gap:8px;">
+          <span>📊</span> <span>Material Rates & Price Radar</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:12px; color:#64748b;">Cross-vendor rates, price history & best supplier finder</p>
+      </div>
+      <button type="button" id="closeMaterialRatesBtn" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <input type="text" id="materialSearchInput" placeholder="Search material (e.g. Plywood, Fevicol, Hinges)..." style="flex:1; padding:9px 12px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; letter-spacing:normal; text-align:left;" />
+      <button type="button" class="btn-primary" id="materialSearchBtn" style="padding:8px 14px; font-size:13px; white-space:nowrap;">🔍 Search</button>
+    </div>
+
+    <div id="materialRatesContent" style="flex:1; overflow-y:auto; min-height:220px; max-height:55vh;">
+      <div style="text-align:center; padding:30px; color:#94a3b8; font-size:13px;">Loading tracked materials...</div>
+    </div>
+  </div>
+</div>
+
 <div class="pin-overlay" id="nameCaptureOverlay" style="display:none; z-index:10000;">
   <div class="pin-card">
     <h2>One quick thing</h2>
@@ -847,6 +870,7 @@
             <select id="dashMonthSelect" style="padding:8px 12px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:13px; background:#fff;"></select>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button class="btn-tally" id="openMaterialRatesBtn" style="background:#4f46e5;" title="Compare vendor prices and material purchase rates">📊 Material Rates & Price Radar</button>
             <button class="btn-tally" id="syncTallyDirectBtn" style="background:#0284c7;" title="Sync approved bills directly into Tally Prime running on this computer">🔄 Sync with Tally</button>
             <button class="btn-tally" id="exportTallyXmlBtn" title="Download standards-compliant Tally XML for Import Data -> Vouchers">📥 Export to Tally (XML)</button>
             <button class="btn-ghost" id="exportGstr2bBtn" style="font-size:13px; padding:8px 14px;" title="Download ITC reconciliation spreadsheet">📄 GSTR-2B (CSV)</button>
@@ -1810,7 +1834,8 @@
   async function renderReview(extracted) {
     const dup = await checkDuplicate(extracted);
     const isGst = extracted.bill_type === 'gst';
-    if (extracted.paid_stamp_detected) {
+    const hasPaidStamp = !!(extracted.paid_stamp_detected || extracted.has_paid_stamp);
+    if (hasPaidStamp) {
       extracted.payment_status = 'paid';
     } else {
       extracted.payment_status = ''; // must be explicitly chosen if not detected
@@ -1890,6 +1915,66 @@
         </div>
 
         <div class="review-grid">${fieldsHtml}</div>
+
+        ${(extracted.price_alerts && extracted.price_alerts.length > 0) ? `
+        <div style="margin: 10px 16px 0; padding: 10px 14px; background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px;">
+          <div style="font-weight: 700; color: #b45309; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+            <span>⚠️</span> <span>PRICE RADAR ALERTS</span>
+          </div>
+          <div style="font-size: 11.5px; color: #92400e; margin-top: 5px; line-height:1.5;">
+            ${extracted.price_alerts.map(al => {
+              let h = '';
+              if (al.is_increase) {
+                h += `<div>• <b>${al.item_name}</b>: Rate is ₹${al.current_price} <span style="color:#b91c1c; font-weight:700;">(+${al.percent_change}% hike</span> vs ₹${al.previous_price} on ${al.previous_date})</div>`;
+              }
+              if (al.cheaper_vendor) {
+                h += `<div style="color:#047857; margin-top:2px;">  💡 <i>Alternative: ${al.cheaper_vendor.vendor_name} sells this at ₹${al.cheaper_vendor.unit_price} (-${al.cheaper_vendor.percent_cheaper}% cheaper)</i></div>`;
+              }
+              return h;
+            }).join('')}
+          </div>
+        </div>` : ''}
+
+        ${(extracted.items && extracted.items.length > 0) ? `
+        <div style="margin: 12px 16px 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #ffffff;">
+          <div style="padding: 8px 12px; background: #f8fafc; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #475569;">
+              📦 Itemized Goods Breakdown (${extracted.items.length} items)
+            </span>
+            <span style="font-size: 11px; color: #64748b;">AI Extracted</span>
+          </div>
+          <div style="overflow-x: auto; max-height: 220px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; text-align: left;">
+              <thead>
+                <tr style="background: #f1f5f9; color: #334155; font-size: 11px;">
+                  <th style="padding: 6px 10px; font-weight: 600;">Item / Material</th>
+                  <th style="padding: 6px 8px; font-weight: 600; text-align: right;">Qty</th>
+                  <th style="padding: 6px 8px; font-weight: 600; text-align: right;">Rate (₹)</th>
+                  <th style="padding: 6px 10px; font-weight: 600; text-align: right;">Total (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${extracted.items.map(it => `
+                  <tr style="border-top: 1px solid #f1f5f9;">
+                    <td style="padding: 6px 10px; font-weight: 600; color: #1e293b;">
+                      ${it.item_name}
+                      ${it.description ? `<div style="font-size: 10.5px; color: #64748b; font-weight: normal;">${it.description}</div>` : ''}
+                    </td>
+                    <td style="padding: 6px 8px; text-align: right; color: #475569; white-space: nowrap;">
+                      ${it.quantity} ${it.unit || ''}
+                    </td>
+                    <td style="padding: 6px 8px; text-align: right; color: #475569; white-space: nowrap;">
+                      ₹${it.unit_price ? it.unit_price.toLocaleString('en-IN') : '-'}
+                    </td>
+                    <td style="padding: 6px 10px; text-align: right; font-weight: 700; color: #0f172a; white-space: nowrap;">
+                      ₹${it.total_amount ? it.total_amount.toLocaleString('en-IN') : '-'}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>` : ''}
         <div style="padding: 6px 16px 0;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
             <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#4a7a94; font-weight:700; margin-bottom:0;">Has this bill been paid?</label>
@@ -2096,7 +2181,9 @@
       const chosenIncurred = selectEl ? selectEl.value : getSubmittingForPerson();
       ensureEmployeeNameThenRun(() => submitForApproval(extracted.bill_type, extracted.payment_status, chosenIncurred, {
         has_paid_stamp: hasPaidStamp,
-        paid_stamp_detected: hasPaidStamp
+        paid_stamp_detected: hasPaidStamp,
+        items: extracted.items || [],
+        price_alerts: extracted.price_alerts || []
       }));
     };
 
@@ -2229,6 +2316,12 @@
     if (currentFileBase64) {
       record.photo_base64 = currentFileBase64;
       record.photo_media_type = currentFileMediaType;
+    }
+    if (extraMeta && Array.isArray(extraMeta.items)) {
+      record.items = extraMeta.items;
+    }
+    if (extraMeta && Array.isArray(extraMeta.price_alerts)) {
+      record.price_alerts = extraMeta.price_alerts;
     }
 
     const thisIndex = queueIndex;
@@ -4195,6 +4288,24 @@
           </div>
           <div><b>Photo</b>${item.photo_link ? photoThumbHtml(item.photo_link) : '-'}</div>
         </div>
+
+        ${(item.items && item.items.length > 0) ? `
+        <div style="margin-top:10px; padding:8px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:12px;">
+          <div style="font-weight:700; color:#334155; margin-bottom:4px; display:flex; justify-content:space-between;">
+            <span>📦 Goods Breakdown (${item.items.length} items)</span>
+          </div>
+          <div style="color:#475569;">
+            ${item.items.slice(0, 3).map(it => `<div>• <b>${it.item_name}</b> x ${it.quantity} ${it.unit || ''} @ ₹${it.unit_price ? it.unit_price.toLocaleString('en-IN') : '-'}</div>`).join('')}
+            ${item.items.length > 3 ? `<div style="font-size:11px; color:#64748b; font-style:italic; margin-top:2px;">+ ${item.items.length - 3} more items</div>` : ''}
+          </div>
+        </div>` : ''}
+
+        ${(item.price_alerts && item.price_alerts.length > 0) ? `
+        <div style="margin-top:8px; padding:8px 12px; background:#fffbeb; border:1px solid #fde68a; border-radius:6px; font-size:11.5px; color:#92400e;">
+          <div style="font-weight:700; margin-bottom:2px;">⚠️ Price Radar Alert:</div>
+          ${item.price_alerts.map(al => al.is_increase ? `<div>• ${al.item_name}: Rate increased +${al.percent_change}% vs last purchase</div>` : '').filter(Boolean).join('')}
+        </div>` : ''}
+
         <div class="approval-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
           <button type="button" class="btn-primary" data-action="approve-paid" style="flex:1.2; min-width:145px; background:#10b981; border:1px solid #059669; color:#fff; font-weight:700; font-size:12.5px; padding:9px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer; box-shadow:0 1px 3px rgba(16,185,129,0.3);">
             <span>✅</span> <span>Approve as PAID</span>
@@ -4634,6 +4745,168 @@
     const guide = document.getElementById('installGuideOverlay');
     if (guide) guide.style.display = 'none';
   };
+
+  // ─── Material Rates & Price Radar Modal ─────────────────────────────────────
+  function setupMaterialRatesModal() {
+    const overlay = document.getElementById('materialRatesOverlay');
+    const openBtn = document.getElementById('openMaterialRatesBtn');
+    const closeBtn = document.getElementById('closeMaterialRatesBtn');
+    const searchInput = document.getElementById('materialSearchInput');
+    const searchBtn = document.getElementById('materialSearchBtn');
+    const content = document.getElementById('materialRatesContent');
+
+    if (!overlay || !openBtn) return;
+
+    openBtn.addEventListener('click', () => {
+      overlay.style.display = 'flex';
+      loadMaterialCatalog();
+    });
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        overlay.style.display = 'none';
+      });
+    }
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.style.display = 'none';
+    });
+
+    if (searchBtn) {
+      searchBtn.addEventListener('click', () => {
+        loadMaterialCatalog(searchInput.value.trim());
+      });
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') loadMaterialCatalog(searchInput.value.trim());
+      });
+    }
+
+    async function loadMaterialCatalog(query = '') {
+      content.innerHTML = '<div style="text-align:center; padding:30px; color:#64748b; font-size:13px;">⏳ Loading tracked materials & rates…</div>';
+      try {
+        const url = query 
+          ? `${BACKEND_URL}/compare-rates?item=${encodeURIComponent(query)}`
+          : `${BACKEND_URL}/items-summary`;
+        const res = await fetch(url, { headers: { 'x-app-secret': APP_SECRET } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        if (query && data.vendors) {
+          renderVendorComparison(data);
+        } else {
+          renderCatalogSummary(data.items || []);
+        }
+      } catch (err) {
+        content.innerHTML = `<div style="padding:20px; color:#b91c1c; font-size:13px; text-align:center;">Failed to load material rates: ${err.message}</div>`;
+      }
+    }
+
+    function renderCatalogSummary(items) {
+      if (!items || items.length === 0) {
+        content.innerHTML = `
+          <div style="text-align:center; padding:40px 20px; color:#64748b;">
+            <div style="font-size:28px; margin-bottom:8px;">📦</div>
+            <div style="font-weight:700; color:#1e293b; font-size:14px;">No materials recorded yet</div>
+            <div style="font-size:12px; margin-top:4px;">As bills with itemized goods are saved and approved, materials and rates will automatically populate here!</div>
+          </div>`;
+        return;
+      }
+
+      content.innerHTML = `
+        <div style="font-size:11.5px; color:#64748b; margin-bottom:8px; font-weight:600;">
+          Tracking <b>${items.length}</b> distinct materials across your bills:
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${items.map(it => `
+            <div class="material-card" data-name="${it.name.replace(/"/g, '&quot;')}" style="border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; background:#f8fafc; cursor:pointer; transition:all 0.15s ease;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                <div>
+                  <div style="font-weight:700; font-size:13px; color:#1e293b;">${it.name}</div>
+                  <div style="font-size:11px; color:#64748b; margin-top:2px;">
+                    ${it.vendors.length} vendor${it.vendors.length > 1 ? 's' : ''}: ${it.vendors.slice(0, 3).join(', ')}${it.vendors.length > 3 ? '...' : ''}
+                  </div>
+                </div>
+                <div style="text-align:right; white-space:nowrap;">
+                  <div style="font-weight:700; font-size:13px; color:#0f172a;">₹${it.latest_rate ? it.latest_rate.toLocaleString('en-IN') : '-'}/${it.unit || 'unit'}</div>
+                  <div style="font-size:10.5px; color:#15803d; font-weight:600;">
+                    ${it.min_rate !== it.max_rate ? `₹${it.min_rate.toLocaleString('en-IN')} – ₹${it.max_rate.toLocaleString('en-IN')}` : 'Latest Rate'}
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:6px; font-size:10.5px; color:#0284c7; font-weight:600; text-align:right;">
+                Tap to compare vendor rates ↗
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+
+      content.querySelectorAll('.material-card').forEach(card => {
+        card.addEventListener('click', () => {
+          searchInput.value = card.dataset.name;
+          loadMaterialCatalog(card.dataset.name);
+        });
+      });
+    }
+
+    function renderVendorComparison(comparison) {
+      const vendors = comparison.vendors || [];
+      if (vendors.length === 0) {
+        content.innerHTML = `
+          <div style="text-align:center; padding:30px; color:#64748b;">
+            No purchase records found for "${comparison.query}".
+            <div style="margin-top:10px;">
+              <button type="button" class="btn-ghost" id="backToCatalogBtn" style="font-size:12px; padding:4px 10px;">← Back to All Materials</button>
+            </div>
+          </div>`;
+        const backBtn = document.getElementById('backToCatalogBtn');
+        if (backBtn) backBtn.onclick = () => { searchInput.value = ''; loadMaterialCatalog(); };
+        return;
+      }
+
+      content.innerHTML = `
+        <div style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <span style="font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; font-weight:700;">Rate Comparison</span>
+            <h3 style="margin:2px 0 0; font-size:15px; color:#1e293b;">"${comparison.query}"</h3>
+          </div>
+          <button type="button" class="btn-ghost" id="backToCatalogBtn" style="font-size:11px; padding:3px 8px;">← All Items</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${vendors.map((v, idx) => {
+            const isBest = idx === 0;
+            return `
+            <div style="border:1.5px solid ${isBest ? '#10b981' : '#e2e8f0'}; background:${isBest ? '#ecfdf5' : '#ffffff'}; border-radius:8px; padding:10px 14px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                  <div style="font-weight:700; font-size:13.5px; color:#1e293b; display:flex; align-items:center; gap:6px;">
+                    <span>${v.vendor_name}</span>
+                    ${isBest ? '<span style="background:#10b981; color:#fff; font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:10px;">★ CHEAPEST</span>' : ''}
+                  </div>
+                  <div style="font-size:11.5px; color:#64748b; margin-top:2px;">
+                    Last purchased: ${v.last_date || 'Past order'} · Total bought: ${v.total_qty} ${v.unit || ''}
+                  </div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-weight:800; font-size:15px; color:${isBest ? '#065f46' : '#0f172a'};">
+                    ₹${v.latest_price ? v.latest_price.toLocaleString('en-IN') : '-'}
+                  </div>
+                  <div style="font-size:10px; color:#64748b;">per ${v.unit || 'unit'}</div>
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`;
+
+      const backBtn = document.getElementById('backToCatalogBtn');
+      if (backBtn) backBtn.onclick = () => { searchInput.value = ''; loadMaterialCatalog(); };
+    }
+  }
+
+  setupMaterialRatesModal();
+
   // ─── Bank Tracker ───────────────────────────────────────────────────────────
 
   let allBankTxns = [];
