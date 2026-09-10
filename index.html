@@ -895,6 +895,48 @@
   </div>
 </div>
 
+<div class="pin-overlay" id="bankUploadModalOverlay" style="display:none; z-index:10000;">
+  <div class="pin-card" style="max-width:560px; text-align:left; max-height:90vh; display:flex; flex-direction:column; background:#ffffff; border-radius:12px; padding:20px; box-shadow:0 20px 25px -5px rgba(0, 0, 0, 0.2);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+      <div>
+        <h2 style="margin:0; font-size:18px; color:#1e293b; display:flex; align-items:center; gap:8px;">
+          <span>📤</span> <span>Upload Bank Statement</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:12px; color:#64748b;">Reconcile bank debits against bills, site imprests & overheads</p>
+      </div>
+      <button type="button" id="closeBankUploadModalBtn" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Bank Account</label>
+      <select id="bankAccountSelect" style="width:100%; padding:10px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff;">
+        <option value="HDFC Bank">HDFC Bank (Primary Account)</option>
+        <option value="ICICI Bank">ICICI Bank</option>
+        <option value="State Bank of India">State Bank of India (SBI)</option>
+        <option value="Axis Bank">Axis Bank</option>
+        <option value="Other Bank">Other Bank</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Select Statement File (.xlsx, .xls, .csv)</label>
+      <input type="file" id="bankStatementFileInput" accept=".xlsx,.xls,.csv" style="width:100%; padding:12px; border:2px dashed #cbd5e1; border-radius:8px; background:#f8fafc; font-size:13px; cursor:pointer;" />
+    </div>
+
+    <div id="bankParsedPreview" style="margin-bottom:14px; display:none; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:10px 14px; font-size:12.5px; color:#166534;">
+      <div style="font-weight:700; margin-bottom:2px;" id="bankParsedCount">Found 0 transactions</div>
+      <div style="font-size:11.5px;" id="bankParsedDetails">Ready to reconcile against purchase bills and supervisor imprests.</div>
+    </div>
+
+    <div class="pin-error" id="bankUploadError" style="margin-bottom:8px;"></div>
+
+    <div style="display:flex; gap:8px; padding-top:12px; border-top:1px solid #e2e8f0;">
+      <button type="button" class="btn-primary" id="processBankUploadBtn" disabled style="flex:1; padding:10px; font-size:14px;">Reconcile Statement</button>
+      <button type="button" class="btn-ghost" id="cancelBankUploadBtn" style="padding:10px 14px;">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="pin-overlay" id="nameCaptureOverlay" style="display:none; z-index:10000;">
   <div class="pin-card">
     <h2>One quick thing</h2>
@@ -1292,8 +1334,12 @@
       <div class="view" id="view-bank">
         <div class="panel">
           <div class="table-toolbar" style="flex-wrap:wrap; gap:10px;">
-            <h2>🏦 Bank Tracker</h2>
-            <button class="btn-ghost" id="refreshBankBtn" style="font-size:13px; padding:8px 14px;">🔄 Refresh</button>
+            <h2>🏦 Bank Tracker & Reconciliation</h2>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button class="btn-primary" id="openBankUploadBtn" style="font-size:13px; padding:8px 14px;">📤 Upload Statement (Excel / CSV)</button>
+              <button class="btn-ghost" id="reconcileAllBtn" style="font-size:13px; padding:8px 14px;" title="Re-match all unmatched transactions against current ledger">⚡ Re-run Matching</button>
+              <button class="btn-ghost" id="refreshBankBtn" style="font-size:13px; padding:8px 14px;">🔄 Refresh</button>
+            </div>
           </div>
 
           <!-- Summary Cards -->
@@ -5366,6 +5412,287 @@
     }).catch(e => alert('Error: ' + e.message));
   }
   window.openBankCategorize = openBankCategorize;
+
+  // ─── Bank Statement Parser & Upload ──────────────────────────────────────────
+
+  function parseBankStatementFile(file, bankName) {
+    return new Promise((resolve, reject) => {
+      if (typeof XLSX === 'undefined') {
+        return reject(new Error('Excel processing library (XLSX) is not loaded. Please refresh the page.'));
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+          if (!workbook || !workbook.SheetNames || !workbook.SheetNames.length) {
+            return reject(new Error('The uploaded file does not contain any readable sheets.'));
+          }
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+          if (!rows || rows.length < 2) {
+            return reject(new Error('The uploaded file appears to be empty or has no data rows.'));
+          }
+
+          let headerIdx = -1;
+          const colMap = {};
+          for (let i = 0; i < Math.min(rows.length, 30); i++) {
+            const row = rows[i].map(c => String(c || '').trim().toLowerCase());
+            const hasDate = row.some(c => /date|txn.*dt|value.*dt/i.test(c));
+            const hasNarration = row.some(c => /narration|particular|description|remarks|details/i.test(c));
+            const hasDebitOrAmt = row.some(c => /debit|withdrawal|dr|amount|withdrawal amt/i.test(c));
+            if (hasDate && (hasNarration || hasDebitOrAmt)) {
+              headerIdx = i;
+              row.forEach((colName, colIdx) => {
+                if (/value.*date|val.*dt/i.test(colName) && colMap.valDate === undefined) colMap.valDate = colIdx;
+                else if (/date|txn.*dt/i.test(colName) && colMap.date === undefined) colMap.date = colIdx;
+                else if (/narration|particular|description|remarks|details/i.test(colName) && colMap.narration === undefined) colMap.narration = colIdx;
+                else if (/chq|cheque|ref.*no|utr|reference/i.test(colName) && colMap.ref === undefined) colMap.ref = colIdx;
+                else if (/withdrawal|debit|dr(\.|$)/i.test(colName) && colMap.debit === undefined) colMap.debit = colIdx;
+                else if (/deposit|credit|cr(\.|$)/i.test(colName) && colMap.credit === undefined) colMap.credit = colIdx;
+                else if (/balance|bal(\.|$)/i.test(colName) && colMap.balance === undefined) colMap.balance = colIdx;
+                else if (/amount/i.test(colName) && colMap.amount === undefined) colMap.amount = colIdx;
+              });
+              break;
+            }
+          }
+
+          if (headerIdx === -1 || (colMap.date === undefined && colMap.valDate === undefined)) {
+            headerIdx = 0;
+            const row = rows[0].map(c => String(c || '').trim().toLowerCase());
+            row.forEach((colName, colIdx) => {
+              if (/date/i.test(colName) && colMap.date === undefined) colMap.date = colIdx;
+              if (/narration|particular|desc/i.test(colName) && colMap.narration === undefined) colMap.narration = colIdx;
+              if (/chq|ref|utr/i.test(colName) && colMap.ref === undefined) colMap.ref = colIdx;
+              if (/debit|withdrawal|dr/i.test(colName) && colMap.debit === undefined) colMap.debit = colIdx;
+              if (/credit|deposit|cr/i.test(colName) && colMap.credit === undefined) colMap.credit = colIdx;
+              if (/balance|bal/i.test(colName) && colMap.balance === undefined) colMap.balance = colIdx;
+            });
+          }
+
+          const dateCol = colMap.date !== undefined ? colMap.date : colMap.valDate;
+          const narrCol = colMap.narration !== undefined ? colMap.narration : 1;
+          const refCol = colMap.ref;
+          const drCol = colMap.debit;
+          const crCol = colMap.credit;
+          const balCol = colMap.balance;
+
+          const transactions = [];
+          for (let i = headerIdx + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.length === 0) continue;
+            const rawDate = dateCol !== undefined ? row[dateCol] : null;
+            if (!rawDate) continue;
+
+            let txnDate = '';
+            if (rawDate instanceof Date) {
+              txnDate = rawDate.toISOString().split('T')[0];
+            } else {
+              const dateStr = String(rawDate).trim();
+              if (!dateStr || dateStr.length < 6) continue;
+              const ddmmyyyy = dateStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+              if (ddmmyyyy) {
+                const yr = ddmmyyyy[3].length === 2 ? '20' + ddmmyyyy[3] : ddmmyyyy[3];
+                txnDate = `${yr}-${ddmmyyyy[2].padStart(2, '0')}-${ddmmyyyy[1].padStart(2, '0')}`;
+              } else if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+                txnDate = dateStr.substring(0, 10);
+              } else {
+                const parsedD = new Date(dateStr);
+                if (!isNaN(parsedD.getTime())) {
+                  txnDate = parsedD.toISOString().split('T')[0];
+                }
+              }
+            }
+            if (!txnDate) continue;
+
+            const parseNum = (v) => {
+              if (!v && v !== 0) return 0;
+              const clean = String(v).replace(/,/g, '').trim();
+              const n = parseFloat(clean);
+              return isNaN(n) ? 0 : Math.abs(n);
+            };
+
+            const debit = drCol !== undefined ? parseNum(row[drCol]) : 0;
+            const credit = crCol !== undefined ? parseNum(row[crCol]) : 0;
+            let amount = 0;
+            let txnType = 'DEBIT';
+
+            if (debit > 0) {
+              amount = debit;
+              txnType = 'DEBIT';
+            } else if (credit > 0) {
+              amount = credit;
+              txnType = 'CREDIT';
+            } else if (colMap.amount !== undefined) {
+              amount = parseNum(row[colMap.amount]);
+              txnType = amount < 0 ? 'DEBIT' : 'CREDIT';
+              amount = Math.abs(amount);
+            }
+
+            if (amount <= 0) continue;
+
+            const narration = narrCol !== undefined ? String(row[narrCol] || '').trim() : '';
+            const ref = refCol !== undefined ? String(row[refCol] || '').trim() : '';
+            const balance = balCol !== undefined ? parseNum(row[balCol]) : 0;
+
+            let utr = ref;
+            if (!utr || utr === '-' || utr === '0') {
+              const utrMatch = narration.match(/(?:UTR|UPI|NEFT|RTGS|IMPS|REF)[/:\s\-]*([A-Z0-9]{8,22})/i);
+              if (utrMatch) utr = utrMatch[1];
+            }
+
+            transactions.push({
+              txn_timestamp: txnDate,
+              bank_name: bankName || 'Primary Account',
+              txn_type: txnType,
+              amount: amount,
+              narration: narration,
+              beneficiary: narration.substring(0, 80),
+              utr: utr || '',
+              balance: balance
+            });
+          }
+
+          if (transactions.length === 0) {
+            return reject(new Error('No valid transactions could be parsed. Please verify the file has dates and debit/credit columns.'));
+          }
+
+          resolve(transactions);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read statement file.'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function setupBankUpload() {
+    const modal = document.getElementById('bankUploadModalOverlay');
+    const openBtn = document.getElementById('openBankUploadBtn');
+    const closeBtn = document.getElementById('closeBankUploadModalBtn');
+    const cancelBtn = document.getElementById('cancelBankUploadBtn');
+    const fileInput = document.getElementById('bankStatementFileInput');
+    const bankSelect = document.getElementById('bankAccountSelect');
+    const previewBox = document.getElementById('bankParsedPreview');
+    const countEl = document.getElementById('bankParsedCount');
+    const detailsEl = document.getElementById('bankParsedDetails');
+    const errorEl = document.getElementById('bankUploadError');
+    const processBtn = document.getElementById('processBankUploadBtn');
+    const reconcileAllBtn = document.getElementById('reconcileAllBtn');
+
+    let parsedTransactions = [];
+
+    function showModal() {
+      if (!modal) return;
+      modal.style.display = 'flex';
+      if (fileInput) fileInput.value = '';
+      if (previewBox) previewBox.style.display = 'none';
+      if (errorEl) errorEl.textContent = '';
+      if (processBtn) {
+        processBtn.disabled = true;
+        processBtn.textContent = 'Reconcile Statement';
+      }
+      parsedTransactions = [];
+    }
+
+    function hideModal() {
+      if (modal) modal.style.display = 'none';
+    }
+
+    if (openBtn) openBtn.addEventListener('click', showModal);
+    if (closeBtn) closeBtn.addEventListener('click', hideModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', hideModal);
+
+    if (fileInput) {
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        if (errorEl) errorEl.textContent = '';
+        if (previewBox) previewBox.style.display = 'none';
+        if (processBtn) processBtn.disabled = true;
+
+        try {
+          const bankName = (bankSelect && bankSelect.value) || 'Primary Account';
+          parsedTransactions = await parseBankStatementFile(file, bankName);
+          
+          const debits = parsedTransactions.filter(t => t.txn_type === 'DEBIT');
+          const totalDebit = debits.reduce((s, t) => s + (t.amount || 0), 0);
+
+          if (countEl) countEl.textContent = `Found ${parsedTransactions.length} transactions (${debits.length} debits)`;
+          if (detailsEl) detailsEl.textContent = `Total Debits: ₹${Math.round(totalDebit).toLocaleString('en-IN')}. Ready to match against purchase bills & imprests.`;
+          if (previewBox) previewBox.style.display = 'block';
+          if (processBtn) {
+            processBtn.disabled = false;
+            processBtn.textContent = `Reconcile ${parsedTransactions.length} Transactions`;
+          }
+        } catch (err) {
+          if (errorEl) errorEl.textContent = `Could not parse file: ${err.message}`;
+          parsedTransactions = [];
+        }
+      });
+    }
+
+    if (processBtn) {
+      processBtn.addEventListener('click', async () => {
+        if (!parsedTransactions.length) return;
+        processBtn.disabled = true;
+        processBtn.textContent = 'Reconciling with bills & imprests...';
+        if (errorEl) errorEl.textContent = '';
+
+        try {
+          const res = await fetch(`${BACKEND_URL}/bank/upload-statement`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-app-secret': APP_SECRET
+            },
+            body: JSON.stringify({ transactions: parsedTransactions })
+          });
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || 'Failed to reconcile statement');
+
+          const matched = (data.matched || 0) + (data.already_matched || 0);
+          const unmatched = data.unmatched || 0;
+          showCelebrationToast(`🎉 Statement processed! ${matched} auto-reconciled, ${unmatched} pending review.`);
+          hideModal();
+          await loadBankTransactions();
+        } catch (err) {
+          if (errorEl) errorEl.textContent = `Upload failed: ${err.message}`;
+          processBtn.disabled = false;
+          processBtn.textContent = 'Reconcile Statement';
+        }
+      });
+    }
+
+    if (reconcileAllBtn) {
+      reconcileAllBtn.addEventListener('click', async () => {
+        const origText = reconcileAllBtn.textContent;
+        reconcileAllBtn.disabled = true;
+        reconcileAllBtn.textContent = '⚡ Matching...';
+        try {
+          const res = await fetch(`${BACKEND_URL}/bank/reconcile-all`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET }
+          });
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || 'Reconciliation failed');
+          showCelebrationToast(`⚡ Re-match done: ${data.reconciled || 0} matched, ${data.already_matched || 0} already reconciled.`);
+          await loadBankTransactions();
+        } catch (err) {
+          alert('Reconciliation error: ' + err.message);
+        } finally {
+          reconcileAllBtn.disabled = false;
+          reconcileAllBtn.textContent = origText;
+        }
+      });
+    }
+  }
+
+  setupBankUpload();
 
   // Bank filter tab buttons
   document.querySelectorAll('[data-bankfilter]').forEach(btn => {
