@@ -3457,6 +3457,7 @@
     settleTrackToIndex(index, true);
     if (viewName === 'dashboard') refreshDashboard();
     if (viewName === 'approvals') openApprovals();
+    if (viewName === 'bank') loadBankTransactions();
   }
 
   function settleTrackToIndex(index, animate) {
@@ -3467,7 +3468,7 @@
   }
 
   // ---------- Swipe navigation (mobile) — real-time drag-following with snap ----------
-  const VIEW_ORDER = ['dashboard', 'upload', 'ledger', 'approvals'];
+  const VIEW_ORDER = ['dashboard', 'upload', 'ledger', 'approvals', 'bank'];
   const viewport = document.querySelector('.view-viewport');
   const viewTrack = document.getElementById('viewTrack');
   let currentViewIndex = 0;
@@ -3546,6 +3547,7 @@
       settleTrackToIndex(targetIndex, true);
       if (viewName === 'dashboard') refreshDashboard();
       if (viewName === 'approvals') openApprovals();
+      if (viewName === 'bank') loadBankTransactions();
     } else {
       settleTrackToIndex(currentViewIndex, true); // snap back to where we started
     }
