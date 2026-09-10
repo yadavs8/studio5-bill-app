@@ -1890,11 +1890,16 @@
         </div>
 
         <div class="review-grid">${fieldsHtml}</div>
-        <div style="padding: 4px 16px 0;">
-          <label style="font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; color:#4a7a94; font-weight:600;">Has this bill been paid?</label>
+        <div style="padding: 6px 16px 0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+            <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#4a7a94; font-weight:700; margin-bottom:0;">Has this bill been paid?</label>
+            ${hasPaidStamp 
+              ? `<span style="font-size:11px; color:#15803d; font-weight:700; background:#dcfce7; border:1px solid #86efac; padding:2px 8px; border-radius:4px; display:inline-flex; align-items:center; gap:4px;">🔖 Physical PAID Stamp Detected ✅</span>` 
+              : `<span style="font-size:10.5px; color:#b45309; font-weight:600; background:#fffbeb; border:1px solid #fde68a; padding:2px 8px; border-radius:4px; display:inline-flex; align-items:center; gap:4px;">⚠️ No PAID Stamp Detected (Mark as Due if unpaid)</span>`}
+          </div>
           <div class="payment-choice">
-            <button type="button" class="payment-btn" data-pay="paid">Already Paid</button>
-            <button type="button" class="payment-btn" data-pay="unpaid">Not Paid Yet</button>
+            <button type="button" class="payment-btn" data-pay="paid">Already Paid (Settled)</button>
+            <button type="button" class="payment-btn" data-pay="unpaid">Not Paid Yet (Due)</button>
           </div>
         </div>
         ${dup ? `
@@ -2076,12 +2081,23 @@
       };
     });
 
+    if (extracted.payment_status) {
+      const matchBtn = reviewArea.querySelector(`.payment-btn[data-pay="${extracted.payment_status}"]`);
+      if (matchBtn) {
+        matchBtn.classList.add('selected', extracted.payment_status);
+        refreshSaveEnabled();
+      }
+    }
+
     if (checkbox) checkbox.addEventListener('change', refreshSaveEnabled);
 
     saveBtn.onclick = () => {
       const selectEl = document.getElementById('reviewIncurredBySelect');
       const chosenIncurred = selectEl ? selectEl.value : getSubmittingForPerson();
-      ensureEmployeeNameThenRun(() => submitForApproval(extracted.bill_type, extracted.payment_status, chosenIncurred));
+      ensureEmployeeNameThenRun(() => submitForApproval(extracted.bill_type, extracted.payment_status, chosenIncurred, {
+        has_paid_stamp: hasPaidStamp,
+        paid_stamp_detected: hasPaidStamp
+      }));
     };
 
     document.getElementById('discardBtn').onclick = () => {
@@ -2182,18 +2198,21 @@
     input.addEventListener('keydown', handleKeydown);
   }
 
-  function submitForApproval(billType, paymentStatus, customIncurredBy) {
+  function submitForApproval(billType, paymentStatus, customIncurredBy, extraMeta) {
     const inputs = reviewArea.querySelectorAll('.field input');
     const uploader = getEmployeeName() || 'Unknown';
     const incurredPerson = customIncurredBy || getSubmittingForPerson() || uploader;
+    const hasPaidStamp = !!(extraMeta && (extraMeta.has_paid_stamp || extraMeta.paid_stamp_detected));
     const record = {
       uploaded_at: new Date().toISOString(),
       uploaded_on: new Date().toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
       bill_type: billType,
-      payment_status: paymentStatus,
+      payment_status: paymentStatus || (hasPaidStamp ? 'paid' : 'unpaid'),
       submitted_by_employee: uploader,
       purchased_by: incurredPerson,
-      incurred_by: incurredPerson
+      incurred_by: incurredPerson,
+      has_paid_stamp: hasPaidStamp,
+      paid_stamp_detected: hasPaidStamp
     };
     inputs.forEach(inp => {
       if (inp.dataset.key) record[inp.dataset.key] = inp.disabled ? '' : inp.value.trim();
@@ -2201,6 +2220,9 @@
     // Explicitly guarantee purchased_by and incurred_by reflect the chosen employee
     record.purchased_by = incurredPerson;
     record.incurred_by = incurredPerson;
+    if (hasPaidStamp && !String(record.description || '').includes('[PAID STAMP DETECTED]')) {
+      record.description = `[PAID STAMP DETECTED] ${record.description || ''}`.trim();
+    }
     if (record.date) {
       record.date = normalizeDate(record.date);
     }
@@ -4098,6 +4120,7 @@
 
     area.innerHTML = approvalsCache.map(item => {
       const isGst = item.bill_type === 'gst';
+      const hasPaidStamp = !!(item.has_paid_stamp || item.paid_stamp_detected || (item.description && /paid stamp/i.test(item.description)) || (item.rejection_reason && /paid stamp/i.test(item.rejection_reason)));
       const payTag = item.payment_status === 'paid'
         ? '<span class="pay-tag paid">Paid</span>'
         : '<span class="pay-tag unpaid">Not Paid</span>';
@@ -4110,6 +4133,23 @@
           </div>
           ${payTag}
         </div>
+
+        <div style="margin:8px 0 10px 0;">
+          ${hasPaidStamp ? `
+            <div style="display:inline-flex; align-items:center; gap:6px; background:#ecfdf5; border:1px solid #10b981; color:#065f46; padding:5px 10px; border-radius:6px; font-weight:700; font-size:11.5px;">
+              <span>🔖</span>
+              <span>Physical "PAID" Stamp: DETECTED ON BILL</span>
+              <span style="background:#10b981; color:#fff; font-size:10px; padding:1px 5px; border-radius:10px;">VERIFIED ✅</span>
+            </div>
+          ` : `
+            <div style="display:inline-flex; align-items:center; gap:6px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:5px 10px; border-radius:6px; font-weight:600; font-size:11px;">
+              <span>⚠️</span>
+              <span>Physical "PAID" Stamp: NOT DETECTED</span>
+              <span style="color:#b45309; font-size:10px;">(Check bill photo before approving as Paid)</span>
+            </div>
+          `}
+        </div>
+
         <div class="approval-grid">
           <div><b>Amount</b>₹${item.invoice_value || '-'}</div>
           ${isGst ? `
@@ -4155,9 +4195,16 @@
           </div>
           <div><b>Photo</b>${item.photo_link ? photoThumbHtml(item.photo_link) : '-'}</div>
         </div>
-        <div class="approval-actions">
-          <button class="btn-primary" data-action="approve">Approve</button>
-          <button class="btn-danger" data-action="reject">Reject</button>
+        <div class="approval-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+          <button type="button" class="btn-primary" data-action="approve-paid" style="flex:1.2; min-width:145px; background:#10b981; border:1px solid #059669; color:#fff; font-weight:700; font-size:12.5px; padding:9px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer; box-shadow:0 1px 3px rgba(16,185,129,0.3);">
+            <span>✅</span> <span>Approve as PAID</span>
+          </button>
+          <button type="button" class="btn-primary" data-action="approve-due" style="flex:1.2; min-width:145px; background:#f59e0b; border:1px solid #d97706; color:#fff; font-weight:700; font-size:12.5px; padding:9px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer; box-shadow:0 1px 3px rgba(245,158,11,0.3);">
+            <span>⏳</span> <span>Approve as DUE</span>
+          </button>
+          <button type="button" class="btn-danger" data-action="reject" style="flex:0.8; min-width:85px; font-weight:600; font-size:12.5px; padding:9px 10px; border-radius:8px; cursor:pointer;">
+            <span>✕</span> <span>Reject</span>
+          </button>
         </div>
         <div class="reject-box" id="rejectBox-${item.submission_id}">
           <textarea placeholder="Reason for rejecting (e.g. wrong amount, blurry photo)"></textarea>
@@ -4176,7 +4223,10 @@
 
     area.querySelectorAll('.approval-card').forEach(card => {
       const id = card.dataset.id;
-      card.querySelector('[data-action="approve"]').onclick = () => approveBill(id, card);
+      const btnPaid = card.querySelector('[data-action="approve-paid"]');
+      if (btnPaid) btnPaid.onclick = () => approveBill(id, card, 'paid');
+      const btnDue = card.querySelector('[data-action="approve-due"]');
+      if (btnDue) btnDue.onclick = () => approveBill(id, card, 'unpaid');
       card.querySelector('[data-action="reject"]').onclick = () => {
         document.getElementById(`rejectBox-${id}`).classList.add('open');
       };
@@ -4190,22 +4240,32 @@
     });
   }
 
-  async function approveBill(submissionId, cardEl) {
+  async function approveBill(submissionId, cardEl, paymentStatus = 'paid') {
     cardEl.style.opacity = '0.5';
+    cardEl.style.pointerEvents = 'none';
     try {
       const res = await fetch(`${BACKEND_URL}/approve-bill`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
-        body: JSON.stringify({ submission_id: submissionId })
+        body: JSON.stringify({ submission_id: submissionId, payment_status: paymentStatus })
       });
       const result = await res.json();
       if (!res.ok || result.error) throw new Error(result.error || 'Approve failed');
+      
+      const label = paymentStatus === 'paid' ? 'PAID ✅' : 'DUE (Payment Pending) ⏳';
+      showCelebrationToast(`Bill Approved as ${label}!`);
+
       cardEl.remove();
+      const area = document.getElementById('approvalsArea');
+      if (area && !area.querySelector('.approval-card')) {
+        area.innerHTML = `<div class="empty-state">Nothing waiting for approval right now.</div>`;
+      }
       await refreshPendingCount();
       recordsCache.gst = []; recordsCache.non_gst = []; // force refresh next time ledger is viewed
     } catch (e) {
       cardEl.style.opacity = '1';
-      alert('Could not approve this bill — please try again.');
+      cardEl.style.pointerEvents = 'auto';
+      alert('Could not approve this bill — ' + (e.message || 'please try again.'));
     }
   }
 
