@@ -781,6 +781,118 @@
       <div style="text-align:center; padding:30px; color:#94a3b8; font-size:13px;">Loading tracked materials...</div>
     </div>
   </div>
+
+<div class="pin-overlay" id="returnModalOverlay" style="display:none; z-index:10000;">
+  <div class="pin-card" style="max-width:540px; text-align:left; max-height:90vh; display:flex; flex-direction:column; background:#ffffff; border-radius:12px; padding:20px; box-shadow:0 20px 25px -5px rgba(0, 0, 0, 0.2);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+      <div>
+        <h2 style="margin:0; font-size:18px; color:#1e293b; display:flex; align-items:center; gap:8px;">
+          <span>🔄</span> <span>Record Goods Return / Debit Note</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:12px; color:#64748b;">Record returned materials without altering the original tax invoice</p>
+      </div>
+      <button type="button" id="closeReturnModalBtn" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px; font-size:12.5px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+        <span style="color:#64748b;">Vendor:</span>
+        <b id="returnVendorName" style="color:#0f172a;">—</b>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+        <span style="color:#64748b;">Invoice / Bill No:</span>
+        <span id="returnBillNo" style="font-family:monospace; font-weight:600;">—</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+        <span style="color:#64748b;">Invoice Date:</span>
+        <span id="returnBillDate">—</span>
+      </div>
+      <div style="display:flex; justify-content:space-between;">
+        <span style="color:#64748b;">Original Invoice Value:</span>
+        <b id="returnOriginalAmount" style="color:#047857; font-size:14px;">₹0</b>
+      </div>
+    </div>
+
+    <div style="flex:1; overflow-y:auto; padding-right:4px;">
+      <!-- Line items if available -->
+      <div id="returnItemsSection" style="margin-bottom:12px; display:none;">
+        <label style="font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; font-weight:700; color:#475569; display:block; margin-bottom:6px;">
+          Select Items Being Returned:
+        </label>
+        <div id="returnItemsList" style="display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- Total Return Amount -->
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
+          Total Return Value (₹) *
+        </label>
+        <input type="number" id="returnAmountInput" placeholder="Enter return value" style="width:100%; padding:10px 12px; font-size:16px; font-weight:700; border:1.5px solid #cbd5e1; border-radius:6px; color:#b91c1c; background:#fff;" />
+      </div>
+
+      <!-- Live Calculation Card -->
+      <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12.5px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+          <span>Original Bill Amount:</span>
+          <span id="calcOrigAmt">₹0</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:3px; color:#b91c1c; font-weight:600;">
+          <span>Less: Return / Debit Value:</span>
+          <span id="calcRetAmt">-₹0</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-top:1px dashed #f59e0b; padding-top:4px; font-weight:700; font-size:13.5px; color:#92400e;">
+          <span>Net Payable / Adjusted Value:</span>
+          <span id="calcNetAmt">₹0</span>
+        </div>
+      </div>
+
+      <!-- Settlement Mode -->
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
+          How is this return settled?
+        </label>
+        <select id="returnSettlementSelect" style="width:100%; padding:9px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff;">
+          <option value="deduct_from_due">📉 Deduct from Due (Reduces pending payable to vendor)</option>
+          <option value="cash_refund">💵 Vendor Cash Refund (Cash handed back to supervisor)</option>
+          <option value="vendor_credit">📜 Vendor Credit Note (Adjust in next purchase)</option>
+        </select>
+      </div>
+
+      <!-- Reason -->
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
+          Reason for Return
+        </label>
+        <select id="returnReasonSelect" style="width:100%; padding:9px 12px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; margin-bottom:6px;">
+          <option value="Excess site material returned">Excess site material returned</option>
+          <option value="Damaged / defective goods">Damaged / defective goods</option>
+          <option value="Wrong size / specification supplied">Wrong size / specification supplied</option>
+          <option value="Substandard material / quality rejected">Substandard material / quality rejected</option>
+          <option value="__OTHER__">Other reason (specify below)</option>
+        </select>
+        <input type="text" id="returnReasonCustom" placeholder="Type custom reason" style="display:none; width:100%; padding:8px 12px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px;" />
+      </div>
+
+      <!-- Credit note no & photo -->
+      <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <div style="flex:1;">
+          <label style="font-size:11px; text-transform:uppercase; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Credit Note / Slip No.</label>
+          <input type="text" id="returnCreditNoteNo" placeholder="Optional (e.g. CN-102)" style="width:100%; padding:8px 10px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:6px;" />
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:11px; text-transform:uppercase; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Return Slip Photo</label>
+          <input type="file" id="returnPhotoInput" accept="image/*,application/pdf" style="font-size:11px;" />
+        </div>
+      </div>
+
+      <div class="pin-error" id="returnError" style="margin-bottom:8px;"></div>
+    </div>
+
+    <div style="display:flex; gap:8px; padding-top:12px; border-top:1px solid #e2e8f0;">
+      <button type="button" class="btn-primary" id="saveReturnBtn" style="flex:1; padding:10px; font-size:13.5px;">Confirm Return & Update Accounts</button>
+      <button type="button" class="btn-ghost" id="cancelReturnBtn" style="padding:10px 14px;">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <div class="pin-overlay" id="nameCaptureOverlay" style="display:none; z-index:10000;">
@@ -2344,13 +2456,32 @@
     }
   }
 
+  let returnsCache = [];
+
+  async function fetchReturns() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/bill-returns`, {
+        headers: { 'x-app-secret': APP_SECRET }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        returnsCache = data.returns || [];
+      }
+    } catch (e) {
+      console.warn('Failed to fetch returns:', e);
+    }
+  }
+
   async function loadRecords() {
     tableArea.innerHTML = `<div class="empty-state">Loading ledger from Cloud Database…</div>`;
     try {
-      [recordsCache.gst, recordsCache.non_gst] = await Promise.all([
+      const [gst, nonGst] = await Promise.all([
         fetchRecords('gst'),
-        fetchRecords('non_gst')
+        fetchRecords('non_gst'),
+        fetchReturns()
       ]);
+      recordsCache.gst = gst;
+      recordsCache.non_gst = nonGst;
     } catch (e) {
       tableArea.innerHTML = `<div class="empty-state">Couldn't load the ledger (${e.message}). Check the backend is awake and the Sheet tab names are correct.</div>`;
       return;
@@ -2512,15 +2643,39 @@
             : '';
           return `<td><b>${incurred}</b> <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px; margin-left:3px;">${siteInfo.site.replace(' Site','')}</span>${sourceBadge}${proxyNote}</td>`;
         }
+        if (key === 'invoice_value') {
+          const origVal = parseFloat(String(r[key] || '0').replace(/[^0-9.]/g, '')) || 0;
+          const billRet = returnsCache.find(ret =>
+            (ret.bill_id && r.entry_id && String(ret.bill_id) === String(r.entry_id)) ||
+            (ret.bill_no && r.bill_no && ret.bill_no.toLowerCase() === String(r.bill_no).toLowerCase() && ret.vendor_name.toLowerCase() === String(r.vendor_name || '').toLowerCase())
+          );
+          if (billRet) {
+            return `<td>
+              <div style="font-weight:700; color:#0f172a;">₹${billRet.net_amount.toLocaleString('en-IN')}</div>
+              <div style="font-size:10.5px; color:#b45309; text-decoration:line-through;">₹${origVal.toLocaleString('en-IN')}</div>
+              <span style="background:#fef3c7; color:#92400e; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; display:inline-flex; align-items:center; gap:2px;" title="${billRet.reason || 'Goods Return'}">🔄 -₹${billRet.return_amount.toLocaleString('en-IN')}</span>
+            </td>`;
+          }
+          return `<td>₹${origVal ? origVal.toLocaleString('en-IN') : (r[key] || '-')}</td>`;
+        }
         return `<td>${r[key] ?? ''}</td>`;
       }).join('');
       const isVoucher = !r.gstin || r.bill_type === 'non_gst';
       const voucherBtn = isVoucher ? `<button type="button" class="btn-ghost" style="font-size:11px; padding:3px 8px; margin-right:4px;" onclick='openDigitalVoucher(${JSON.stringify(r).replace(/'/g, "&#39;")})'>📄 Voucher</button>` : '';
-      const deleteCell = `<td><div style="display:flex; align-items:center;">${voucherBtn}${r.entry_id ? `<button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button>` : ''}</div></td>`;
+      const returnBtn = `<button type="button" class="btn-ghost btn-return-bill" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#92400e; border-color:#fde68a; background:#fffbeb;" title="Record Goods Return / Debit Note">🔄 Return</button>`;
+      const deleteCell = `<td><div style="display:flex; align-items:center;">${voucherBtn}${returnBtn}${r.entry_id ? `<button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button>` : ''}</div></td>`;
       return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}${deleteCell}</tr>`;
     }).join('');
     tableArea.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
 
+    tableArea.querySelectorAll('.btn-return-bill').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const entryId = btn.dataset.entryId;
+        const matchRec = filtered.find(x => String(x.entry_id) === String(entryId));
+        if (matchRec) openReturnModal(matchRec);
+      };
+    });
     tableArea.querySelectorAll('.del-btn').forEach(btn => {
       btn.onclick = () => requestLedgerDelete(btn.dataset.entryId, btn.dataset.billType, btn);
     });
@@ -4889,6 +5044,230 @@
   }
 
   setupMaterialRatesModal();
+
+  // ─── Goods Return / Purchase Return Modal ──────────────────────────────────
+  let activeReturnRecord = null;
+
+  function openReturnModal(rec) {
+    if (!rec) return;
+    activeReturnRecord = rec;
+
+    const overlay = document.getElementById('returnModalOverlay');
+    const vendorEl = document.getElementById('returnVendorName');
+    const billNoEl = document.getElementById('returnBillNo');
+    const dateEl = document.getElementById('returnBillDate');
+    const origAmtEl = document.getElementById('returnOriginalAmount');
+    const amtInput = document.getElementById('returnAmountInput');
+    const calcOrig = document.getElementById('calcOrigAmt');
+    const calcRet = document.getElementById('calcRetAmt');
+    const calcNet = document.getElementById('calcNetAmt');
+    const errEl = document.getElementById('returnError');
+    const reasonSel = document.getElementById('returnReasonSelect');
+    const reasonCustom = document.getElementById('returnReasonCustom');
+    const creditNoteInput = document.getElementById('returnCreditNoteNo');
+    const photoInput = document.getElementById('returnPhotoInput');
+    const settlementSel = document.getElementById('returnSettlementSelect');
+    const itemsSection = document.getElementById('returnItemsSection');
+    const itemsList = document.getElementById('returnItemsList');
+
+    if (!overlay) return;
+
+    errEl.textContent = '';
+    if (photoInput) photoInput.value = '';
+    if (creditNoteInput) creditNoteInput.value = '';
+    if (reasonSel) reasonSel.value = 'Excess site material returned';
+    if (reasonCustom) {
+      reasonCustom.value = '';
+      reasonCustom.style.display = 'none';
+    }
+
+    if (settlementSel) {
+      if (rec.payment_status === 'unpaid') {
+        settlementSel.value = 'deduct_from_due';
+      } else {
+        settlementSel.value = 'cash_refund';
+      }
+    }
+
+    const origAmt = parseFloat(String(rec.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0;
+    if (vendorEl) vendorEl.textContent = rec.vendor_name || 'Vendor';
+    if (billNoEl) billNoEl.textContent = rec.bill_no || 'N/A';
+    if (dateEl) dateEl.textContent = rec.date || rec.bill_date || '—';
+    if (origAmtEl) origAmtEl.textContent = `₹${origAmt.toLocaleString('en-IN')}`;
+
+    if (amtInput) amtInput.value = '';
+    if (calcOrig) calcOrig.textContent = `₹${origAmt.toLocaleString('en-IN')}`;
+    if (calcRet) calcRet.textContent = `-₹0`;
+    if (calcNet) calcNet.textContent = `₹${origAmt.toLocaleString('en-IN')}`;
+
+    function updateCalc() {
+      const retAmt = parseFloat(amtInput.value || 0) || 0;
+      const net = Math.max(0, origAmt - retAmt);
+      if (calcRet) calcRet.textContent = `-₹${retAmt.toLocaleString('en-IN')}`;
+      if (calcNet) calcNet.textContent = `₹${net.toLocaleString('en-IN')}`;
+      if (retAmt > origAmt) {
+        errEl.textContent = `Return value (₹${retAmt}) cannot exceed original bill amount (₹${origAmt})`;
+      } else {
+        errEl.textContent = '';
+      }
+    }
+    if (amtInput) amtInput.oninput = updateCalc;
+
+    let billItems = Array.isArray(rec.items) ? rec.items : [];
+    if (billItems.length > 0 && itemsSection && itemsList) {
+      itemsSection.style.display = 'block';
+      itemsList.innerHTML = billItems.map((it, idx) => {
+        const uPrice = parseFloat(it.unit_price || 0);
+        const qty = parseFloat(it.quantity || 1);
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; border:1px solid #e2e8f0; padding:8px 10px; border-radius:6px; font-size:12px;">
+            <div>
+              <b style="color:#1e293b;">${it.item_name}</b>
+              <div style="font-size:10.5px; color:#64748b;">${qty} ${it.unit || 'unit'} @ ₹${uPrice}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <label style="font-size:11px; color:#64748b;">Ret Qty:</label>
+              <input type="number" class="return-item-qty" data-index="${idx}" data-price="${uPrice}" min="0" max="${qty}" step="any" value="0" style="width:65px; padding:5px 6px; font-size:13px; font-weight:700; text-align:center; border:1.5px solid #cbd5e1; border-radius:4px;" />
+            </div>
+          </div>`;
+      }).join('');
+
+      itemsList.querySelectorAll('.return-item-qty').forEach(inp => {
+        inp.oninput = () => {
+          let sum = 0;
+          itemsList.querySelectorAll('.return-item-qty').forEach(qInp => {
+            const q = parseFloat(qInp.value || 0) || 0;
+            const p = parseFloat(qInp.dataset.price || 0) || 0;
+            sum += q * p;
+          });
+          if (amtInput) amtInput.value = sum > 0 ? Math.round(sum * 100) / 100 : '';
+          updateCalc();
+        };
+      });
+    } else if (itemsSection) {
+      itemsSection.style.display = 'none';
+      if (itemsList) itemsList.innerHTML = '';
+    }
+
+    overlay.style.display = 'flex';
+  }
+
+  function setupReturnModal() {
+    const overlay = document.getElementById('returnModalOverlay');
+    const closeBtn = document.getElementById('closeReturnModalBtn');
+    const cancelBtn = document.getElementById('cancelReturnBtn');
+    const saveBtn = document.getElementById('saveReturnBtn');
+    const reasonSel = document.getElementById('returnReasonSelect');
+    const reasonCustom = document.getElementById('returnReasonCustom');
+
+    if (!overlay) return;
+
+    const hide = () => { overlay.style.display = 'none'; activeReturnRecord = null; };
+    if (closeBtn) closeBtn.onclick = hide;
+    if (cancelBtn) cancelBtn.onclick = hide;
+    overlay.onclick = (e) => { if (e.target === overlay) hide(); };
+
+    if (reasonSel && reasonCustom) {
+      reasonSel.onchange = () => {
+        reasonCustom.style.display = reasonSel.value === '__OTHER__' ? 'block' : 'none';
+      };
+    }
+
+    if (saveBtn) {
+      saveBtn.onclick = async () => {
+        if (!activeReturnRecord) return;
+        const errEl = document.getElementById('returnError');
+        const amtInput = document.getElementById('returnAmountInput');
+        const retAmt = parseFloat(amtInput.value || 0) || 0;
+        const origAmt = parseFloat(String(activeReturnRecord.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0;
+
+        if (retAmt <= 0) {
+          errEl.textContent = 'Please enter a valid return amount greater than ₹0.';
+          return;
+        }
+        if (retAmt > origAmt) {
+          errEl.textContent = `Return value (₹${retAmt}) cannot exceed original bill amount (₹${origAmt}).`;
+          return;
+        }
+
+        let reason = reasonSel.value;
+        if (reason === '__OTHER__') {
+          reason = reasonCustom.value.trim() || 'Other return';
+        }
+
+        const itemsReturned = [];
+        const itemQtyInputs = overlay.querySelectorAll('.return-item-qty');
+        if (itemQtyInputs.length > 0 && Array.isArray(activeReturnRecord.items)) {
+          itemQtyInputs.forEach(inp => {
+            const q = parseFloat(inp.value || 0) || 0;
+            if (q > 0) {
+              const it = activeReturnRecord.items[parseInt(inp.dataset.index, 10)];
+              if (it) {
+                itemsReturned.push({
+                  item_name: it.item_name,
+                  quantity: q,
+                  unit: it.unit || '',
+                  unit_price: parseFloat(it.unit_price || 0),
+                  total_amount: Math.round(q * parseFloat(it.unit_price || 0) * 100) / 100
+                });
+              }
+            }
+          });
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving return…';
+
+        try {
+          const photoInput = document.getElementById('returnPhotoInput');
+          let photoBase64 = '';
+          let photoMediaType = '';
+          if (photoInput && photoInput.files && photoInput.files[0]) {
+            const file = photoInput.files[0];
+            photoBase64 = await fileToBase64(file);
+            photoMediaType = file.type || 'image/jpeg';
+          }
+
+          const payload = {
+            bill_id: activeReturnRecord.entry_id || '',
+            bill_no: activeReturnRecord.bill_no || '',
+            vendor_name: activeReturnRecord.vendor_name || '',
+            bill_type: activeReturnRecord.bill_type || activeTab,
+            original_amount: origAmt,
+            return_amount: retAmt,
+            return_date: new Date().toLocaleDateString('en-IN'),
+            items_returned: itemsReturned,
+            reason: reason,
+            settlement_type: document.getElementById('returnSettlementSelect').value,
+            credit_note_no: document.getElementById('returnCreditNoteNo').value.trim(),
+            photo_base64: photoBase64,
+            photo_media_type: photoMediaType,
+            recorded_by: getEmployeeName() || 'Management',
+            supervisor_name: resolvePersonName(activeReturnRecord.purchased_by || activeReturnRecord.submitted_by_employee, activeReturnRecord)
+          };
+
+          const res = await fetch(`${BACKEND_URL}/record-return`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || 'Failed to record return');
+
+          showCelebrationToast(`Goods return of ₹${retAmt.toLocaleString('en-IN')} recorded! Net bill is ₹${data.return.net_amount.toLocaleString('en-IN')}.`);
+          hide();
+          await loadRecords();
+        } catch (err) {
+          errEl.textContent = `Error: ${err.message}`;
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Confirm Return & Update Accounts';
+        }
+      };
+    }
+  }
+
+  setupReturnModal();
 
   // ─── Bank Tracker ───────────────────────────────────────────────────────────
 
