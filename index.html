@@ -1621,7 +1621,7 @@
     ['invoice_value','Invoice Value'],
     ['uploaded_on','Uploaded On'],
     ['photo_link','Photo'],
-    ['payment_status','Payment'],
+    ['payment_status','Payment Status'],
     ['submitted_by_employee','Submitted By (Employee)']
   ];
 
@@ -1638,7 +1638,7 @@
     ['invoice_value','Invoice Value'],
     ['uploaded_on','Uploaded On'],
     ['photo_link','Photo'],
-    ['payment_status','Payment'],
+    ['payment_status','Payment Status'],
     ['submitted_by_employee','Submitted By (Employee)']
   ];
 
@@ -1915,6 +1915,7 @@
   const EMPLOYEE_HEADER_ALIASES = ['Submitted By (Employee)', 'Submitted by', 'Submitted By Employee', 'Employee', 'Employee Name'];
 
   const FIELD_HEADER_ALIASES = {
+    payment_status: ['Payment Status', 'Payment status', 'Payment', 'payment_status', 'Status (Payment)'],
     gstin_status: ['GSTIN Status', 'Gstin Status', 'Status (GSTIN)', 'GST Status'],
     invoice_value: ['Invoice Value', 'Amount', 'Total', 'Total Amount', 'Bill Amount'],
     taxable_value: ['Taxable Value', 'Taxable Amount'],
@@ -1989,6 +1990,19 @@
         }
         const entryIdIdx = headerRow.indexOf('Entry ID');
         rec.entry_id = entryIdIdx >= 0 ? String(r[entryIdIdx] ?? '') : '';
+
+        // User directive: All historical bills prior to today (2026-09-10) are already paid.
+        // Start tracking PAID vs DUE details strictly from today onwards.
+        const d = parseUploadedOnDate(rec.date) || parseUploadedOnDate(rec.uploaded_on);
+        const isHistorical = !d || (d.year < 2026) || (d.year === 2026 && d.month < 9) || (d.year === 2026 && d.month === 9 && d.day < 10);
+
+        if (isHistorical) {
+          rec.payment_status = 'paid';
+        } else {
+          const rawPay = String(rec.payment_status || '').toLowerCase().trim();
+          rec.payment_status = rawPay.includes('unpaid') ? 'unpaid' : 'paid';
+        }
+
         return rec;
       });
   }
