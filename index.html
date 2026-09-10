@@ -2118,15 +2118,22 @@
       alert('No GSTIN to verify.');
       return;
     }
+    // Instant dual-method clipboard copy (Async API + DOM Fallback)
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(clean).then(() => {
-        showCelebrationToast(`Copied ${clean} to clipboard! Opening Govt GST portal...`);
-      }).catch(() => {
-        showCelebrationToast(`Opening Govt GST portal...`);
-      });
-    } else {
-      showCelebrationToast(`Opening Govt GST portal...`);
+      navigator.clipboard.writeText(clean).catch(() => {});
     }
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = clean;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    } catch (e) {}
+
+    showCelebrationToast(`📋 Copied ${clean} to clipboard! Paste (Ctrl+V) into GST Portal.`);
     window.open('https://services.gst.gov.in/services/searchtp', '_blank');
   }
 
