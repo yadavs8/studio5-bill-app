@@ -2677,23 +2677,38 @@
     }
   }
 
-  async function loadRecords() {
-    tableArea.innerHTML = `<div class="empty-state">Loading ledger from Cloud Database…</div>`;
+  async function loadRecords(silent = false) {
+    const hasCache = (recordsCache.gst && recordsCache.gst.length > 0) || (recordsCache.non_gst && recordsCache.non_gst.length > 0);
+    if (!silent && !hasCache) {
+      tableArea.innerHTML = `<div class="empty-state">Loading ledger from Cloud Database…</div>`;
+    }
     try {
       const [gst, nonGst] = await Promise.all([
         fetchRecords('gst'),
         fetchRecords('non_gst'),
         fetchReturns()
       ]);
+
+      const gstString = JSON.stringify(gst);
+      const nonGstString = JSON.stringify(nonGst);
+      const prevGstString = JSON.stringify(recordsCache.gst || []);
+      const prevNonGstString = JSON.stringify(recordsCache.non_gst || []);
+      const dataChanged = (gstString !== prevGstString || nonGstString !== prevNonGstString);
+
       recordsCache.gst = gst;
       recordsCache.non_gst = nonGst;
+
+      if (!silent || dataChanged || !hasCache) {
+        const allRecords = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
+        populateLedgerMonthBar(allRecords);
+        renderTable();
+      }
     } catch (e) {
-      tableArea.innerHTML = `<div class="empty-state">Couldn't load the ledger (${e.message}). Check the backend is awake and the Sheet tab names are correct.</div>`;
+      if (!hasCache && !silent) {
+        tableArea.innerHTML = `<div class="empty-state">Couldn't load the ledger (${e.message}). Check the backend is awake and the Sheet tab names are correct.</div>`;
+      }
       return;
     }
-    const allRecords = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
-    populateLedgerMonthBar(allRecords);
-    renderTable();
   }
 
   let ledgerPersonFilter = '';
@@ -5594,14 +5609,14 @@
   // Keeps whichever tab you're looking at reasonably current without manual refreshing,
   // while respecting Google Apps Script's daily usage quota — pauses entirely when the
   // tab isn't visible (phone locked, app backgrounded, browser tab switched away).
-  const AUTO_REFRESH_INTERVAL_MS = 20000;
+  const AUTO_REFRESH_INTERVAL_MS = 45000;
   let autoRefreshTimer = null;
 
   function silentlyRefreshActiveView() {
     const activeBtn = document.querySelector('.nav-btn.active');
     const activeView = activeBtn ? activeBtn.dataset.view : 'dashboard';
     if (activeView === 'dashboard') refreshDashboard();
-    else if (activeView === 'ledger') loadRecords();
+    else if (activeView === 'ledger') loadRecords(true);
     else if (activeView === 'approvals' && sessionStorage.getItem('boss_unlocked') === 'yes') renderApprovals();
     // Upload view is intentionally left alone — don't disturb an in-progress review/upload.
   }
