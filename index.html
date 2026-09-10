@@ -2118,23 +2118,41 @@
       alert('No GSTIN to verify.');
       return;
     }
-    // Instant dual-method clipboard copy (Async API + DOM Fallback)
+    // Instant dual-method clipboard copy (Async API + DOM Fallback with iOS Safari support)
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(clean).catch(() => {});
     }
     try {
       const textarea = document.createElement('textarea');
       textarea.value = clean;
+      textarea.setAttribute('readonly', '');
       textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
+      textarea.style.top = '-9999px';
+      textarea.style.left = '-9999px';
       document.body.appendChild(textarea);
       textarea.select();
+      textarea.setSelectionRange(0, 99999);
       document.execCommand('copy');
       document.body.removeChild(textarea);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Clipboard fallback error:', e);
+    }
 
-    showCelebrationToast(`📋 Copied ${clean} to clipboard! Paste (Ctrl+V) into GST Portal.`);
-    window.open('https://services.gst.gov.in/services/searchtp', '_blank');
+    showCelebrationToast(`📋 Copied ${clean} to clipboard! Paste into GST Portal & enter Captcha.`);
+
+    // Native anchor click forces mobile PWA containers (iOS Safari / Android Webview)
+    // to open the link in system browser instead of blanking out the PWA window.
+    try {
+      const a = document.createElement('a');
+      a.href = 'https://services.gst.gov.in/services/searchtp';
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      window.open('https://services.gst.gov.in/services/searchtp', '_blank');
+    }
   }
 
   function isValidGSTINChecksum(gstin) {
