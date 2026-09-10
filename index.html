@@ -5663,34 +5663,107 @@
       }
 
       content.innerHTML = `
-        <div style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <span style="font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; font-weight:700;">Rate Comparison</span>
-            <h3 style="margin:2px 0 0; font-size:15px; color:#1e293b;">"${comparison.query}"</h3>
+            <span style="font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; font-weight:700;">Rate & Vendor Comparison</span>
+            <h3 style="margin:2px 0 0; font-size:16px; color:#1e293b;">"${comparison.query}"</h3>
           </div>
-          <button type="button" class="btn-ghost" id="backToCatalogBtn" style="font-size:11px; padding:3px 8px;">← All Items</button>
+          <button type="button" class="btn-ghost" id="backToCatalogBtn" style="font-size:11px; padding:4px 10px;">← All Materials</button>
         </div>
-        <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; flex-direction:column; gap:12px;">
           ${vendors.map((v, idx) => {
             const isBest = idx === 0;
+            const pcs = v.price_change_summary;
+            const hasChange = v.has_multiple_purchases && pcs;
+
+            let changeBanner = '';
+            if (hasChange) {
+              if (pcs.status === 'INCREASED') {
+                changeBanner = `
+                  <div style="background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:8px 10px; border-radius:6px; font-size:11.5px; font-weight:600; margin-top:8px;">
+                    <div style="display:flex; align-items:center; gap:6px; font-weight:800; color:#b91c1c;">
+                      <span>🔺 Price Increased by +₹${pcs.diff.toLocaleString('en-IN')} (+${pcs.pct}%)</span>
+                    </div>
+                    <div style="margin-top:2px; font-size:11px; color:#7f1d1d;">
+                      Bought on <b>${pcs.latest_date}</b> (Inv #${pcs.latest_bill_no}) @ ₹${pcs.latest_price.toLocaleString('en-IN')}<br>
+                      Was <b>₹${pcs.previous_price.toLocaleString('en-IN')}</b> on <b>${pcs.previous_date}</b> (Inv #${pcs.previous_bill_no}) ${pcs.days_between !== null ? `(${pcs.days_between} days apart)` : ''}
+                    </div>
+                  </div>
+                `;
+              } else if (pcs.status === 'DECREASED') {
+                changeBanner = `
+                  <div style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:8px 10px; border-radius:6px; font-size:11.5px; font-weight:600; margin-top:8px;">
+                    <div style="display:flex; align-items:center; gap:6px; font-weight:800; color:#15803d;">
+                      <span>🔻 Price Dropped by -₹${Math.abs(pcs.diff).toLocaleString('en-IN')} (-${Math.abs(pcs.pct)}%)</span>
+                    </div>
+                    <div style="margin-top:2px; font-size:11px;">
+                      Dropped to ₹${pcs.latest_price.toLocaleString('en-IN')} on <b>${pcs.latest_date}</b> (was ₹${pcs.previous_price.toLocaleString('en-IN')} on <b>${pcs.previous_date}</b>)
+                    </div>
+                  </div>
+                `;
+              } else if (pcs.status === 'STABLE') {
+                changeBanner = `
+                  <div style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:6px 10px; border-radius:6px; font-size:11.5px; margin-top:8px;">
+                    🟢 <b>Price Stable @ ₹${v.latest_price.toLocaleString('en-IN')}</b> across ${v.purchases.length} invoices (${pcs.previous_date} → ${pcs.latest_date})
+                  </div>
+                `;
+              }
+            }
+
+            const timelineHtml = (v.timeline || []).map((t, tIdx) => {
+              let tag = '';
+              if (t.change_status === 'INCREASED') {
+                tag = `<span style="background:#fee2e2; color:#b91c1c; font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px;">🔺 +₹${t.price_diff} (+${t.percent_change}%)</span>`;
+              } else if (t.change_status === 'DECREASED') {
+                tag = `<span style="background:#dcfce7; color:#15803d; font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px;">🔻 -₹${Math.abs(t.price_diff)}</span>`;
+              } else if (t.change_status === 'STABLE') {
+                tag = `<span style="background:#e0f2fe; color:#0369a1; font-size:10px; font-weight:600; padding:1px 5px; border-radius:3px;">Stable</span>`;
+              } else {
+                tag = `<span style="color:#64748b; font-size:10px;">Initial purchase</span>`;
+              }
+
+              return `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px dashed #e2e8f0; font-size:11.5px;">
+                  <div>
+                    <span style="font-weight:700; color:#0f172a;">📅 ${t.invoice_date}</span>
+                    <span style="font-family:monospace; color:#64748b; margin-left:6px;">Inv #${t.invoice_no}</span>
+                    <span style="color:#475569; margin-left:6px;">(${t.quantity} ${t.unit})</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-weight:700; color:#0f172a;">₹${t.unit_price.toLocaleString('en-IN')}</span>
+                    ${tag}
+                  </div>
+                </div>
+              `;
+            }).join('');
+
             return `
-            <div style="border:1.5px solid ${isBest ? '#10b981' : '#e2e8f0'}; background:${isBest ? '#ecfdf5' : '#ffffff'}; border-radius:8px; padding:10px 14px;">
+            <div style="border:1.5px solid ${isBest ? '#10b981' : '#e2e8f0'}; background:#ffffff; border-radius:8px; padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
               <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                 <div>
-                  <div style="font-weight:700; font-size:13.5px; color:#1e293b; display:flex; align-items:center; gap:6px;">
+                  <div style="font-weight:800; font-size:14px; color:#1e293b; display:flex; align-items:center; gap:6px;">
                     <span>${v.vendor_name}</span>
                     ${isBest ? '<span style="background:#10b981; color:#fff; font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:10px;">★ CHEAPEST</span>' : ''}
                   </div>
-                  <div style="font-size:11.5px; color:#64748b; margin-top:2px;">
-                    Last purchased: ${v.last_date || 'Past order'} · Total bought: ${v.total_qty} ${v.unit || ''}
+                  <div style="font-size:11px; color:#64748b; margin-top:2px;">
+                    ${v.purchases.length} invoice${v.purchases.length > 1 ? 's' : ''} · Total bought: ${v.total_qty} ${v.unit || ''}
                   </div>
                 </div>
                 <div style="text-align:right;">
-                  <div style="font-weight:800; font-size:15px; color:${isBest ? '#065f46' : '#0f172a'};">
+                  <div style="font-weight:800; font-size:16px; color:${isBest ? '#065f46' : '#0f172a'};">
                     ₹${v.latest_price ? v.latest_price.toLocaleString('en-IN') : '-'}
                   </div>
-                  <div style="font-size:10px; color:#64748b;">per ${v.unit || 'unit'}</div>
+                  <div style="font-size:10px; color:#64748b;">Latest rate / ${v.unit || 'unit'}</div>
                 </div>
+              </div>
+
+              ${changeBanner}
+
+              <div style="margin-top:10px; background:#f8fafc; border-radius:6px; padding:8px 10px;">
+                <div style="font-size:10.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px;">
+                  Purchase History & Invoice Dates:
+                </div>
+                ${timelineHtml}
               </div>
             </div>`;
           }).join('')}
