@@ -1577,7 +1577,8 @@
   }
 
   function tryUnlock() {
-    if (pinInput.value.trim() === ACCESS_PIN) {
+    const val = (pinInput.value || '').trim();
+    if (val === ACCESS_PIN || val.includes(ACCESS_PIN)) {
       unlock();
     } else {
       pinError.textContent = 'Incorrect code — check with your admin.';
@@ -1593,7 +1594,8 @@
   pinSubmit.addEventListener('click', tryUnlock);
   pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
   pinInput.addEventListener('input', () => {
-    if (pinInput.value.length === ACCESS_PIN.length) tryUnlock();
+    const val = (pinInput.value || '').trim();
+    if (val.length >= ACCESS_PIN.length) tryUnlock();
   });
 })();
 
