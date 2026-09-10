@@ -2,7 +2,7 @@
 // Strategy: Network-First with Cache Fallback for app shell
 // API calls to Render/Supabase are always direct network calls.
 
-const CACHE_NAME = 'studio5-bills-v2';
+const CACHE_NAME = 'studio5-bills-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -39,7 +39,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Always bypass cache for backend API requests
-  if (url.hostname.includes('onrender.com') || url.pathname.includes('/api/')) {
+  if (url.hostname.includes('onrender.com') || url.pathname.includes('/api/') || url.pathname.includes('/bank/')) {
     return;
   }
 
