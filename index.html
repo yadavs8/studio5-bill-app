@@ -3134,23 +3134,6 @@
       const detailBtn = `<button type="button" class="btn-ghost btn-view-detail" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px;" title="View Complete Bill Details">👁</button>`;
       const delBtn = r.entry_id ? `<button type="button" class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete" style="font-size:11px; padding:3px 6px;">✕</button>` : '';
 
-      rows.push(`
-        <tr style="${overdue ? 'background:#fff5f5;' : ''}">
-          <td style="white-space:nowrap; vertical-align:top;">
-            <div style="font-weight:700; color:#1e293b; font-size:12.5px;">${dt}</div>
-            <div style="font-family:monospace; font-size:11px; color:#64748b; margin-top:2px;" title="Invoice No">${r.bill_no || '—'}</div>
-          </td>
-          <td style="vertical-align:top;">
-            <div style="font-weight:700; color:#0f172a; font-size:13px;">${r.vendor_name || '—'}</div>
-            ${gstinHtml}
-          </td>
-          <td style="vertical-align:top;">
-            <div style="font-weight:600; color:#1e293b; font-size:12.5px;">${incurred}</div>
-            <div style="margin-top:3px;">
-              <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px;">${siteInfo.site.replace(' Site','')}</span>
-              ${sourceBadge}
-            </div>
-          </td>
       let itemsBadgeHtml = '';
       let expandableSubRow = '';
       const subRowId = `items-subrow-${r.entry_id || Math.floor(Math.random()*100000)}`;
@@ -3243,6 +3226,7 @@
         </tr>
         ${expandableSubRow}
       `);
+
 
     });
 
