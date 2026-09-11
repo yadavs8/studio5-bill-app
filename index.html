@@ -852,6 +852,59 @@
   </div>
 </div>
 
+<div class="pin-overlay" id="editDateModalOverlay" style="display:none; z-index:10000;">
+  <div class="pin-card" style="max-width:400px; text-align:left; background:#ffffff; border-radius:12px; padding:22px; box-shadow:0 20px 25px -5px rgba(0, 0, 0, 0.25);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1.5px solid #e2e8f0; padding-bottom:10px;">
+      <div>
+        <h2 style="margin:0; font-size:18px; color:#0c4a6e; display:flex; align-items:center; gap:8px;">
+          <span>📅</span> <span>Change Bill Date</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:11.5px; color:#64748b;">Correct dates mistakenly extracted by AI Vision</p>
+      </div>
+      <button type="button" id="closeEditDateModalBtn" style="background:#f1f5f9; border:none; width:28px; height:28px; border-radius:50%; font-size:15px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <!-- Bill Details Preview -->
+    <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px 14px; margin-bottom:16px;">
+      <div style="font-weight:700; font-size:13.5px; color:#0c4a6e;" id="editDateVendorName">—</div>
+      <div style="font-size:12px; color:#475569; margin-top:3px; display:flex; justify-content:space-between;">
+        <span id="editDateInvoiceNo">Invoice #—</span>
+        <span style="font-weight:700; color:#0f172a;" id="editDateAmount">₹—</span>
+      </div>
+      <div style="font-size:11.5px; color:#64748b; margin-top:5px; padding-top:5px; border-top:1px dashed #cbd5e1;">
+        Current Date on Record: <b style="color:#dc2626;" id="editDateCurrentVal">—</b>
+      </div>
+    </div>
+
+    <!-- Correct Date Picker -->
+    <div style="margin-bottom:14px;">
+      <label for="editDateNewInput" style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:5px;">
+        CORRECT BILL DATE <span style="color:#dc2626;">*</span>
+      </label>
+      <input type="date" id="editDateNewInput" style="width:100%; padding:10px 12px; font-size:14.5px; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
+      <div style="font-size:11px; color:#64748b; margin-top:4px;">Pick the actual date shown on the physical voucher / invoice.</div>
+    </div>
+
+    <!-- Password / PIN Input -->
+    <div style="margin-bottom:16px;">
+      <label for="editDatePinInput" style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:5px;">
+        🔒 ADMIN PASSWORD (PIN) <span style="color:#dc2626;">*</span>
+      </label>
+      <input type="password" inputmode="numeric" id="editDatePinInput" maxlength="10" placeholder="••••" style="width:100%; padding:10px 12px; font-size:16px; letter-spacing:4px; text-align:center; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
+      <div style="font-size:11px; color:#64748b; margin-top:4px;">Protected action (Enter PIN <b>5198</b> to authorize change).</div>
+    </div>
+
+    <!-- Error Message -->
+    <div id="editDateErrorMsg" style="display:none; margin-bottom:12px; padding:8px 12px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; font-size:12px; color:#b91c1c; font-weight:600;"></div>
+
+    <!-- Modal Actions -->
+    <div style="display:flex; gap:10px;">
+      <button type="button" id="editDateCancelBtn" class="btn-ghost" style="flex:1; padding:10px; font-size:13px; font-weight:600;">Cancel</button>
+      <button type="button" id="editDateSaveBtn" class="btn-primary" style="flex:1; padding:10px; font-size:13px; font-weight:700; background:#0284c7;">💾 Update Date</button>
+    </div>
+  </div>
+</div>
+
 <div class="pin-overlay" id="returnModalOverlay" style="display:none; z-index:10000;">
   <div class="pin-card" style="max-width:540px; text-align:left; max-height:90vh; display:flex; flex-direction:column; background:#ffffff; border-radius:12px; padding:20px; box-shadow:0 20px 25px -5px rgba(0, 0, 0, 0.2);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
@@ -3228,7 +3281,7 @@
       ${row('Vendor Name', r.vendor_name)}
       ${row('GSTIN', r.gstin ? `${r.gstin} (${r.gstin_status || 'Unverified'})` : 'Non-GST')}
       ${row('Invoice Number', r.bill_no)}
-      ${row('Invoice Date', r.date)}
+      ${row('Invoice Date', `<div style="display:inline-flex; align-items:center; gap:6px;"><span>${r.date || '—'}</span> <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:2px 7px; border-radius:4px; border:1px solid #0284c7; background:#f0f9ff; cursor:pointer; color:#0284c7; font-weight:700;" title="Change Date (Password: 5198)">✏️ Change Date</button></div>`)}
       ${row('Incurred By', r.purchased_by)}
       ${row('Submitted By', r.submitted_by_employee)}
       ${row('Taxable Value', r.taxable_value ? `₹${parseFloat(r.taxable_value).toLocaleString('en-IN')}` : '—')}
@@ -3241,6 +3294,14 @@
       ${itemsHtml}
       ${photoHtml}
     `;
+
+    const modalDateBtn = bodyEl.querySelector('.btn-edit-bill-date');
+    if (modalDateBtn) {
+      modalDateBtn.onclick = (e) => {
+        e.stopPropagation();
+        openEditDateModal(r);
+      };
+    }
 
     modal.style.display = 'flex';
   }
@@ -3396,7 +3457,10 @@
       rows.push(`
         <tr style="${overdue ? 'background:#fff5f5;' : ''}">
           <td style="white-space:nowrap; vertical-align:top;">
-            <div style="font-weight:700; color:#1e293b; font-size:12.5px;">${dt}</div>
+            <div style="font-weight:700; color:#1e293b; font-size:12.5px; display:flex; align-items:center; gap:4px;">
+              <span>${dt}</span>
+              <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" title="Change Date (Password: 5198)" style="border:none; background:transparent; cursor:pointer; font-size:11px; padding:0 2px; color:#94a3b8; line-height:1;" onmouseover="this.style.color='#0284c7'" onmouseout="this.style.color='#94a3b8'">✏️</button>
+            </div>
             <div style="font-family:monospace; font-size:11px; color:#64748b; margin-top:2px;" title="Invoice No">${r.bill_no || '—'}</div>
             ${isDup ? `<div style="margin-top:2px;"><span style="background:#fee2e2; color:#991b1b; font-weight:800; font-size:9.5px; padding:1px 5px; border-radius:3px; border:1px solid #fca5a5; display:inline-flex; align-items:center; gap:2px;" title="Duplicate bill detected: ${dupConflict ? dupConflict.reason : 'Matches another record'}">⚠️ DUPLICATE</span></div>` : ''}
           </td>
@@ -3435,6 +3499,7 @@
               ${detailBtn}
               ${voucherBtn}
               ${returnBtn}
+              <button type="button" class="btn-ghost btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 6px; color:#0284c7;" title="Change Bill Date (PIN: 5198)">📅</button>
               ${delBtn}
             </div>
           </td>
@@ -3542,6 +3607,10 @@
       const rows = filtered.map(r => {
         const overdue = isOverdue(r);
         const cells = fields.map(([key]) => {
+          if (key === 'date') {
+            const dVal = r[key] || '-';
+            return `<td><div style="display:flex; align-items:center; gap:4px;"><span>${dVal}</span><button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" title="Change Date (Password: 5198)" style="border:none; background:transparent; cursor:pointer; font-size:11px; padding:0 2px; color:#94a3b8;">✏️</button></div></td>`;
+          }
           if (key === 'photo_link') {
             return `<td>${r[key] ? photoThumbHtml(r[key]) : '-'}</td>`;
           }
@@ -3615,7 +3684,8 @@
         const voucherBtn = isVoucher ? `<button type="button" class="btn-ghost" style="font-size:11px; padding:3px 8px; margin-right:4px;" onclick='openDigitalVoucher(${JSON.stringify(r).replace(/'/g, "&#39;")})'>📄 Voucher</button>` : '';
         const returnBtn = `<button type="button" class="btn-ghost btn-return-bill" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#92400e; border-color:#fde68a; background:#fffbeb;" title="Record Goods Return / Debit Note">🔄 Return</button>`;
         const detailBtn = `<button type="button" class="btn-ghost btn-view-detail" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px;" title="View Complete Bill Details">👁 Details</button>`;
-        const deleteCell = `<td><div style="display:flex; align-items:center;">${detailBtn}${voucherBtn}${returnBtn}${r.entry_id ? `<button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button>` : ''}</div></td>`;
+        const editDateBtn = `<button type="button" class="btn-ghost btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#0284c7;" title="Change Bill Date (PIN: 5198)">📅 Date</button>`;
+        const deleteCell = `<td><div style="display:flex; align-items:center;">${detailBtn}${voucherBtn}${returnBtn}${editDateBtn}${r.entry_id ? `<button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button>` : ''}</div></td>`;
         return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}${deleteCell}</tr>`;
       }).join('');
       tableArea.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
@@ -3635,6 +3705,16 @@
         const entryId = btn.dataset.entryId;
         const matchRec = filtered.find(x => String(x.entry_id) === String(entryId));
         if (matchRec) openReturnModal(matchRec);
+      };
+    });
+    tableArea.querySelectorAll('.btn-edit-bill-date').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const entryId = btn.dataset.entryId;
+        const bType = btn.dataset.billType || activeTab;
+        const list = recordsCache[bType] || [];
+        const matchRec = list.find(x => String(x.entry_id) === String(entryId));
+        if (matchRec) openEditDateModal(matchRec);
       };
     });
     tableArea.querySelectorAll('.del-btn').forEach(btn => {
@@ -6623,6 +6703,204 @@
   }
 
   setupReturnModal();
+
+  // ─── Change Bill Date Modal (Password Protected: 5198) ────────────────────
+  let activeEditDateRecord = null;
+
+  function parseDateToIsoInput(dateStr) {
+    if (!dateStr) return '';
+    const str = String(dateStr).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const m = str.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (m) {
+      let [, d, mo, y] = m;
+      d = d.padStart(2, '0');
+      mo = mo.padStart(2, '0');
+      if (y.length === 2) y = '20' + y;
+      return `${y}-${mo}-${d}`;
+    }
+    return '';
+  }
+
+  function openEditDateModal(rec) {
+    if (!rec) return;
+    activeEditDateRecord = rec;
+
+    const overlay = document.getElementById('editDateModalOverlay');
+    const vName = document.getElementById('editDateVendorName');
+    const invNo = document.getElementById('editDateInvoiceNo');
+    const amt = document.getElementById('editDateAmount');
+    const curVal = document.getElementById('editDateCurrentVal');
+    const dateInput = document.getElementById('editDateNewInput');
+    const pinInput = document.getElementById('editDatePinInput');
+    const errMsg = document.getElementById('editDateErrorMsg');
+    const saveBtn = document.getElementById('editDateSaveBtn');
+
+    if (!overlay) return;
+
+    if (vName) vName.textContent = rec.vendor_name || 'Vendor';
+    if (invNo) invNo.textContent = `Invoice #${rec.bill_no || '—'}`;
+    const origVal = parseFloat(String(rec.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0;
+    if (amt) amt.textContent = `₹${origVal.toLocaleString('en-IN')}`;
+    if (curVal) curVal.textContent = rec.date || '—';
+
+    // Pre-populate input with current date converted to YYYY-MM-DD
+    const iso = parseDateToIsoInput(rec.date);
+    if (dateInput) dateInput.value = iso || new Date().toISOString().split('T')[0];
+
+    if (pinInput) pinInput.value = '';
+    if (errMsg) {
+      errMsg.style.display = 'none';
+      errMsg.textContent = '';
+    }
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '💾 Update Date';
+    }
+
+    overlay.style.display = 'flex';
+    setTimeout(() => {
+      if (dateInput) dateInput.focus();
+    }, 100);
+  }
+  window.openEditDateModal = openEditDateModal;
+
+  function closeEditDateModal() {
+    const overlay = document.getElementById('editDateModalOverlay');
+    if (overlay) overlay.style.display = 'none';
+    activeEditDateRecord = null;
+  }
+  window.closeEditDateModal = closeEditDateModal;
+
+  function setupEditDateModal() {
+    const overlay = document.getElementById('editDateModalOverlay');
+    const closeBtn = document.getElementById('closeEditDateModalBtn');
+    const cancelBtn = document.getElementById('editDateCancelBtn');
+    const saveBtn = document.getElementById('editDateSaveBtn');
+    const pinInput = document.getElementById('editDatePinInput');
+    const dateInput = document.getElementById('editDateNewInput');
+    const errMsg = document.getElementById('editDateErrorMsg');
+
+    if (!overlay) return;
+
+    if (closeBtn) closeBtn.onclick = closeEditDateModal;
+    if (cancelBtn) cancelBtn.onclick = closeEditDateModal;
+    overlay.onclick = (e) => {
+      if (e.target === overlay) closeEditDateModal();
+    };
+
+    if (pinInput) {
+      pinInput.onkeydown = (e) => {
+        if (e.key === 'Enter') handleSaveDateSubmit();
+      };
+    }
+    if (dateInput) {
+      dateInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          if (pinInput) pinInput.focus();
+        }
+      };
+    }
+
+    if (saveBtn) saveBtn.onclick = handleSaveDateSubmit;
+
+    async function handleSaveDateSubmit() {
+      if (!activeEditDateRecord) return;
+      const rec = activeEditDateRecord;
+
+      const enteredPin = (pinInput ? pinInput.value : '').trim();
+      if (enteredPin !== '5198') {
+        if (errMsg) {
+          errMsg.textContent = '❌ Incorrect password. Authorized PIN required (5198).';
+          errMsg.style.display = 'block';
+        }
+        if (pinInput) {
+          pinInput.value = '';
+          pinInput.focus();
+        }
+        return;
+      }
+
+      const newDateVal = dateInput ? dateInput.value : '';
+      if (!newDateVal || !/^\d{4}-\d{2}-\d{2}$/.test(newDateVal)) {
+        if (errMsg) {
+          errMsg.textContent = '❌ Please choose a valid date.';
+          errMsg.style.display = 'block';
+        }
+        return;
+      }
+
+      if (errMsg) errMsg.style.display = 'none';
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving date…';
+      }
+
+      try {
+        const bType = rec.bill_type || activeTab;
+        const res = await fetch(`${BACKEND_URL}/update-bill-date`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+          body: JSON.stringify({
+            entry_id: rec.entry_id,
+            new_date: newDateVal,
+            pin: enteredPin,
+            bill_type: bType
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          throw new Error(data.error || `Server error: HTTP ${res.status}`);
+        }
+
+        // Format new date to DD/MM/YYYY for UI display
+        const [y, m, d] = newDateVal.split('-');
+        const formattedDate = `${d}/${m}/${y}`;
+
+        // Update in-memory record
+        rec.date = formattedDate;
+        rec.bill_date = newDateVal;
+
+        // Update across recordsCache
+        ['gst', 'non_gst'].forEach(tab => {
+          if (recordsCache[tab]) {
+            const found = recordsCache[tab].find(x => String(x.entry_id) === String(rec.entry_id));
+            if (found) {
+              found.date = formattedDate;
+              found.bill_date = newDateVal;
+            }
+          }
+        });
+
+        closeEditDateModal();
+
+        // Update duplicate registry, month pills, and ledger
+        updateDuplicateBillRegistry();
+        populateLedgerMonthBar([...(recordsCache.gst || []), ...(recordsCache.non_gst || [])]);
+        renderTable();
+
+        // If Bill Detail modal is open, update subtitle
+        const subEl = document.getElementById('modalBillSubtitle');
+        if (subEl && subEl.textContent.includes('Invoice #')) {
+          subEl.textContent = `Invoice #${rec.bill_no || '—'} · ${formattedDate}`;
+        }
+
+        showCelebrationToast(`Date updated to ${formattedDate} successfully!`);
+      } catch (err) {
+        if (errMsg) {
+          errMsg.textContent = `❌ ${err.message}`;
+          errMsg.style.display = 'block';
+        }
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '💾 Update Date';
+        }
+      }
+    }
+  }
+
+  setupEditDateModal();
 
   // ─── Bank Tracker ───────────────────────────────────────────────────────────
 
