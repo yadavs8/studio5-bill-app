@@ -1469,6 +1469,7 @@
               <button type="button" class="glance-filter-btn" data-statusfilter="DUE" style="padding:4px 10px; font-size:11.5px; font-weight:600; border-radius:12px; border:1px solid #fecaca; background:#fff; color:#b91c1c; cursor:pointer;">🔴 Unpaid Due (<span id="qfDueCount">0</span>)</button>
               <button type="button" class="glance-filter-btn" data-statusfilter="PAID" style="padding:4px 10px; font-size:11.5px; font-weight:600; border-radius:12px; border:1px solid #bbf7d0; background:#fff; color:#15803d; cursor:pointer;">🟢 Paid (<span id="qfPaidCount">0</span>)</button>
               <button type="button" class="glance-filter-btn" data-statusfilter="RETURNS" style="padding:4px 10px; font-size:11.5px; font-weight:600; border-radius:12px; border:1px solid #fde68a; background:#fff; color:#92400e; cursor:pointer;">🔄 With Returns (<span id="qfReturnsCount">0</span>)</button>
+              <button type="button" class="glance-filter-btn" data-statusfilter="DUPLICATES" style="padding:4px 10px; font-size:11.5px; font-weight:600; border-radius:12px; border:1px solid #fca5a5; background:#fff; color:#991b1b; cursor:pointer;">⚠️ Duplicates (<span id="qfDuplicatesCount">0</span>)</button>
             </div>
           </div>
 
@@ -2761,6 +2762,7 @@
 
       recordsCache.gst = gst;
       recordsCache.non_gst = nonGst;
+      updateDuplicateBillRegistry();
 
       if (!silent || dataChanged || !hasCache) {
         const allRecords = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
@@ -2856,6 +2858,90 @@
     };
   }
 
+  // ----------------------------------------------------
+  // SMART DUPLICATE FRAUD & ANOMALY RADAR ENGINE
+  // ----------------------------------------------------
+  const escapeHtml = str => String(str || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+
+  let duplicateBillRegistry = { dupEntryIds: new Set(), dupConflictDetails: new Map() };
+
+  function buildDuplicateBillRegistry(records) {
+    const keyMap = new Map();
+    const dupEntryIds = new Set();
+    const dupConflictDetails = new Map();
+
+    const cleanBillNo = s => String(s || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const cleanStr = s => String(s || '').trim().toLowerCase();
+
+    (records || []).forEach(r => {
+      const bno = cleanBillNo(r.bill_no);
+      const gstin = cleanStr(r.gstin).toUpperCase();
+      const vendor = cleanStr(r.vendor_name);
+      const amt = Math.round(parseFloat(String(r.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0);
+      const date = (r.date || '').trim();
+      const id = String(r.entry_id || `${vendor}_${bno}_${amt}`);
+
+      const keys = [];
+      // 1. GSTIN + Bill No match (high confidence duplicate)
+      if (gstin && bno && bno.length >= 2) {
+        keys.push(`GSTIN::${gstin}::${bno}`);
+      }
+      // 2. Vendor Name + Bill No match
+      if (vendor && vendor.length >= 3 && bno && bno.length >= 2) {
+        keys.push(`VEND::${vendor}::${bno}`);
+      }
+      // 3. Same Vendor + Same Date + Exact Same Amount (accidental double submission)
+      if (vendor && vendor.length >= 3 && amt > 0 && date) {
+        keys.push(`AMT::${vendor}::${date}::${amt}`);
+      }
+
+      keys.forEach(k => {
+        if (!keyMap.has(k)) {
+          keyMap.set(k, [r]);
+        } else {
+          keyMap.get(k).push(r);
+        }
+      });
+    });
+
+    for (const [key, group] of keyMap.entries()) {
+      if (group.length > 1) {
+        // For AMT match, avoid false positive if different team members paid different salaries/advances
+        if (key.startsWith('AMT::')) {
+          const persons = new Set(group.map(x => cleanStr(x.purchased_by || x.submitted_by_employee)).filter(Boolean));
+          if (persons.size > 1 && (group[0].description || '').toLowerCase().includes('salary')) {
+            continue; // legitimate different employee salaries
+          }
+        }
+
+        group.forEach(r => {
+          const id = String(r.entry_id || `${r.vendor_name}_${r.bill_no}_${r.invoice_value}`);
+          dupEntryIds.add(id);
+          const others = group.filter(o => o !== r);
+          if (others.length > 0) {
+            dupConflictDetails.set(id, {
+              conflictWith: others[0],
+              reason: key.startsWith('AMT::') ? 'Same vendor, date & amount' : 'Same invoice number & vendor'
+            });
+          }
+        });
+      }
+    }
+
+    return { dupEntryIds, dupConflictDetails };
+  }
+
+  function updateDuplicateBillRegistry() {
+    const allRecords = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
+    duplicateBillRegistry = buildDuplicateBillRegistry(allRecords);
+  }
+
+  function isDuplicateBill(r) {
+    if (!r) return false;
+    const id = String(r.entry_id || `${r.vendor_name}_${r.bill_no}_${r.invoice_value}`);
+    return duplicateBillRegistry.dupEntryIds.has(id);
+  }
+
   function filterRecordsList(records) {
     if (!records) return [];
     return records.filter(r => {
@@ -2885,6 +2971,8 @@
           (ret.bill_no && r.bill_no && ret.bill_no.toLowerCase() === String(r.bill_no).toLowerCase() && ret.vendor_name.toLowerCase() === String(r.vendor_name || '').toLowerCase())
         );
         if (!hasReturn) return false;
+      } else if (ledgerStatusFilter === 'DUPLICATES') {
+        if (!isDuplicateBill(r)) return false;
       }
       // 4. Search query
       if (ledgerSearchQuery) {
@@ -3008,10 +3096,15 @@
     const qfDue = document.getElementById('qfDueCount');
     const qfPaid = document.getElementById('qfPaidCount');
     const qfReturns = document.getElementById('qfReturnsCount');
+    const qfDuplicates = document.getElementById('qfDuplicatesCount');
     if (qfAll) qfAll.textContent = allFiltered.length;
     if (qfDue) qfDue.textContent = dueCount;
     if (qfPaid) qfPaid.textContent = paidCount;
     if (qfReturns) qfReturns.textContent = returnsCount;
+    if (qfDuplicates) {
+      const dupCount = allFiltered.filter(r => isDuplicateBill(r)).length;
+      qfDuplicates.textContent = dupCount;
+    }
   }
 
   function openBillDetailModal(r) {
@@ -3028,6 +3121,22 @@
     );
     const netVal = billRet ? billRet.net_amount : origVal;
 
+    const isDup = isDuplicateBill(r);
+    const id = String(r.entry_id || `${r.vendor_name}_${r.bill_no}_${r.invoice_value}`);
+    const dupConflict = isDup && duplicateBillRegistry.dupConflictDetails.get(id);
+
+    const dupBanner = (isDup && dupConflict) ? `
+      <div style="margin-bottom:14px; padding:10px 14px; background:#fef2f2; border:1.5px solid #ef4444; border-radius:8px; color:#991b1b;">
+        <div style="font-weight:800; font-size:12.5px; display:flex; align-items:center; gap:6px;">
+          <span>🚨</span> <span>DUPLICATE RECORD DETECTED</span>
+        </div>
+        <div style="font-size:12px; margin-top:3px; color:#7f1d1d; line-height:1.4;">
+          This entry conflicts with another bill in the ledger (${dupConflict.reason}).<br>
+          <b>Conflicting Bill:</b> ${escapeHtml(dupConflict.conflictWith.vendor_name || 'Vendor')} · Invoice #${escapeHtml(dupConflict.conflictWith.bill_no || '—')} · ₹${parseFloat(dupConflict.conflictWith.invoice_value || 0).toLocaleString('en-IN')} (Dated ${dupConflict.conflictWith.date || '—'}).
+        </div>
+      </div>
+    ` : '';
+
     if (titleEl) titleEl.textContent = r.vendor_name || 'Bill Details';
     if (subtitleEl) subtitleEl.textContent = `Invoice #${r.bill_no || '—'} · ${r.date || '—'}`;
 
@@ -3040,14 +3149,22 @@
 
     let itemsHtml = '';
     if (Array.isArray(r.items) && r.items.length > 0) {
-      const itemRowsHtml = r.items.map(it => `
+      const itemRowsHtml = r.items.map(it => {
+        const curName = (it.item_name || it.name || '').trim().toLowerCase();
+        const priceAlert = Array.isArray(r.price_alerts) ? r.price_alerts.find(a => (a.item_name || '').toLowerCase() === curName) : null;
+        let alertBadge = '';
+        if (priceAlert && priceAlert.is_increase) {
+          alertBadge = `<span style="display:inline-block; margin-left:4px; font-size:9.5px; font-weight:700; color:#92400e; background:#fef3c7; border:1px solid #fde68a; border-radius:3px; padding:1px 4px;" title="Rate increased vs previous purchase of ₹${priceAlert.previous_price}">📈 +${priceAlert.percent_change}%</span>`;
+        }
+        return `
         <tr style="border-bottom:1px solid #e2e8f0; font-size:12px;">
-          <td style="padding:6px 8px; font-weight:600; color:#1e293b;">${it.item_name || it.name || '—'}</td>
+          <td style="padding:6px 8px; font-weight:600; color:#1e293b;">${it.item_name || it.name || '—'}${alertBadge}</td>
           <td style="padding:6px 8px; text-align:center; color:#475569;">${it.quantity || 1} ${it.unit || 'Pcs'}</td>
           <td style="padding:6px 8px; text-align:right; color:#475569;">₹${parseFloat(it.unit_price || it.rate || 0).toLocaleString('en-IN')}</td>
           <td style="padding:6px 8px; text-align:right; font-weight:700; color:#0f172a;">₹${parseFloat(it.total_amount || it.amount || 0).toLocaleString('en-IN')}</td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
 
       itemsHtml = `
         <div style="margin-top:14px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid #cbd5e1;">
@@ -3081,7 +3198,6 @@
       `;
     }
 
-
     let photoHtml = '';
     if (r.photo_link) {
       photoHtml = `
@@ -3095,6 +3211,7 @@
     }
 
     bodyEl.innerHTML = `
+      ${dupBanner}
       <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px 16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
         <div>
           <div style="font-size:11px; font-weight:700; color:#0369a1; text-transform:uppercase;">Net Payable</div>
@@ -3229,14 +3346,22 @@
           </div>
         `;
 
-        const itemSubRows = r.items.map(it => `
+        const itemSubRows = r.items.map(it => {
+          const curName = (it.item_name || it.name || '').trim().toLowerCase();
+          const priceAlert = Array.isArray(r.price_alerts) ? r.price_alerts.find(a => (a.item_name || '').toLowerCase() === curName) : null;
+          let alertBadge = '';
+          if (priceAlert && priceAlert.is_increase) {
+            alertBadge = `<span style="display:inline-block; margin-left:4px; font-size:9.5px; font-weight:700; color:#92400e; background:#fef3c7; border:1px solid #fde68a; border-radius:3px; padding:1px 4px;">📈 +${priceAlert.percent_change}%</span>`;
+          }
+          return `
           <tr style="border-bottom:1px solid #e2e8f0; font-size:11.5px;">
-            <td style="padding:5px 8px; font-weight:600; color:#1e293b;">${it.item_name || it.name || '—'}</td>
+            <td style="padding:5px 8px; font-weight:600; color:#1e293b;">${it.item_name || it.name || '—'}${alertBadge}</td>
             <td style="padding:5px 8px; text-align:center; color:#475569;">${it.quantity || 1} ${it.unit || 'Pcs'}</td>
             <td style="padding:5px 8px; text-align:right; color:#475569;">₹${parseFloat(it.unit_price || it.rate || 0).toLocaleString('en-IN')}</td>
             <td style="padding:5px 8px; text-align:right; font-weight:700; color:#0f172a;">₹${parseFloat(it.total_amount || it.amount || 0).toLocaleString('en-IN')}</td>
           </tr>
-        `).join('');
+        `;
+        }).join('');
 
         expandableSubRow = `
           <tr id="${subRowId}" style="display:none; background:#f8fafc;">
@@ -3263,14 +3388,23 @@
         `;
       }
 
+      const isDup = isDuplicateBill(r);
+      const id = String(r.entry_id || `${r.vendor_name}_${r.bill_no}_${r.invoice_value}`);
+      const dupConflict = isDup && duplicateBillRegistry.dupConflictDetails.get(id);
+      const hasPriceSpike = Array.isArray(r.price_alerts) && r.price_alerts.some(a => a.is_increase);
+
       rows.push(`
         <tr style="${overdue ? 'background:#fff5f5;' : ''}">
           <td style="white-space:nowrap; vertical-align:top;">
             <div style="font-weight:700; color:#1e293b; font-size:12.5px;">${dt}</div>
             <div style="font-family:monospace; font-size:11px; color:#64748b; margin-top:2px;" title="Invoice No">${r.bill_no || '—'}</div>
+            ${isDup ? `<div style="margin-top:2px;"><span style="background:#fee2e2; color:#991b1b; font-weight:800; font-size:9.5px; padding:1px 5px; border-radius:3px; border:1px solid #fca5a5; display:inline-flex; align-items:center; gap:2px;" title="Duplicate bill detected: ${dupConflict ? dupConflict.reason : 'Matches another record'}">⚠️ DUPLICATE</span></div>` : ''}
           </td>
           <td style="vertical-align:top;">
-            <div style="font-weight:700; color:#0f172a; font-size:13px;">${r.vendor_name || '—'}</div>
+            <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+              <span style="font-weight:700; color:#0f172a; font-size:13px;">${r.vendor_name || '—'}</span>
+              ${hasPriceSpike ? `<span style="background:#fef3c7; color:#92400e; font-weight:700; font-size:9.5px; padding:1px 5px; border-radius:3px; border:1px solid #fcd34d;" title="Price Hike Alert">📈 Rate Hike</span>` : ''}
+            </div>
             ${gstinHtml}
           </td>
           <td style="vertical-align:top;">
@@ -3410,6 +3544,18 @@
         const cells = fields.map(([key]) => {
           if (key === 'photo_link') {
             return `<td>${r[key] ? photoThumbHtml(r[key]) : '-'}</td>`;
+          }
+          if (key === 'bill_no') {
+            const bVal = r[key] || '-';
+            const isDup = isDuplicateBill(r);
+            const dupBadge = isDup ? `<span style="background:#fee2e2; color:#991b1b; font-weight:700; font-size:10px; padding:1px 5px; border-radius:3px; margin-left:3px;" title="Duplicate bill detected">⚠️ DUP</span>` : '';
+            return `<td><b>${bVal}</b>${dupBadge}</td>`;
+          }
+          if (key === 'vendor_name') {
+            const vVal = r[key] || '-';
+            const hasHike = Array.isArray(r.price_alerts) && r.price_alerts.some(a => a.is_increase);
+            const hikeBadge = hasHike ? `<span style="background:#fef3c7; color:#92400e; font-weight:700; font-size:10px; padding:1px 5px; border-radius:3px; margin-left:3px;" title="Price Hike: Material rate higher than past purchases">📈 Hike</span>` : '';
+            return `<td>${vVal}${hikeBadge}</td>`;
           }
           if (key === 'payment_status') {
             const label = r[key] === 'paid' ? 'Paid' : r[key] === 'unpaid' ? 'Not Paid' : '-';
@@ -4902,6 +5048,7 @@
       recordsCache.gst = gst;
       recordsCache.non_gst = nonGst;
       paymentsCache = payments;
+      updateDuplicateBillRegistry();
     } catch (e) {
       if (!hasCache) { /* nothing to show yet and the fetch failed — leave placeholders */ }
       await pendingCountPromise;
@@ -5261,6 +5408,69 @@
           ${item.price_alerts.map(al => al.is_increase ? `<div>• ${al.item_name}: Rate increased +${al.percent_change}% vs last purchase</div>` : '').filter(Boolean).join('')}
         </div>` : ''}
 
+        ${(() => {
+          const dupWarning = item.duplicate_warning || (() => {
+            const allRecs = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
+            const cleanBno = String(item.bill_no || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            const cleanVend = String(item.vendor_name || '').trim().toLowerCase();
+            const cleanGst = String(item.gstin || '').trim().toUpperCase();
+            const amt = Math.round(parseFloat(String(item.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0);
+
+            const match = allRecs.find(b => {
+              const bBno = String(b.bill_no || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+              const bVend = String(b.vendor_name || '').trim().toLowerCase();
+              const bGst = String(b.gstin || '').trim().toUpperCase();
+              const bAmt = Math.round(parseFloat(String(b.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0);
+
+              if (cleanBno && bBno && cleanBno === bBno) {
+                if (cleanGst && bGst && cleanGst === bGst) return true;
+                if (cleanVend && bVend && cleanVend === bVend) return true;
+              }
+              if (cleanVend && bVend && cleanVend === bVend && amt > 0 && amt === bAmt && item.date && b.date && item.date === b.date) {
+                return true;
+              }
+              return false;
+            });
+
+            if (match) {
+              return {
+                is_duplicate: true,
+                existing_id: match.entry_id,
+                existing_bill_no: match.bill_no,
+                existing_vendor: match.vendor_name,
+                existing_amount: match.invoice_value,
+                existing_date: match.date,
+                existing_status: match.payment_status,
+                existing_purchased_by: match.purchased_by || match.submitted_by_employee
+              };
+            }
+            return null;
+          })();
+
+          if (!dupWarning) return '';
+
+          return `
+          <div style="margin-top:10px; padding:10px 14px; background:#fef2f2; border:1.5px solid #ef4444; border-radius:8px; color:#991b1b;">
+            <div style="font-weight:800; font-size:13px; display:flex; align-items:center; gap:6px;">
+              <span style="font-size:16px;">🚨</span> <span>DUPLICATE BILL DETECTED!</span>
+            </div>
+            <div style="font-size:12px; margin-top:4px; color:#7f1d1d; line-height:1.4;">
+              A matching bill from <b>${escapeHtml(dupWarning.existing_vendor || item.vendor_name)}</b> 
+              (Invoice #${escapeHtml(dupWarning.existing_bill_no || item.bill_no)}) 
+              for <b>₹${parseFloat(dupWarning.existing_amount || item.invoice_value).toLocaleString('en-IN')}</b> 
+              is already in the ledger!
+              <div style="font-size:11px; color:#991b1b; margin-top:3px;">
+                Original bill dated: <b>${dupWarning.existing_date || 'Past date'}</b> · Status: <b>${(dupWarning.existing_status || 'PAID').toUpperCase()}</b>
+              </div>
+            </div>
+            <div style="margin-top:8px;">
+              <button type="button" class="btn-danger" data-action="reject-dup" data-bno="${escapeHtml(dupWarning.existing_bill_no || item.bill_no)}" style="padding:6px 12px; font-size:11.5px; border-radius:6px; font-weight:700; cursor:pointer; background:#991b1b; color:#fff; border:none; display:inline-flex; align-items:center; gap:4px;">
+                <span>🚫</span> <span>Reject as Duplicate</span>
+              </button>
+            </div>
+          </div>`;
+        })()}
+
         <div class="approval-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
           <button type="button" class="btn-primary" data-action="approve-paid" style="flex:1.2; min-width:145px; background:#15803d; border:1px solid #166534; color:#fff; font-weight:700; font-size:12.5px; padding:9px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer; box-shadow:0 1px 2px rgba(21,128,61,0.25);">
             <span>✅</span> <span>Approve as PAID</span>
@@ -5293,6 +5503,16 @@
       if (btnPaid) btnPaid.onclick = () => approveBill(id, card, 'paid');
       const btnDue = card.querySelector('[data-action="approve-due"]');
       if (btnDue) btnDue.onclick = () => approveBill(id, card, 'unpaid');
+      const btnRejectDup = card.querySelector('[data-action="reject-dup"]');
+      if (btnRejectDup) {
+        btnRejectDup.onclick = () => {
+          const bno = btnRejectDup.dataset.bno || '';
+          const reason = `Duplicate bill: Invoice #${bno} already in ledger`;
+          if (confirm(`Reject this bill as duplicate?\n\nReason: ${reason}`)) {
+            rejectBill(id, reason, card);
+          }
+        };
+      }
       card.querySelector('[data-action="reject"]').onclick = () => {
         document.getElementById(`rejectBox-${id}`).classList.add('open');
       };
@@ -5967,14 +6187,22 @@
         if (query && data.vendors) {
           renderVendorComparison(data);
         } else {
-          renderCatalogSummary(data.items || []);
+          let spikes = [];
+          try {
+            const spRes = await fetch(`${BACKEND_URL}/price-spikes`, { headers: { 'x-app-secret': APP_SECRET } });
+            if (spRes.ok) {
+              const spData = await spRes.json();
+              spikes = spData.spikes || [];
+            }
+          } catch (e) {}
+          renderCatalogSummary(data.items || [], spikes);
         }
       } catch (err) {
         content.innerHTML = `<div style="padding:20px; color:#b91c1c; font-size:13px; text-align:center;">Failed to load material rates: ${err.message}</div>`;
       }
     }
 
-    function renderCatalogSummary(items) {
+    function renderCatalogSummary(items, spikes = []) {
       if (!items || items.length === 0) {
         content.innerHTML = `
           <div style="text-align:center; padding:40px 20px; color:#64748b;">
@@ -5985,7 +6213,29 @@
         return;
       }
 
+      const spikesHtml = (spikes && spikes.length > 0) ? `
+        <div style="margin-bottom:14px; padding:12px 14px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px;">
+          <div style="font-weight:700; color:#92400e; font-size:12.5px; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
+            <span>📈</span> <span>Recent Material Price Hikes (${spikes.length})</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            ${spikes.slice(0, 6).map(sp => `
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; border-bottom:1px dashed #fcd34d; padding-bottom:4px;">
+                <div>
+                  <span style="font-weight:700; color:#1e293b;">${sp.item_name}</span>
+                  <span style="color:#64748b; font-size:10.5px;">(${sp.vendor_name})</span>
+                </div>
+                <div style="text-align:right;">
+                  <span style="color:#b91c1c; font-weight:700;">+${sp.percent_increase}%</span>
+                  <span style="color:#64748b; font-size:10.5px;">(₹${sp.previous_price} ➔ ₹${sp.current_price}/${sp.unit})</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>` : '';
+
       content.innerHTML = `
+        ${spikesHtml}
         <div style="font-size:11.5px; color:#64748b; margin-bottom:8px; font-weight:600;">
           Tracking <b>${items.length}</b> distinct materials across your bills:
         </div>
