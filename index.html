@@ -460,6 +460,10 @@
   .approval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 8px 16px; font-size: 13px; margin-bottom: 14px; }
   .approval-grid div b { display:block; font-size:10.5px; text-transform:uppercase; color:#4a7a94; font-weight:600; }
   .approval-actions { display: flex; gap: 10px; }
+  .approval-actions button { transition: all 0.15s ease-in-out; }
+  .approval-actions button[data-action="approve-paid"]:hover { background: #14532d !important; border-color: #052e16 !important; }
+  .approval-actions button[data-action="approve-due"]:hover { background: #172554 !important; border-color: #0f172a !important; }
+  .approval-actions button[data-action="reject"]:hover { background: #7f1d1d !important; border-color: #450a0a !important; }
   .reject-box { margin-top: 12px; display: none; }
   .reject-box.open { display: block; }
   .reject-box textarea {
@@ -5257,13 +5261,13 @@
         </div>` : ''}
 
         <div class="approval-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
-          <button type="button" class="btn-primary" data-action="approve-paid" style="flex:1.2; min-width:145px; background:#10b981; border:1px solid #059669; color:#fff; font-weight:700; font-size:12.5px; padding:9px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer; box-shadow:0 1px 3px rgba(16,185,129,0.3);">
+          <button type="button" class="btn-primary" data-action="approve-paid" style="flex:1.2; min-width:145px; background:#15803d; border:1px solid #166534; color:#fff; font-weight:700; font-size:12.5px; padding:9px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer; box-shadow:0 1px 2px rgba(21,128,61,0.25);">
             <span>✅</span> <span>Approve as PAID</span>
           </button>
-          <button type="button" class="btn-primary" data-action="approve-due" style="flex:1.2; min-width:145px; background:#f59e0b; border:1px solid #d97706; color:#fff; font-weight:700; font-size:12.5px; padding:9px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer; box-shadow:0 1px 3px rgba(245,158,11,0.3);">
+          <button type="button" class="btn-primary" data-action="approve-due" style="flex:1.2; min-width:145px; background:#1e3a8a; border:1px solid #172554; color:#fff; font-weight:700; font-size:12.5px; padding:9px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer; box-shadow:0 1px 2px rgba(30,58,138,0.25);">
             <span>⏳</span> <span>Approve as DUE</span>
           </button>
-          <button type="button" class="btn-danger" data-action="reject" style="flex:0.8; min-width:85px; font-weight:600; font-size:12.5px; padding:9px 10px; border-radius:8px; cursor:pointer;">
+          <button type="button" class="btn-danger" data-action="reject" style="flex:0.8; min-width:85px; font-weight:600; font-size:12.5px; padding:9px 10px; border-radius:8px; cursor:pointer; background:#991b1b; border:1px solid #7f1d1d; color:#fff; box-shadow:0 1px 2px rgba(153,27,27,0.2);">
             <span>✕</span> <span>Reject</span>
           </button>
         </div>
