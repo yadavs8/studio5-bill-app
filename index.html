@@ -853,45 +853,74 @@
 </div>
 
 <div class="pin-overlay" id="editDateModalOverlay" style="display:none; z-index:10000;">
-  <div class="pin-card" style="max-width:400px; text-align:left; background:#ffffff; border-radius:12px; padding:22px; box-shadow:0 20px 25px -5px rgba(0, 0, 0, 0.25);">
+  <div class="pin-card" style="max-width:440px; text-align:left; background:#ffffff; border-radius:12px; padding:22px; box-shadow:0 20px 25px -5px rgba(0, 0, 0, 0.25);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1.5px solid #e2e8f0; padding-bottom:10px;">
       <div>
         <h2 style="margin:0; font-size:18px; color:#0c4a6e; display:flex; align-items:center; gap:8px;">
-          <span>📅</span> <span>Change Bill Date</span>
+          <span>✏️</span> <span>Edit Bill Date & Payment</span>
         </h2>
-        <p style="margin:2px 0 0; font-size:11.5px; color:#64748b;">Correct dates mistakenly extracted by AI Vision</p>
+        <p style="margin:2px 0 0; font-size:11.5px; color:#64748b;">Correct dates or payment details (PIN 5198)</p>
       </div>
       <button type="button" id="closeEditDateModalBtn" style="background:#f1f5f9; border:none; width:28px; height:28px; border-radius:50%; font-size:15px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
     </div>
 
     <!-- Bill Details Preview -->
-    <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px 14px; margin-bottom:16px;">
+    <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px 14px; margin-bottom:14px;">
       <div style="font-weight:700; font-size:13.5px; color:#0c4a6e;" id="editDateVendorName">—</div>
       <div style="font-size:12px; color:#475569; margin-top:3px; display:flex; justify-content:space-between;">
         <span id="editDateInvoiceNo">Invoice #—</span>
         <span style="font-weight:700; color:#0f172a;" id="editDateAmount">₹—</span>
       </div>
-      <div style="font-size:11.5px; color:#64748b; margin-top:5px; padding-top:5px; border-top:1px dashed #cbd5e1;">
-        Current Date on Record: <b style="color:#dc2626;" id="editDateCurrentVal">—</b>
+      <div style="font-size:11.5px; color:#64748b; margin-top:5px; padding-top:5px; border-top:1px dashed #cbd5e1; display:flex; justify-content:space-between;">
+        <span>Current Date: <b style="color:#0c4a6e;" id="editDateCurrentVal">—</b></span>
+        <span>Current Status: <b style="color:#0c4a6e;" id="editPaymentCurrentVal">—</b></span>
       </div>
     </div>
 
     <!-- Correct Date Picker -->
-    <div style="margin-bottom:14px;">
-      <label for="editDateNewInput" style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:5px;">
+    <div style="margin-bottom:12px;">
+      <label for="editDateNewInput" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">
         CORRECT BILL DATE <span style="color:#dc2626;">*</span>
       </label>
-      <input type="date" id="editDateNewInput" style="width:100%; padding:10px 12px; font-size:14.5px; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
-      <div style="font-size:11px; color:#64748b; margin-top:4px;">Pick the actual date shown on the physical voucher / invoice.</div>
+      <input type="date" id="editDateNewInput" style="width:100%; padding:9px 12px; font-size:14px; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
+    </div>
+
+    <!-- Payment Details Section in Edit Modal -->
+    <div style="margin-bottom:14px; padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+      <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:6px;">PAYMENT STATUS & SOURCE</label>
+      
+      <div style="display:flex; gap:6px; margin-bottom:8px;">
+        <button type="button" class="edit-pay-status-btn selected" data-pay="paid" style="flex:1; padding:7px 6px; font-size:11.5px; font-weight:700; border-radius:6px; border:1.5px solid #16a34a; background:#16a34a; color:#fff; cursor:pointer;">Already Paid</button>
+        <button type="button" class="edit-pay-status-btn" data-pay="unpaid" style="flex:1; padding:7px 6px; font-size:11.5px; font-weight:700; border-radius:6px; border:1px solid #cbd5e1; background:#fff; color:#334155; cursor:pointer;">Not Paid Yet (Due)</button>
+      </div>
+
+      <div id="editPaidSubSection" style="margin-top:8px; pt-8px; border-top:1px dashed #cbd5e1;">
+        <div style="margin-bottom:6px; margin-top:6px;">
+          <span style="font-size:10.5px; text-transform:uppercase; color:#475569; font-weight:700; display:block; margin-bottom:3px;">Who Paid?</span>
+          <div style="display:flex; gap:6px;">
+            <button type="button" class="edit-paid-by-btn selected" data-paidby="self" style="flex:1; padding:6px; font-size:11px; font-weight:700; border-radius:5px; border:1.5px solid #16a34a; background:#16a34a; color:#fff; cursor:pointer;">👤 Paid by Self</button>
+            <button type="button" class="edit-paid-by-btn" data-paidby="company" style="flex:1; padding:6px; font-size:11px; font-weight:700; border-radius:5px; border:1px solid #cbd5e1; background:#fff; color:#334155; cursor:pointer;">🏢 Rajiv Bawa</button>
+          </div>
+        </div>
+
+        <div>
+          <span style="font-size:10.5px; text-transform:uppercase; color:#475569; font-weight:700; display:block; margin-bottom:3px;">Method</span>
+          <div style="display:flex; gap:6px;">
+            <button type="button" class="edit-pay-method-btn selected" data-method="Cash" style="flex:1; padding:6px; font-size:11px; font-weight:700; border-radius:5px; border:1.5px solid #16a34a; background:#16a34a; color:#fff; cursor:pointer;">💵 Cash</button>
+            <button type="button" class="edit-pay-method-btn" data-method="UPI" style="flex:1; padding:6px; font-size:11px; font-weight:700; border-radius:5px; border:1px solid #cbd5e1; background:#fff; color:#334155; cursor:pointer;">📱 UPI</button>
+            <button type="button" class="edit-pay-method-btn" data-method="Cheque" style="flex:1; padding:6px; font-size:11px; font-weight:700; border-radius:5px; border:1px solid #cbd5e1; background:#fff; color:#334155; cursor:pointer;">🏦 Cheque</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Password / PIN Input -->
-    <div style="margin-bottom:16px;">
-      <label for="editDatePinInput" style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:5px;">
-        🔒 ADMIN PASSWORD (PIN) <span style="color:#dc2626;">*</span>
+    <div style="margin-bottom:14px;">
+      <label for="editDatePinInput" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">
+        🔒 ADMIN PASSWORD (PIN 5198) <span style="color:#dc2626;">*</span>
       </label>
-      <input type="password" inputmode="numeric" id="editDatePinInput" maxlength="10" placeholder="••••" style="width:100%; padding:10px 12px; font-size:16px; letter-spacing:4px; text-align:center; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
-      <div style="font-size:11px; color:#64748b; margin-top:4px;">Protected action. Authorized admin password required.</div>
+      <input type="password" inputmode="numeric" id="editDatePinInput" maxlength="10" placeholder="••••" style="width:100%; padding:9px 12px; font-size:16px; letter-spacing:4px; text-align:center; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
+      <div style="font-size:11px; color:#64748b; margin-top:3px;">Protected action. Password required.</div>
     </div>
 
     <!-- Error Message -->
@@ -900,7 +929,7 @@
     <!-- Modal Actions -->
     <div style="display:flex; gap:10px;">
       <button type="button" id="editDateCancelBtn" class="btn-ghost" style="flex:1; padding:10px; font-size:13px; font-weight:600;">Cancel</button>
-      <button type="button" id="editDateSaveBtn" class="btn-primary" style="flex:1; padding:10px; font-size:13px; font-weight:700; background:#0284c7;">💾 Update Date</button>
+      <button type="button" id="editDateSaveBtn" class="btn-primary" style="flex:1; padding:10px; font-size:13px; font-weight:700; background:#0284c7;">💾 Save Changes</button>
     </div>
 
     <div style="text-align:center; margin-top:12px; padding-top:10px; border-top:1px dashed #e2e8f0;">
@@ -959,6 +988,35 @@
     <div style="display:flex; gap:10px;">
       <button type="button" id="deleteBillCancelBtn" class="btn-ghost" style="flex:1; padding:10px; font-size:13px; font-weight:600;">Cancel</button>
       <button type="button" id="deleteBillConfirmBtn" class="btn-primary" style="flex:1; padding:10px; font-size:13px; font-weight:700; background:#dc2626; border-color:#dc2626;">🗑️ Confirm Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="pin-overlay" id="systemTourOverlay" style="display:none; z-index:10005;">
+  <div class="pin-card" style="max-width:540px; text-align:left; background:#ffffff; border-radius:14px; padding:24px; box-shadow:0 25px 30px -5px rgba(0, 0, 0, 0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+      <div>
+        <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; font-weight:800; color:#0284c7;" id="tourStepBadge">STEP 1 OF 7</span>
+        <h2 style="margin:2px 0 0; font-size:19px; color:#0c4a6e; font-family:Georgia, serif; display:flex; align-items:center; gap:8px;" id="tourStepTitle">
+          <span>🚀</span> <span>Welcome to Studio5 ERP</span>
+        </h2>
+      </div>
+      <button type="button" id="closeTourBtn" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <div style="height:5px; background:#e2e8f0; border-radius:3px; margin-bottom:16px; overflow:hidden;">
+      <div id="tourProgressBar" style="height:100%; width:14%; background:#059669; transition:width 0.3s ease;"></div>
+    </div>
+
+    <div id="tourStepContent" style="min-height:220px; font-size:13.5px; line-height:1.6; color:#334155;">
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:14px; border-top:1px solid #f1f5f9;">
+      <button type="button" id="tourPrevBtn" class="btn-ghost" style="padding:9px 16px; font-size:13px; font-weight:600;" disabled>‹ Previous</button>
+      <div style="display:flex; gap:8px;">
+        <button type="button" id="tourSkipBtn" class="btn-ghost" style="padding:9px 12px; font-size:12.5px; color:#64748b;">Skip Tour</button>
+        <button type="button" id="tourNextBtn" class="btn-primary" style="padding:9px 20px; font-size:13px; font-weight:700; background:#059669;">Next Step ›</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1256,6 +1314,7 @@
             <select id="dashMonthSelect" style="padding:8px 12px; border-radius:4px; border:1px solid var(--line); font-family:inherit; font-size:13px; background:#fff;"></select>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button class="btn-tally" id="openSystemTourBtn" style="background:#059669;" title="Interactive step-by-step UI Tour and Feature Guide">📖 System Tour & Guide</button>
             <button class="btn-tally" id="openMaterialRatesBtn" style="background:#4f46e5;" title="Compare vendor prices and material purchase rates">📊 Material Rates & Price Radar</button>
             <button class="btn-tally" id="syncTallyDirectBtn" style="background:#0284c7;" title="Sync approved bills directly into Tally Prime running on this computer">🔄 Sync with Tally</button>
             <button class="btn-tally" id="exportTallyXmlBtn" title="Download standards-compliant Tally XML for Import Data -> Vouchers">📥 Export to Tally (XML)</button>
@@ -2469,6 +2528,25 @@
             <button type="button" class="payment-btn" data-pay="paid">Already Paid (Settled)</button>
             <button type="button" class="payment-btn" data-pay="unpaid">Not Paid Yet (Due)</button>
           </div>
+
+          <!-- Interactive Sub-options when "Already Paid" is selected -->
+          <div id="paidDetailsSection" style="display:none; margin-top:10px; padding:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px;">
+            <div style="margin-bottom:10px;">
+              <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#15803d; font-weight:700; display:block; margin-bottom:4px;">Who Paid This Bill? *</label>
+              <div style="display:flex; gap:6px;">
+                <button type="button" class="paid-by-btn selected" data-paidby="self" style="flex:1; padding:8px 6px; font-size:12px; font-weight:700; border-radius:6px; border:1.5px solid #16a34a; background:#16a34a; color:#fff; cursor:pointer;">👤 Paid by Self (Site Cash)</button>
+                <button type="button" class="paid-by-btn" data-paidby="company" style="flex:1; padding:8px 6px; font-size:12px; font-weight:700; border-radius:6px; border:1px solid #cbd5e1; background:#fff; color:#334155; cursor:pointer;">🏢 Paid by Rajiv Bawa (Company Direct)</button>
+              </div>
+            </div>
+            <div>
+              <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#15803d; font-weight:700; display:block; margin-bottom:4px;">Payment Method *</label>
+              <div style="display:flex; gap:6px;">
+                <button type="button" class="pay-method-btn selected" data-method="Cash" style="flex:1; padding:7px 4px; font-size:11.5px; font-weight:700; border-radius:6px; border:1.5px solid #16a34a; background:#16a34a; color:#fff; cursor:pointer;">💵 Cash</button>
+                <button type="button" class="pay-method-btn" data-method="UPI" style="flex:1; padding:7px 4px; font-size:11.5px; font-weight:700; border-radius:6px; border:1px solid #cbd5e1; background:#fff; color:#334155; cursor:pointer;">📱 UPI / Online</button>
+                <button type="button" class="pay-method-btn" data-method="Cheque" style="flex:1; padding:7px 4px; font-size:11.5px; font-weight:700; border-radius:6px; border:1px solid #cbd5e1; background:#fff; color:#334155; cursor:pointer;">🏦 Cheque / Transfer</button>
+              </div>
+            </div>
+          </div>
         </div>
         ${dup ? `
         <div style="padding: 14px 16px 0; font-size: 13px;">
@@ -2638,7 +2716,41 @@
         extracted.payment_status = btn.dataset.pay;
         reviewArea.querySelectorAll('.payment-btn').forEach(b => b.classList.remove('selected','paid','unpaid'));
         btn.classList.add('selected', btn.dataset.pay);
+        const paidSec = document.getElementById('paidDetailsSection');
+        if (paidSec) {
+          paidSec.style.display = btn.dataset.pay === 'paid' ? 'block' : 'none';
+        }
         refreshSaveEnabled();
+      };
+    });
+
+    reviewArea.querySelectorAll('.paid-by-btn').forEach(btn => {
+      btn.onclick = () => {
+        reviewArea.querySelectorAll('.paid-by-btn').forEach(b => {
+          b.classList.remove('selected');
+          b.style.background = '#fff';
+          b.style.color = '#334155';
+          b.style.border = '1px solid #cbd5e1';
+        });
+        btn.classList.add('selected');
+        btn.style.background = '#16a34a';
+        btn.style.color = '#fff';
+        btn.style.border = '1.5px solid #16a34a';
+      };
+    });
+
+    reviewArea.querySelectorAll('.pay-method-btn').forEach(btn => {
+      btn.onclick = () => {
+        reviewArea.querySelectorAll('.pay-method-btn').forEach(b => {
+          b.classList.remove('selected');
+          b.style.background = '#fff';
+          b.style.color = '#334155';
+          b.style.border = '1px solid #cbd5e1';
+        });
+        btn.classList.add('selected');
+        btn.style.background = '#16a34a';
+        btn.style.color = '#fff';
+        btn.style.border = '1.5px solid #16a34a';
       };
     });
 
@@ -2646,6 +2758,8 @@
       const matchBtn = reviewArea.querySelector(`.payment-btn[data-pay="${extracted.payment_status}"]`);
       if (matchBtn) {
         matchBtn.classList.add('selected', extracted.payment_status);
+        const paidSec = document.getElementById('paidDetailsSection');
+        if (paidSec) paidSec.style.display = extracted.payment_status === 'paid' ? 'block' : 'none';
         refreshSaveEnabled();
       }
     }
@@ -2655,9 +2769,32 @@
     saveBtn.onclick = () => {
       const selectEl = document.getElementById('reviewIncurredBySelect');
       const chosenIncurred = selectEl ? selectEl.value : getSubmittingForPerson();
+
+      let paidBy = 'self';
+      let payMethod = 'Cash';
+      if (extracted.payment_status === 'paid') {
+        const selPaidBy = reviewArea.querySelector('.paid-by-btn.selected');
+        if (selPaidBy) paidBy = selPaidBy.dataset.paidby;
+        const selMethod = reviewArea.querySelector('.pay-method-btn.selected');
+        if (selMethod) payMethod = selMethod.dataset.method;
+      }
+
+      let constructedPaymentMode = payMethod;
+      if (extracted.payment_status === 'paid') {
+        if (paidBy === 'company') {
+          constructedPaymentMode = `Rajiv Bawa (${payMethod})`;
+        } else {
+          constructedPaymentMode = `Paid by Self (${payMethod})`;
+        }
+      } else {
+        constructedPaymentMode = 'Unpaid';
+      }
+
       ensureEmployeeNameThenRun(() => submitForApproval(extracted.bill_type, extracted.payment_status, chosenIncurred, {
         has_paid_stamp: hasPaidStamp,
         paid_stamp_detected: hasPaidStamp,
+        paid_by: paidBy,
+        payment_mode: constructedPaymentMode,
         items: extracted.items || [],
         price_alerts: extracted.price_alerts || []
       }));
@@ -2792,6 +2929,12 @@
     if (currentFileBase64) {
       record.photo_base64 = currentFileBase64;
       record.photo_media_type = currentFileMediaType;
+    }
+    if (extraMeta && extraMeta.paid_by) {
+      record.paid_by = extraMeta.paid_by;
+    }
+    if (extraMeta && extraMeta.payment_mode) {
+      record.payment_mode = extraMeta.payment_mode;
     }
     if (extraMeta && Array.isArray(extraMeta.items)) {
       record.items = extraMeta.items;
@@ -4459,6 +4602,19 @@
     if (elItc) elItc.textContent = money(eligibleItc);
   }
 
+  function isDirectCompanyPayment(b) {
+    if (!b) return false;
+    const pb = String(b.paid_by || '').toLowerCase();
+    const pm = String(b.payment_mode || '').toLowerCase();
+    const st = String(b.payment_status || '').toLowerCase();
+
+    if (st.includes('unpaid') || st.includes('due')) return true;
+    if (pb === 'company' || pb === 'rajiv bawa') return true;
+    if (pm.includes('rajiv bawa') || pm.includes('company direct') || pm.includes('sir paid') || pm.includes('bank / credit')) return true;
+
+    return false;
+  }
+
   function renderPersonReport(allRecords) {
     const area = document.getElementById('personReportArea');
     if (!area) return;
@@ -4533,7 +4689,9 @@
         }
         if (!cal || bTime >= calDayStart) {
           const val = toNum(b.invoice_value);
-          spendDeducted += val;
+          if (!isDirectCompanyPayment(b)) {
+            spendDeducted += val;
+          }
           if (b.bill_type === 'gst') gstSpent += val; else nonGstSpent += val;
         }
       });
@@ -6875,10 +7033,12 @@
     const invNo = document.getElementById('editDateInvoiceNo');
     const amt = document.getElementById('editDateAmount');
     const curVal = document.getElementById('editDateCurrentVal');
+    const curPayVal = document.getElementById('editPaymentCurrentVal');
     const dateInput = document.getElementById('editDateNewInput');
     const pinInput = document.getElementById('editDatePinInput');
     const errMsg = document.getElementById('editDateErrorMsg');
     const saveBtn = document.getElementById('editDateSaveBtn');
+    const paidSubSec = document.getElementById('editPaidSubSection');
 
     if (!overlay) return;
 
@@ -6888,9 +7048,64 @@
     if (amt) amt.textContent = `₹${origVal.toLocaleString('en-IN')}`;
     if (curVal) curVal.textContent = rec.date || '—';
 
-    // Pre-populate input with current date converted to YYYY-MM-DD
+    const isPaid = rec.payment_status !== 'unpaid';
+    if (curPayVal) {
+      curPayVal.textContent = isPaid ? (isDirectCompanyPayment(rec) ? 'Paid (Rajiv Bawa)' : 'Paid (Self)') : 'Due (Unpaid)';
+    }
+
+    // Pre-populate date
     const iso = parseDateToIsoInput(rec.date);
     if (dateInput) dateInput.value = iso || new Date().toISOString().split('T')[0];
+
+    // Pre-select payment status
+    overlay.querySelectorAll('.edit-pay-status-btn').forEach(b => {
+      b.classList.remove('selected');
+      b.style.background = '#fff';
+      b.style.color = '#334155';
+      b.style.border = '1px solid #cbd5e1';
+      if ((b.dataset.pay === 'paid' && isPaid) || (b.dataset.pay === 'unpaid' && !isPaid)) {
+        b.classList.add('selected');
+        b.style.background = '#16a34a';
+        b.style.color = '#fff';
+        b.style.border = '1.5px solid #16a34a';
+      }
+    });
+
+    if (paidSubSec) paidSubSec.style.display = isPaid ? 'block' : 'none';
+
+    // Pre-select paid by
+    const isComp = isDirectCompanyPayment(rec);
+    overlay.querySelectorAll('.edit-paid-by-btn').forEach(b => {
+      b.classList.remove('selected');
+      b.style.background = '#fff';
+      b.style.color = '#334155';
+      b.style.border = '1px solid #cbd5e1';
+      if ((b.dataset.paidby === 'company' && isComp) || (b.dataset.paidby === 'self' && !isComp)) {
+        b.classList.add('selected');
+        b.style.background = '#16a34a';
+        b.style.color = '#fff';
+        b.style.border = '1.5px solid #16a34a';
+      }
+    });
+
+    // Pre-select payment method
+    const pm = (rec.payment_mode || '').toLowerCase();
+    let method = 'Cash';
+    if (pm.includes('upi') || pm.includes('online')) method = 'UPI';
+    else if (pm.includes('cheque') || pm.includes('transfer') || pm.includes('bank')) method = 'Cheque';
+
+    overlay.querySelectorAll('.edit-pay-method-btn').forEach(b => {
+      b.classList.remove('selected');
+      b.style.background = '#fff';
+      b.style.color = '#334155';
+      b.style.border = '1px solid #cbd5e1';
+      if (b.dataset.method === method) {
+        b.classList.add('selected');
+        b.style.background = '#16a34a';
+        b.style.color = '#fff';
+        b.style.border = '1.5px solid #16a34a';
+      }
+    });
 
     if (pinInput) pinInput.value = '';
     if (errMsg) {
@@ -6899,7 +7114,7 @@
     }
     if (saveBtn) {
       saveBtn.disabled = false;
-      saveBtn.textContent = '💾 Update Date';
+      saveBtn.textContent = '💾 Save Changes';
     }
 
     overlay.style.display = 'flex';
@@ -6924,6 +7139,7 @@
     const pinInput = document.getElementById('editDatePinInput');
     const dateInput = document.getElementById('editDateNewInput');
     const errMsg = document.getElementById('editDateErrorMsg');
+    const paidSubSec = document.getElementById('editPaidSubSection');
 
     if (!overlay) return;
 
@@ -6932,6 +7148,52 @@
     overlay.onclick = (e) => {
       if (e.target === overlay) closeEditDateModal();
     };
+
+    overlay.querySelectorAll('.edit-pay-status-btn').forEach(btn => {
+      btn.onclick = () => {
+        overlay.querySelectorAll('.edit-pay-status-btn').forEach(b => {
+          b.classList.remove('selected');
+          b.style.background = '#fff';
+          b.style.color = '#334155';
+          b.style.border = '1px solid #cbd5e1';
+        });
+        btn.classList.add('selected');
+        btn.style.background = '#16a34a';
+        btn.style.color = '#fff';
+        btn.style.border = '1.5px solid #16a34a';
+        if (paidSubSec) paidSubSec.style.display = btn.dataset.pay === 'paid' ? 'block' : 'none';
+      };
+    });
+
+    overlay.querySelectorAll('.edit-paid-by-btn').forEach(btn => {
+      btn.onclick = () => {
+        overlay.querySelectorAll('.edit-paid-by-btn').forEach(b => {
+          b.classList.remove('selected');
+          b.style.background = '#fff';
+          b.style.color = '#334155';
+          b.style.border = '1px solid #cbd5e1';
+        });
+        btn.classList.add('selected');
+        btn.style.background = '#16a34a';
+        btn.style.color = '#fff';
+        btn.style.border = '1.5px solid #16a34a';
+      };
+    });
+
+    overlay.querySelectorAll('.edit-pay-method-btn').forEach(btn => {
+      btn.onclick = () => {
+        overlay.querySelectorAll('.edit-pay-method-btn').forEach(b => {
+          b.classList.remove('selected');
+          b.style.background = '#fff';
+          b.style.color = '#334155';
+          b.style.border = '1px solid #cbd5e1';
+        });
+        btn.classList.add('selected');
+        btn.style.background = '#16a34a';
+        btn.style.color = '#fff';
+        btn.style.border = '1.5px solid #16a34a';
+      };
+    });
 
     if (pinInput) {
       pinInput.onkeydown = (e) => {
@@ -6974,10 +7236,30 @@
         return;
       }
 
+      let newStatus = 'paid';
+      const selStatusBtn = overlay.querySelector('.edit-pay-status-btn.selected');
+      if (selStatusBtn) newStatus = selStatusBtn.dataset.pay;
+
+      let paidBy = 'self';
+      let payMethod = 'Cash';
+      if (newStatus === 'paid') {
+        const selPaidBy = overlay.querySelector('.edit-paid-by-btn.selected');
+        if (selPaidBy) paidBy = selPaidBy.dataset.paidby;
+        const selMethod = overlay.querySelector('.edit-pay-method-btn.selected');
+        if (selMethod) payMethod = selMethod.dataset.method;
+      }
+
+      let newPaymentMode = payMethod;
+      if (newStatus === 'paid') {
+        newPaymentMode = paidBy === 'company' ? `Rajiv Bawa (${payMethod})` : `Paid by Self (${payMethod})`;
+      } else {
+        newPaymentMode = 'Unpaid';
+      }
+
       if (errMsg) errMsg.style.display = 'none';
       if (saveBtn) {
         saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving date…';
+        saveBtn.textContent = 'Saving changes…';
       }
 
       try {
@@ -6988,6 +7270,8 @@
           body: JSON.stringify({
             entry_id: rec.entry_id,
             new_date: newDateVal,
+            payment_status: newStatus,
+            payment_mode: newPaymentMode,
             pin: enteredPin,
             bill_type: bType
           })
@@ -7005,6 +7289,9 @@
         // Update in-memory record
         rec.date = formattedDate;
         rec.bill_date = newDateVal;
+        rec.payment_status = newStatus;
+        rec.payment_mode = newPaymentMode;
+        rec.paid_by = paidBy;
 
         // Update across recordsCache
         ['gst', 'non_gst'].forEach(tab => {
@@ -7013,32 +7300,37 @@
             if (found) {
               found.date = formattedDate;
               found.bill_date = newDateVal;
+              found.payment_status = newStatus;
+              found.payment_mode = newPaymentMode;
+              found.paid_by = paidBy;
             }
           }
         });
 
         closeEditDateModal();
+        showCelebrationToast('Updated bill date & payment details successfully!');
 
         // Update duplicate registry, month pills, and ledger
         updateDuplicateBillRegistry();
-        populateLedgerMonthBar([...(recordsCache.gst || []), ...(recordsCache.non_gst || [])]);
+        const all = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
+        populateLedgerMonthBar(all);
         renderTable();
+        renderPersonReport(all);
 
-        // If Bill Detail modal is open, update subtitle
+        // If Bill Detail modal is open, update subtitle & detail rows
         const subEl = document.getElementById('modalBillSubtitle');
         if (subEl && subEl.textContent.includes('Invoice #')) {
           subEl.textContent = `Invoice #${rec.bill_no || '—'} · ${formattedDate}`;
         }
-
-        showCelebrationToast(`Date updated to ${formattedDate} successfully!`);
       } catch (err) {
         if (errMsg) {
-          errMsg.textContent = `❌ ${err.message}`;
+          errMsg.textContent = `❌ Error: ${err.message}`;
           errMsg.style.display = 'block';
         }
+      } finally {
         if (saveBtn) {
           saveBtn.disabled = false;
-          saveBtn.textContent = '💾 Update Date';
+          saveBtn.textContent = '💾 Save Changes';
         }
       }
     }
@@ -7607,10 +7899,232 @@
   const refreshBankBtn = document.getElementById('refreshBankBtn');
   if (refreshBankBtn) refreshBankBtn.addEventListener('click', loadBankTransactions);
 
-  // Auto-load when navigating to the Bank tab
-  document.querySelectorAll('.nav-btn[data-view="bank"]').forEach(btn => {
-    btn.addEventListener('click', () => setTimeout(loadBankTransactions, 100));
-  });
+  // ─── Interactive System Tour & Guided Walkthrough ────────────────────────
+  const TOUR_STEPS = [
+    {
+      step: 1,
+      title: "Welcome to Studio5 Bill Tracker & ERP",
+      icon: "🚀",
+      badge: "STEP 1 OF 7 · OVERVIEW",
+      content: `
+        <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px; margin-bottom:12px; font-weight:600; color:#0c4a6e;">
+          Modern AI-Powered Expense & Vendor Invoice Management System
+        </div>
+        <p style="margin-bottom:10px;">Studio5 ERP automates expense logging, vendor invoice verification, GST tax credit (ITC) auditing, and site cash balances in real-time.</p>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; font-size:12.5px;">
+          <b>Key Functionalities:</b>
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li>⚡ <b>Sub-50ms Supabase Data Sync:</b> Instant update across all devices.</li>
+            <li>📊 <b>Material Price Radar:</b> Compare item prices across suppliers.</li>
+            <li>💳 <b>Company Payment Isolation:</b> Rajiv Bawa Sir's direct payments never deduct from site supervisor cash balances.</li>
+          </ul>
+        </div>
+      `
+    },
+    {
+      step: 2,
+      title: "Uploading & AI Vision Processing",
+      icon: "📷",
+      badge: "STEP 2 OF 7 · UPLOAD & OCR",
+      content: `
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px; margin-bottom:12px; font-weight:600; color:#15803d;">
+          Instant OCR Extraction & Physical PAID Stamp Detection
+        </div>
+        <p style="margin-bottom:10px;">Drag-and-drop bills, choose PDFs/images, or use mobile front/rear camera capture directly on site.</p>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; font-size:12.5px;">
+          <b>What AI Vision Automatically Extracts:</b>
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li><b>Vendor & GSTIN:</b> Auto-extracts seller name and 15-digit GSTIN.</li>
+            <li><b>Invoice Date & Amount:</b> Detects bill date, taxable amount, & taxes.</li>
+            <li><b>Line Items Breakdown:</b> Extracts individual material names, quantities, and rates.</li>
+            <li>🔖 <b>Physical PAID Stamp Detection:</b> Detects stamped vouchers automatically.</li>
+          </ul>
+        </div>
+      `
+    },
+    {
+      step: 3,
+      title: "Payment Source: Site Cash vs Rajiv Bawa Sir",
+      icon: "💳",
+      badge: "STEP 3 OF 7 · PAYMENT CLASSIFICATION",
+      content: `
+        <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:12px; margin-bottom:12px; font-weight:600; color:#92400e;">
+          Strict Costing & Site Supervisor Cash Isolation
+        </div>
+        <p style="margin-bottom:10px;">When uploading or editing bills, mark whether the bill is <b>Already Paid (Settled)</b> or <b>Not Paid Yet (Due)</b>.</p>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; font-size:12.5px;">
+          <b>Who Paid Options:</b>
+          <div style="margin-top:6px; display:flex; flex-direction:column; gap:6px;">
+            <div style="padding:6px 10px; background:#f0fdf4; border:1px solid #86efac; border-radius:6px;">
+              <b>👤 Paid by Self (Site Cash):</b> Deducts from supervisor's site cash balance.
+            </div>
+            <div style="padding:6px 10px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px;">
+              <b>🏢 Paid by Rajiv Bawa (Company Direct):</b> Records in site project costing, but <u>does NOT subtract</u> from supervisor's cash in hand!
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      step: 4,
+      title: "GSTIN Verification & Taxpayer Status",
+      icon: "🔍",
+      badge: "STEP 4 OF 7 · GST AUDIT",
+      content: `
+        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:12px; margin-bottom:12px; font-weight:600; color:#991b1b;">
+          Mistake-Proof GSTIN Checksum & State Validation
+        </div>
+        <p style="margin-bottom:10px;">The system automatically verifies seller GSTINs to ensure maximum ITC tax credit eligibility.</p>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; font-size:12.5px;">
+          <b>Key Safeguards:</b>
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li>🏢 <b>Studio5 Buyer GSTIN Warning:</b> Flags if buyer GSTIN was scanned instead of seller's.</li>
+            <li>🚨 <b>Cancelled Taxpayer Alert:</b> Flags cancelled GSTINs to block invalid ITC claims.</li>
+            <li>📋 <b>1-Click Portal Verification:</b> Clicking <i>"Verify GSTIN on Portal"</i> auto-copies the GSTIN and opens the Govt GST Portal seamlessly.</li>
+          </ul>
+        </div>
+      `
+    },
+    {
+      step: 5,
+      title: "Executive Dashboard & Price Radar",
+      icon: "📊",
+      badge: "STEP 5 OF 7 · ANALYTICS & RADAR",
+      content: `
+        <div style="background:#e0e7ff; border:1px solid #c7d2fe; border-radius:8px; padding:12px; margin-bottom:12px; font-weight:600; color:#3730a3;">
+          Real-Time Spend Analytics & Vendor Price Intelligence
+        </div>
+        <p style="margin-bottom:10px;">Track monthly spending, GST tax credits, site breakdown, and pending vendor liabilities.</p>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; font-size:12.5px;">
+          <b>Price Radar Features:</b>
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li>Search hardware, plywood, or interior material purchase rates across vendors.</li>
+            <li>Compare price increases vs previous purchases.</li>
+            <li>Identify lowest cost suppliers across Gurgaon, Dehradun, and central sites.</li>
+          </ul>
+        </div>
+      `
+    },
+    {
+      step: 6,
+      title: "Searchable Ledger & Admin Corrections (PIN 5198)",
+      icon: "✏️",
+      badge: "STEP 6 OF 7 · LEDGER & EDITS",
+      content: `
+        <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px; margin-bottom:12px; font-weight:600; color:#0369a1;">
+          PIN-Protected Corrections & Clean Record Management
+        </div>
+        <p style="margin-bottom:10px;">Filter ledger by month, site, vendor, or material. Inspect complete line items breakdown and original photo/PDF attachments.</p>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; font-size:12.5px;">
+          <b>Admin Controls (PIN 5198):</b>
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li><b>✏️ Edit Details:</b> Correct invoice date, payment status, who paid, and payment method under PIN <b>5198</b>.</li>
+            <li><b>🗑️ Delete Record:</b> Remove duplicate or mistaken bill entries safely.</li>
+          </ul>
+        </div>
+      `
+    },
+    {
+      step: 7,
+      title: "Supervisor Cash-in-Hand & Calibration",
+      icon: "💵",
+      badge: "STEP 7 OF 7 · CASH ACCOUNTABILITY",
+      content: `
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px; margin-bottom:12px; font-weight:700; color:#166534;">
+          Zero-Discrepancy Supervisor Cash Accountability
+        </div>
+        <p style="margin-bottom:10px;">The <b>Person Report</b> displays exact live cash-in-hand per supervisor:</p>
+        <div style="text-align:center; padding:8px; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; font-weight:700; color:#0c4a6e; margin-bottom:10px; font-size:12.5px;">
+          Current Cash = Baseline + Cash Transferred - Site Cash Spend
+        </div>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; font-size:12.5px;">
+          <b>⚙️ Set Cash-in-Hand Today:</b> Use this button at any time to calibrate actual physical cash held by a supervisor, instantly syncing across cloud & all devices!
+        </div>
+      `
+    }
+  ];
+
+  let currentTourStep = 0;
+
+  function renderTourStep(stepIdx) {
+    if (stepIdx < 0) stepIdx = 0;
+    if (stepIdx >= TOUR_STEPS.length) stepIdx = TOUR_STEPS.length - 1;
+    currentTourStep = stepIdx;
+
+    const data = TOUR_STEPS[currentTourStep];
+    const badgeEl = document.getElementById('tourStepBadge');
+    const titleEl = document.getElementById('tourStepTitle');
+    const barEl = document.getElementById('tourProgressBar');
+    const contentEl = document.getElementById('tourStepContent');
+    const prevBtn = document.getElementById('tourPrevBtn');
+    const nextBtn = document.getElementById('tourNextBtn');
+
+    if (badgeEl) badgeEl.textContent = data.badge;
+    if (titleEl) titleEl.innerHTML = `<span>${data.icon}</span> <span>${data.title}</span>`;
+    if (barEl) barEl.style.width = `${((currentTourStep + 1) / TOUR_STEPS.length) * 100}%`;
+    if (contentEl) contentEl.innerHTML = data.content;
+
+    if (prevBtn) prevBtn.disabled = currentTourStep === 0;
+    if (nextBtn) {
+      if (currentTourStep === TOUR_STEPS.length - 1) {
+        nextBtn.textContent = 'Finish Tour 🎉';
+        nextBtn.style.background = '#16a34a';
+      } else {
+        nextBtn.textContent = 'Next Step ›';
+        nextBtn.style.background = '#059669';
+      }
+    }
+  }
+
+  function startSystemTour(stepIdx = 0) {
+    const overlay = document.getElementById('systemTourOverlay');
+    if (!overlay) return;
+    renderTourStep(stepIdx);
+    overlay.style.display = 'flex';
+  }
+  window.startSystemTour = startSystemTour;
+
+  function closeSystemTour() {
+    const overlay = document.getElementById('systemTourOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+  window.closeSystemTour = closeSystemTour;
+
+  function setupSystemTour() {
+    const overlay = document.getElementById('systemTourOverlay');
+    const closeBtn = document.getElementById('closeTourBtn');
+    const prevBtn = document.getElementById('tourPrevBtn');
+    const nextBtn = document.getElementById('tourNextBtn');
+    const skipBtn = document.getElementById('tourSkipBtn');
+    const openBtn = document.getElementById('openSystemTourBtn');
+
+    if (openBtn) openBtn.onclick = () => startSystemTour(0);
+    if (closeBtn) closeBtn.onclick = closeSystemTour;
+    if (skipBtn) skipBtn.onclick = closeSystemTour;
+    if (overlay) {
+      overlay.onclick = (e) => {
+        if (e.target === overlay) closeSystemTour();
+      };
+    }
+
+    if (prevBtn) {
+      prevBtn.onclick = () => {
+        if (currentTourStep > 0) renderTourStep(currentTourStep - 1);
+      };
+    }
+    if (nextBtn) {
+      nextBtn.onclick = () => {
+        if (currentTourStep < TOUR_STEPS.length - 1) {
+          renderTourStep(currentTourStep + 1);
+        } else {
+          closeSystemTour();
+          showCelebrationToast('Tour complete! You\'re ready to use Studio5 ERP like a pro 🚀');
+        }
+      };
+    }
+  }
+
+  setupSystemTour();
 
   // ────────────────────────────────────────────────────────────────────────────
 })();
