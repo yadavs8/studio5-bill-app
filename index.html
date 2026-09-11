@@ -902,6 +902,64 @@
       <button type="button" id="editDateCancelBtn" class="btn-ghost" style="flex:1; padding:10px; font-size:13px; font-weight:600;">Cancel</button>
       <button type="button" id="editDateSaveBtn" class="btn-primary" style="flex:1; padding:10px; font-size:13px; font-weight:700; background:#0284c7;">💾 Update Date</button>
     </div>
+
+    <div style="text-align:center; margin-top:12px; padding-top:10px; border-top:1px dashed #e2e8f0;">
+      <button type="button" id="editDateSwitchToDeleteBtn" style="border:none; background:transparent; font-size:11.5px; color:#dc2626; cursor:pointer; font-weight:600;">
+        🗑️ Delete this bill record completely
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="pin-overlay" id="deleteBillModalOverlay" style="display:none; z-index:10002;">
+  <div class="pin-card" style="max-width:400px; text-align:left; background:#ffffff; border-radius:12px; padding:22px; box-shadow:0 20px 25px -5px rgba(0, 0, 0, 0.25);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1.5px solid #fee2e2; padding-bottom:10px;">
+      <div>
+        <h2 style="margin:0; font-size:18px; color:#dc2626; display:flex; align-items:center; gap:8px;">
+          <span>🗑️</span> <span>Delete Bill Record</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:11.5px; color:#991b1b;">Permanent removal · Protected action</p>
+      </div>
+      <button type="button" id="closeDeleteBillModalBtn" style="background:#f1f5f9; border:none; width:28px; height:28px; border-radius:50%; font-size:15px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <!-- Bill Details Preview -->
+    <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:10px 14px; margin-bottom:14px;">
+      <div style="font-weight:700; font-size:13.5px; color:#991b1b;" id="deleteBillVendorName">—</div>
+      <div style="font-size:12px; color:#7f1d1d; margin-top:3px; display:flex; justify-content:space-between;">
+        <span id="deleteBillInvoiceNo">Invoice #—</span>
+        <span style="font-weight:700;" id="deleteBillAmount">₹—</span>
+      </div>
+      <div style="font-size:11.5px; color:#991b1b; margin-top:5px; padding-top:5px; border-top:1px dashed #fca5a5;">
+        Date on Record: <b id="deleteBillDate">—</b>
+      </div>
+    </div>
+
+    <!-- Reason Input -->
+    <div style="margin-bottom:12px;">
+      <label for="deleteBillReasonInput" style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:5px;">
+        REASON FOR DELETION
+      </label>
+      <input type="text" id="deleteBillReasonInput" placeholder="e.g. Duplicate bill, invalid slip, test entry" style="width:100%; padding:10px 12px; font-size:13.5px; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
+    </div>
+
+    <!-- Password / PIN Input -->
+    <div style="margin-bottom:16px;">
+      <label for="deleteBillPinInput" style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:5px;">
+        🔒 ADMIN PASSWORD (PIN) <span style="color:#dc2626;">*</span>
+      </label>
+      <input type="password" inputmode="numeric" id="deleteBillPinInput" maxlength="10" placeholder="••••" style="width:100%; padding:10px 12px; font-size:16px; letter-spacing:4px; text-align:center; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
+      <div style="font-size:11px; color:#64748b; margin-top:4px;">Protected action. Authorized admin password required.</div>
+    </div>
+
+    <!-- Error Message -->
+    <div id="deleteBillErrorMsg" style="display:none; margin-bottom:12px; padding:8px 12px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; font-size:12px; color:#b91c1c; font-weight:600;"></div>
+
+    <!-- Modal Actions -->
+    <div style="display:flex; gap:10px;">
+      <button type="button" id="deleteBillCancelBtn" class="btn-ghost" style="flex:1; padding:10px; font-size:13px; font-weight:600;">Cancel</button>
+      <button type="button" id="deleteBillConfirmBtn" class="btn-primary" style="flex:1; padding:10px; font-size:13px; font-weight:700; background:#dc2626; border-color:#dc2626;">🗑️ Confirm Delete</button>
+    </div>
   </div>
 </div>
 
@@ -3293,6 +3351,16 @@
 
       ${itemsHtml}
       ${photoHtml}
+
+      <div style="margin-top:20px; padding:12px 14px; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+          <div style="font-size:12px; font-weight:700; color:#991b1b;">🔒 Admin Protected Zone</div>
+          <div style="font-size:11px; color:#b91c1c;">Permanently delete this bill from the ledger (Password required)</div>
+        </div>
+        <button type="button" class="btn-open-delete-modal" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11.5px; padding:6px 12px; border-radius:6px; font-weight:700; background:#dc2626; color:#fff; border:none; cursor:pointer;" title="Delete this bill record (Admin Protected)">
+          🗑️ Delete Record
+        </button>
+      </div>
     `;
 
     const modalDateBtn = bodyEl.querySelector('.btn-edit-bill-date');
@@ -3300,6 +3368,14 @@
       modalDateBtn.onclick = (e) => {
         e.stopPropagation();
         openEditDateModal(r);
+      };
+    }
+
+    const modalDelBtn = bodyEl.querySelector('.btn-open-delete-modal');
+    if (modalDelBtn) {
+      modalDelBtn.onclick = (e) => {
+        e.stopPropagation();
+        openDeleteBillModal(r);
       };
     }
 
@@ -3500,7 +3576,6 @@
               ${voucherBtn}
               ${returnBtn}
               <button type="button" class="btn-ghost btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 6px; color:#0284c7;" title="Change Bill Date (Admin Protected)">📅</button>
-              ${delBtn}
             </div>
           </td>
         </tr>
@@ -3685,7 +3760,7 @@
         const returnBtn = `<button type="button" class="btn-ghost btn-return-bill" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#92400e; border-color:#fde68a; background:#fffbeb;" title="Record Goods Return / Debit Note">🔄 Return</button>`;
         const detailBtn = `<button type="button" class="btn-ghost btn-view-detail" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px;" title="View Complete Bill Details">👁 Details</button>`;
         const editDateBtn = `<button type="button" class="btn-ghost btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#0284c7;" title="Change Bill Date (Admin Protected)">📅 Date</button>`;
-        const deleteCell = `<td><div style="display:flex; align-items:center;">${detailBtn}${voucherBtn}${returnBtn}${editDateBtn}${r.entry_id ? `<button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button>` : ''}</div></td>`;
+        const deleteCell = `<td><div style="display:flex; align-items:center;">${detailBtn}${voucherBtn}${returnBtn}${editDateBtn}</div></td>`;
         return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}${deleteCell}</tr>`;
       }).join('');
       tableArea.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
@@ -6898,9 +6973,177 @@
         }
       }
     }
+
+    const switchToDeleteBtn = document.getElementById('editDateSwitchToDeleteBtn');
+    if (switchToDeleteBtn) {
+      switchToDeleteBtn.onclick = () => {
+        const rec = activeEditDateRecord;
+        closeEditDateModal();
+        if (rec) openDeleteBillModal(rec);
+      };
+    }
   }
 
   setupEditDateModal();
+
+  // ─── Delete Bill Modal (Password Protected: 5198) ─────────────────────────
+  let activeDeleteBillRecord = null;
+
+  function openDeleteBillModal(rec) {
+    if (!rec) return;
+    activeDeleteBillRecord = rec;
+
+    const overlay = document.getElementById('deleteBillModalOverlay');
+    const vName = document.getElementById('deleteBillVendorName');
+    const invNo = document.getElementById('deleteBillInvoiceNo');
+    const amt = document.getElementById('deleteBillAmount');
+    const dt = document.getElementById('deleteBillDate');
+    const reasonInput = document.getElementById('deleteBillReasonInput');
+    const pinInput = document.getElementById('deleteBillPinInput');
+    const errMsg = document.getElementById('deleteBillErrorMsg');
+    const confirmBtn = document.getElementById('deleteBillConfirmBtn');
+
+    if (!overlay) return;
+
+    if (vName) vName.textContent = rec.vendor_name || 'Vendor';
+    if (invNo) invNo.textContent = `Invoice #${rec.bill_no || '—'}`;
+    const origVal = parseFloat(String(rec.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0;
+    if (amt) amt.textContent = `₹${origVal.toLocaleString('en-IN')}`;
+    if (dt) dt.textContent = rec.date || '—';
+
+    if (reasonInput) reasonInput.value = '';
+    if (pinInput) pinInput.value = '';
+    if (errMsg) {
+      errMsg.style.display = 'none';
+      errMsg.textContent = '';
+    }
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '🗑️ Confirm Delete';
+    }
+
+    overlay.style.display = 'flex';
+    setTimeout(() => {
+      if (pinInput) pinInput.focus();
+    }, 100);
+  }
+  window.openDeleteBillModal = openDeleteBillModal;
+
+  function closeDeleteBillModal() {
+    const overlay = document.getElementById('deleteBillModalOverlay');
+    if (overlay) overlay.style.display = 'none';
+    activeDeleteBillRecord = null;
+  }
+  window.closeDeleteBillModal = closeDeleteBillModal;
+
+  function setupDeleteBillModal() {
+    const overlay = document.getElementById('deleteBillModalOverlay');
+    const closeBtn = document.getElementById('closeDeleteBillModalBtn');
+    const cancelBtn = document.getElementById('deleteBillCancelBtn');
+    const confirmBtn = document.getElementById('deleteBillConfirmBtn');
+    const reasonInput = document.getElementById('deleteBillReasonInput');
+    const pinInput = document.getElementById('deleteBillPinInput');
+    const errMsg = document.getElementById('deleteBillErrorMsg');
+
+    if (!overlay) return;
+
+    if (closeBtn) closeBtn.onclick = closeDeleteBillModal;
+    if (cancelBtn) cancelBtn.onclick = closeDeleteBillModal;
+    overlay.onclick = (e) => {
+      if (e.target === overlay) closeDeleteBillModal();
+    };
+
+    if (pinInput) {
+      pinInput.onkeydown = (e) => {
+        if (e.key === 'Enter') handleConfirmDeleteSubmit();
+      };
+    }
+    if (reasonInput) {
+      reasonInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          if (pinInput) pinInput.focus();
+        }
+      };
+    }
+
+    if (confirmBtn) confirmBtn.onclick = handleConfirmDeleteSubmit;
+
+    async function handleConfirmDeleteSubmit() {
+      if (!activeDeleteBillRecord) return;
+      const rec = activeDeleteBillRecord;
+
+      const enteredPin = (pinInput ? pinInput.value : '').trim();
+      if (enteredPin !== '5198') {
+        if (errMsg) {
+          errMsg.textContent = '❌ Incorrect password. Access denied.';
+          errMsg.style.display = 'block';
+        }
+        if (pinInput) {
+          pinInput.value = '';
+          pinInput.focus();
+        }
+        return;
+      }
+
+      if (errMsg) errMsg.style.display = 'none';
+      if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Deleting record…';
+      }
+
+      try {
+        const bType = rec.bill_type || activeTab;
+        const reason = (reasonInput ? reasonInput.value : '').trim() || 'Admin deleted';
+
+        const res = await fetch(`${BACKEND_URL}/delete-ledger-entry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+          body: JSON.stringify({
+            entry_id: rec.entry_id,
+            bill_type: bType,
+            reason: reason,
+            pin: enteredPin
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          throw new Error(data.error || `Delete failed: HTTP ${res.status}`);
+        }
+
+        // Remove from recordsCache
+        ['gst', 'non_gst'].forEach(tab => {
+          if (recordsCache[tab]) {
+            recordsCache[tab] = recordsCache[tab].filter(x => String(x.entry_id) !== String(rec.entry_id));
+          }
+        });
+
+        closeDeleteBillModal();
+
+        // Close Bill Detail modal if open
+        const detailModal = document.getElementById('billDetailModalOverlay');
+        if (detailModal) detailModal.style.display = 'none';
+
+        // Update UI
+        updateDuplicateBillRegistry();
+        populateLedgerMonthBar([...(recordsCache.gst || []), ...(recordsCache.non_gst || [])]);
+        renderTable();
+
+        showCelebrationToast(`Bill record deleted successfully.`);
+      } catch (err) {
+        if (errMsg) {
+          errMsg.textContent = `❌ ${err.message}`;
+          errMsg.style.display = 'block';
+        }
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = '🗑️ Confirm Delete';
+        }
+      }
+    }
+  }
+
+  setupDeleteBillModal();
 
   // ─── Bank Tracker ───────────────────────────────────────────────────────────
 
