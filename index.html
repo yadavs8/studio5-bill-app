@@ -891,7 +891,7 @@
         🔒 ADMIN PASSWORD (PIN) <span style="color:#dc2626;">*</span>
       </label>
       <input type="password" inputmode="numeric" id="editDatePinInput" maxlength="10" placeholder="••••" style="width:100%; padding:10px 12px; font-size:16px; letter-spacing:4px; text-align:center; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
-      <div style="font-size:11px; color:#64748b; margin-top:4px;">Protected action (Enter PIN <b>5198</b> to authorize change).</div>
+      <div style="font-size:11px; color:#64748b; margin-top:4px;">Protected action. Authorized admin password required.</div>
     </div>
 
     <!-- Error Message -->
@@ -3281,7 +3281,7 @@
       ${row('Vendor Name', r.vendor_name)}
       ${row('GSTIN', r.gstin ? `${r.gstin} (${r.gstin_status || 'Unverified'})` : 'Non-GST')}
       ${row('Invoice Number', r.bill_no)}
-      ${row('Invoice Date', `<div style="display:inline-flex; align-items:center; gap:6px;"><span>${r.date || '—'}</span> <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:2px 7px; border-radius:4px; border:1px solid #0284c7; background:#f0f9ff; cursor:pointer; color:#0284c7; font-weight:700;" title="Change Date (Password: 5198)">✏️ Change Date</button></div>`)}
+      ${row('Invoice Date', `<div style="display:inline-flex; align-items:center; gap:6px;"><span>${r.date || '—'}</span> <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:2px 7px; border-radius:4px; border:1px solid #0284c7; background:#f0f9ff; cursor:pointer; color:#0284c7; font-weight:700;" title="Change Date (Admin Protected)">✏️ Change Date</button></div>`)}
       ${row('Incurred By', r.purchased_by)}
       ${row('Submitted By', r.submitted_by_employee)}
       ${row('Taxable Value', r.taxable_value ? `₹${parseFloat(r.taxable_value).toLocaleString('en-IN')}` : '—')}
@@ -3459,7 +3459,7 @@
           <td style="white-space:nowrap; vertical-align:top;">
             <div style="font-weight:700; color:#1e293b; font-size:12.5px; display:flex; align-items:center; gap:4px;">
               <span>${dt}</span>
-              <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" title="Change Date (Password: 5198)" style="border:none; background:transparent; cursor:pointer; font-size:11px; padding:0 2px; color:#94a3b8; line-height:1;" onmouseover="this.style.color='#0284c7'" onmouseout="this.style.color='#94a3b8'">✏️</button>
+              <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" title="Change Date (Admin Protected)" style="border:none; background:transparent; cursor:pointer; font-size:11px; padding:0 2px; color:#94a3b8; line-height:1;" onmouseover="this.style.color='#0284c7'" onmouseout="this.style.color='#94a3b8'">✏️</button>
             </div>
             <div style="font-family:monospace; font-size:11px; color:#64748b; margin-top:2px;" title="Invoice No">${r.bill_no || '—'}</div>
             ${isDup ? `<div style="margin-top:2px;"><span style="background:#fee2e2; color:#991b1b; font-weight:800; font-size:9.5px; padding:1px 5px; border-radius:3px; border:1px solid #fca5a5; display:inline-flex; align-items:center; gap:2px;" title="Duplicate bill detected: ${dupConflict ? dupConflict.reason : 'Matches another record'}">⚠️ DUPLICATE</span></div>` : ''}
@@ -3499,7 +3499,7 @@
               ${detailBtn}
               ${voucherBtn}
               ${returnBtn}
-              <button type="button" class="btn-ghost btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 6px; color:#0284c7;" title="Change Bill Date (PIN: 5198)">📅</button>
+              <button type="button" class="btn-ghost btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 6px; color:#0284c7;" title="Change Bill Date (Admin Protected)">📅</button>
               ${delBtn}
             </div>
           </td>
@@ -3609,7 +3609,7 @@
         const cells = fields.map(([key]) => {
           if (key === 'date') {
             const dVal = r[key] || '-';
-            return `<td><div style="display:flex; align-items:center; gap:4px;"><span>${dVal}</span><button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" title="Change Date (Password: 5198)" style="border:none; background:transparent; cursor:pointer; font-size:11px; padding:0 2px; color:#94a3b8;">✏️</button></div></td>`;
+            return `<td><div style="display:flex; align-items:center; gap:4px;"><span>${dVal}</span><button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" title="Change Date (Admin Protected)" style="border:none; background:transparent; cursor:pointer; font-size:11px; padding:0 2px; color:#94a3b8;">✏️</button></div></td>`;
           }
           if (key === 'photo_link') {
             return `<td>${r[key] ? photoThumbHtml(r[key]) : '-'}</td>`;
@@ -3684,7 +3684,7 @@
         const voucherBtn = isVoucher ? `<button type="button" class="btn-ghost" style="font-size:11px; padding:3px 8px; margin-right:4px;" onclick='openDigitalVoucher(${JSON.stringify(r).replace(/'/g, "&#39;")})'>📄 Voucher</button>` : '';
         const returnBtn = `<button type="button" class="btn-ghost btn-return-bill" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#92400e; border-color:#fde68a; background:#fffbeb;" title="Record Goods Return / Debit Note">🔄 Return</button>`;
         const detailBtn = `<button type="button" class="btn-ghost btn-view-detail" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px;" title="View Complete Bill Details">👁 Details</button>`;
-        const editDateBtn = `<button type="button" class="btn-ghost btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#0284c7;" title="Change Bill Date (PIN: 5198)">📅 Date</button>`;
+        const editDateBtn = `<button type="button" class="btn-ghost btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#0284c7;" title="Change Bill Date (Admin Protected)">📅 Date</button>`;
         const deleteCell = `<td><div style="display:flex; align-items:center;">${detailBtn}${voucherBtn}${returnBtn}${editDateBtn}${r.entry_id ? `<button class="del-btn" data-entry-id="${r.entry_id}" data-bill-type="${activeTab}" title="Delete">✕</button>` : ''}</div></td>`;
         return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}${deleteCell}</tr>`;
       }).join('');
@@ -6811,7 +6811,7 @@
       const enteredPin = (pinInput ? pinInput.value : '').trim();
       if (enteredPin !== '5198') {
         if (errMsg) {
-          errMsg.textContent = '❌ Incorrect password. Authorized PIN required (5198).';
+          errMsg.textContent = '❌ Incorrect password. Access denied.';
           errMsg.style.display = 'block';
         }
         if (pinInput) {
