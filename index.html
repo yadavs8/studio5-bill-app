@@ -3614,6 +3614,56 @@
   }
   window.toggleRowItems = toggleRowItems;
 
+  let cachedDashboardMaterials = [];
+
+  function renderDashboardMaterialsList(materials) {
+    const listContainer = document.getElementById('dashMaterialsListContainer');
+    const countEl = document.getElementById('dashMaterialsCountBadge');
+    if (countEl) {
+      countEl.textContent = `${materials.length} Materials`;
+    }
+    if (!listContainer) return;
+
+    if (materials.length === 0) {
+      listContainer.innerHTML = `<div style="text-align:center; padding:24px; color:#64748b; font-size:12.5px;">No materials match your search filter.</div>`;
+      return;
+    }
+
+    listContainer.innerHTML = materials.map((m) => {
+      const vendorNames = Array.isArray(m.vendors) ? m.vendors.join(', ') : (m.vendors || '-');
+      const encodedName = encodeURIComponent(m.name || '');
+
+      return `
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:11px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; transition:border-color 0.15s, box-shadow 0.15s; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+          <div style="flex:1; min-width:220px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-weight:700; font-size:13.5px; color:#1e293b;">${m.name}</span>
+              ${m.vendors && m.vendors.length > 1 ? `<span style="background:#e0e7ff; color:#4338ca; font-size:10px; font-weight:700; padding:1px 6px; border-radius:10px;" title="Supplied by multiple vendors">Multi-Vendor</span>` : ''}
+            </div>
+            <div style="font-size:11.5px; color:#64748b; margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span>🏢 ${vendorNames}</span>
+              <span style="color:#cbd5e1;">•</span>
+              <span>🧾 ${m.transactions_count} invoice${m.transactions_count > 1 ? 's' : ''}</span>
+            </div>
+          </div>
+          <div style="text-align:right; display:flex; align-items:center; gap:12px;">
+            <div>
+              <div style="font-size:14.5px; font-weight:800; color:#4f46e5;">
+                ₹${(m.latest_rate || 0).toLocaleString('en-IN')} <span style="font-size:11px; font-weight:normal; color:#64748b;">/${m.unit || 'unit'}</span>
+              </div>
+              <div style="font-size:11px; color:#047857; margin-top:1px; font-weight:600;">
+                Avg: ₹${(m.avg_rate || m.latest_rate || 0).toLocaleString('en-IN')}
+              </div>
+            </div>
+            <button type="button" onclick="window.openMaterialRatesModal && window.openMaterialRatesModal('${encodedName}')" class="btn-ghost" style="font-size:11.5px; padding:5px 10px; color:#4f46e5; border:1px solid #c7d2fe; background:#f5f3ff; border-radius:6px; cursor:pointer; font-weight:600; white-space:nowrap;" title="Compare vendor prices for ${m.name}">
+              📊 Compare
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
   async function loadDashboardMaterialsSummary() {
     const el = document.getElementById('dashMaterialsArea');
     if (!el) return;
@@ -3623,33 +3673,47 @@
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      const materials = data.materials || [];
-      if (materials.length === 0) {
+      cachedDashboardMaterials = data.materials || [];
+
+      if (cachedDashboardMaterials.length === 0) {
         el.innerHTML = `<div class="empty-state">No materials tracked in catalog yet. Scan GST bills to populate material rates!</div>`;
         return;
       }
-      const top5 = materials.slice(0, 5);
-      const cardHtml = top5.map(m => `
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <div>
-            <div style="font-weight:700; font-size:13.5px; color:#1e293b;">${m.name}</div>
-            <div style="font-size:11.5px; color:#64748b; margin-top:2px;">
-              ${m.transactions_count} purchases · Vendors: ${m.vendors.slice(0,2).join(', ')}${m.vendors.length > 2 ? ' +' + (m.vendors.length - 2) + ' more' : ''}
-            </div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:14px; font-weight:800; color:#4f46e5;">₹${m.latest_rate.toLocaleString('en-IN')} <span style="font-size:11px; font-weight:normal; color:#64748b;">/${m.unit || 'unit'}</span></div>
-            <div style="font-size:10.5px; color:#047857; margin-top:2px;">Avg Rate: ₹${m.avg_rate.toLocaleString('en-IN')}</div>
-          </div>
-        </div>
-      `).join('');
 
       el.innerHTML = `
-        <div style="font-size:12px; color:#475569; margin-bottom:10px; font-weight:600;">
-          Tracking <b>${materials.length} distinct materials</b> across all vendor GST bills:
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12.5px; color:#475569; font-weight:600;">Full Materials & Raw Goods Catalog:</span>
+            <span id="dashMaterialsCountBadge" style="background:#e0e7ff; color:#3730a3; font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:12px;">
+              ${cachedDashboardMaterials.length} Materials
+            </span>
+          </div>
+          <div style="position:relative; min-width:240px; flex:1; max-width:360px;">
+            <input type="text" id="dashMaterialSearchInput" placeholder="🔍 Search materials or vendors..." style="width:100%; padding:6px 12px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; outline:none; background:#fff;" />
+          </div>
         </div>
-        ${cardHtml}
+        <div id="dashMaterialsListContainer" style="max-height:480px; overflow-y:auto; padding-right:4px; border:1px solid #f1f5f9; border-radius:8px; background:#f8fafc; padding:8px;">
+        </div>
       `;
+
+      renderDashboardMaterialsList(cachedDashboardMaterials);
+
+      const searchInput = document.getElementById('dashMaterialSearchInput');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const q = (e.target.value || '').trim().toLowerCase();
+          if (!q) {
+            renderDashboardMaterialsList(cachedDashboardMaterials);
+          } else {
+            const filtered = cachedDashboardMaterials.filter(m =>
+              (m.name || '').toLowerCase().includes(q) ||
+              (m.vendors && m.vendors.some(v => v.toLowerCase().includes(q))) ||
+              (m.unit || '').toLowerCase().includes(q)
+            );
+            renderDashboardMaterialsList(filtered);
+          }
+        });
+      }
     } catch (err) {
       console.warn('loadDashboardMaterialsSummary error:', err.message);
     }
@@ -6292,11 +6356,16 @@
     const searchBtn = document.getElementById('materialSearchBtn');
     const content = document.getElementById('materialRatesContent');
 
-    if (!overlay || !openBtn) return;
+    window.openMaterialRatesModal = function(query = '') {
+      if (!overlay) return;
+      overlay.style.display = 'flex';
+      const cleanQ = query ? decodeURIComponent(query) : '';
+      if (searchInput) searchInput.value = cleanQ;
+      loadMaterialCatalog(cleanQ);
+    };
 
     openBtn.addEventListener('click', () => {
-      overlay.style.display = 'flex';
-      loadMaterialCatalog();
+      window.openMaterialRatesModal();
     });
 
     const ledgerBtn = document.getElementById('openMaterialRatesLedgerBtn');
