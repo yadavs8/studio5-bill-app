@@ -760,6 +760,139 @@
   .bill-row-clickable {
     cursor: pointer;
   }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     📱 Mobile Phone App Native Experience (Smartphones & Touch Screens)
+     ───────────────────────────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .app {
+      padding: 14px 10px 85px; /* bottom padding for fixed mobile nav bar */
+    }
+
+    .header {
+      flex-direction: column;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      gap: 10px;
+    }
+
+    .header h1 {
+      font-size: 22px;
+    }
+
+    .subhead {
+      text-align: left;
+      max-width: 100%;
+    }
+
+    .identity-bar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      padding: 10px 12px;
+    }
+
+    /* Fixed Mobile Bottom App Bar */
+    .navbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: #0c4a6e;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+      margin: 0;
+      border-radius: 16px 16px 0 0;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+
+    .nav-btn {
+      flex: 1;
+      padding: 6px 2px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      background: transparent;
+      color: #93c5fd;
+      border: none;
+      min-height: 48px;
+      justify-content: center;
+    }
+
+    .nav-btn.active {
+      background: rgba(255, 255, 255, 0.18) !important;
+      color: #ffffff !important;
+      font-weight: 700 !important;
+    }
+
+    /* Highlight middle upload button like native app camera button */
+    .nav-btn[data-view="upload"] {
+      background: #f59e0b;
+      color: #0c2d48;
+      font-weight: 700;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+    }
+    .nav-btn[data-view="upload"].active {
+      background: #d97706 !important;
+      color: #ffffff !important;
+    }
+
+    .panel {
+      padding: 16px 12px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+    }
+
+    /* Mobile Bottom Sheet Modal Styling */
+    .pin-overlay {
+      align-items: flex-end;
+    }
+
+    .pin-card {
+      width: 100% !important;
+      max-width: 100% !important;
+      border-radius: 20px 20px 0 0 !important;
+      max-height: 90vh;
+      overflow-y: auto;
+      margin: 0 !important;
+      padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* Mobile Quick Floating Action Camera Button (FAB) */
+    .mobile-fab-cam {
+      position: fixed;
+      bottom: 74px;
+      right: 14px;
+      z-index: 9990;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #ffffff;
+      border: none;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      box-shadow: 0 6px 18px rgba(217, 119, 6, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      animation: fabPulse 3s infinite;
+    }
+    @keyframes fabPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+  }
 </style>
 </head>
 <body>
@@ -1297,12 +1430,17 @@
   </div>
 
   <div class="navbar">
-    <button class="nav-btn active" data-view="dashboard">Dashboard</button>
-    <button class="nav-btn" data-view="upload">Upload</button>
-    <button class="nav-btn" data-view="ledger">Ledger</button>
-    <button class="nav-btn" data-view="approvals">Approvals <span class="nav-badge" id="approvalsBadge" style="display:none;">0</span></button>
-    <button class="nav-btn" data-view="bank">🏦 Bank</button>
+    <button class="nav-btn active" data-view="dashboard"><span>📊</span> <span>Dashboard</span></button>
+    <button class="nav-btn" data-view="upload"><span>📷</span> <span>Upload</span></button>
+    <button class="nav-btn" data-view="ledger"><span>📑</span> <span>Ledger</span></button>
+    <button class="nav-btn" data-view="approvals"><span>⏳</span> <span>Approvals</span> <span class="nav-badge" id="approvalsBadge" style="display:none;">0</span></button>
+    <button class="nav-btn" data-view="bank"><span>🏦</span> <span>Bank</span></button>
   </div>
+
+  <!-- Mobile Floating Quick Camera Button for site supervisors -->
+  <button type="button" class="mobile-fab-cam" id="mobileFabCamBtn" title="Quick Snap Bill Photo" onclick="switchView('upload')">
+    📷
+  </button>
 
   <div class="view-viewport">
     <div class="view-track" id="viewTrack">
