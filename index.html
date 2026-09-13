@@ -39,36 +39,94 @@
   }
 
   :root[data-theme="dark"] {
-    --walnut: #090d16;
-    --walnut-light: #94a3b8;
-    --cream: #0f172a;
+    --walnut: #f8fafc;
+    --walnut-light: #cbd5e1;
+    --cream: #1e293b;
     --brass: #3b82f6;
     --brass-dark: #60a5fa;
     --teal: #38bdf8;
     --ink: #f8fafc;
-    --line: #1e293b;
-    --danger: #ef4444;
-    --good: #10b981;
-    --warning: #f59e0b;
-    --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+    --line: #334155;
+    --danger: #f87171;
+    --good: #34d399;
+    --warning: #fbbf24;
+    --card-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.6);
   }
 
   :root[data-theme="dark"] body {
-    background: #030712;
-    color: #f8fafc;
+    background: #030712 !important;
+    color: #f8fafc !important;
   }
   :root[data-theme="dark"] .app {
-    background: #0b0f19;
-    color: #f8fafc;
+    background: #0b0f19 !important;
+    color: #f8fafc !important;
   }
+
+  /* Logo & Brand Styling in Dark Mode */
+  :root[data-theme="dark"] .logo-panel {
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.6) !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+  :root[data-theme="dark"] .logo-panel.accent {
+    color: #38bdf8 !important;
+    text-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+  }
+  :root[data-theme="dark"] .brand-eyebrow {
+    color: #60a5fa !important;
+  }
+  :root[data-theme="dark"] .subhead {
+    color: #cbd5e1 !important;
+  }
+
+  /* Dashboard Cards & Figures */
   :root[data-theme="dark"] .panel,
   :root[data-theme="dark"] .dash-card,
   :root[data-theme="dark"] .approval-card,
-  :root[data-theme="dark"] .pin-card {
+  :root[data-theme="dark"] .pin-card,
+  :root[data-theme="dark"] .review-card {
     background: #111827 !important;
     border-color: #1f2937 !important;
     color: #f9fafb !important;
   }
+  :root[data-theme="dark"] .dash-card .dash-value,
+  :root[data-theme="dark"] .dash-number {
+    color: #f8fafc !important;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  :root[data-theme="dark"] .dash-card .dash-label {
+    color: #60a5fa !important;
+  }
+  :root[data-theme="dark"] .dash-card .dash-sub {
+    color: #cbd5e1 !important;
+  }
+
+  /* Alert / Special Dashboard Cards */
+  :root[data-theme="dark"] .dash-card.alert {
+    background: #2a1215 !important;
+    border-color: #7f1d1d !important;
+  }
+  :root[data-theme="dark"] .dash-card.alert .dash-label {
+    color: #f87171 !important;
+  }
+  :root[data-theme="dark"] .dash-card.alert .dash-value {
+    color: #fca5a5 !important;
+  }
+
+  /* Bank Summary Cards Inline Background Overrides */
+  :root[data-theme="dark"] #bankSummaryCards .dash-card {
+    background: #111827 !important;
+    border: 1px solid #1f2937 !important;
+  }
+  :root[data-theme="dark"] #bankTotalDebit { color: #fbbf24 !important; }
+  :root[data-theme="dark"] #bankUnmatched { color: #f87171 !important; }
+  :root[data-theme="dark"] #bankSynced { color: #34d399 !important; }
+  :root[data-theme="dark"] #bankPending { color: #38bdf8 !important; }
+
+  /* Form Controls & Inputs */
   :root[data-theme="dark"] .field {
     background: #111827 !important;
     color: #f9fafb !important;
@@ -80,21 +138,101 @@
     color: #f9fafb !important;
     border-color: #374151 !important;
   }
+  :root[data-theme="dark"] input::placeholder,
+  :root[data-theme="dark"] textarea::placeholder {
+    color: #6b7280 !important;
+  }
+
+  /* Tables */
   :root[data-theme="dark"] thead th {
     background: #1f2937 !important;
-    color: #f3f4f6 !important;
+    color: #93c5fd !important;
+    border-color: #374151 !important;
   }
   :root[data-theme="dark"] tbody td {
     border-color: #1f2937 !important;
-    color: #e5e7eb !important;
+    color: #f1f5f9 !important;
   }
   :root[data-theme="dark"] tbody tr:hover {
     background: #1e293b !important;
+  }
+
+  /* Buttons & Tabs */
+  :root[data-theme="dark"] .tab-btn {
+    background: #1f2937 !important;
+    color: #cbd5e1 !important;
+    border-color: #374151 !important;
+  }
+  :root[data-theme="dark"] .tab-btn.active {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #3b82f6 !important;
   }
   :root[data-theme="dark"] .btn-ghost {
     background: #1f2937 !important;
     color: #f3f4f6 !important;
     border-color: #374151 !important;
+  }
+  :root[data-theme="dark"] .btn-ghost:hover {
+    background: #374151 !important;
+    color: #ffffff !important;
+  }
+
+  /* Tags, Banners & Universal Search */
+  :root[data-theme="dark"] .type-tag.gst {
+    background: #064e3b !important;
+    color: #6ee7b7 !important;
+    border-color: #047857 !important;
+  }
+  :root[data-theme="dark"] .type-tag.non_gst {
+    background: #78350f !important;
+    color: #fde68a !important;
+    border-color: #b45309 !important;
+  }
+  :root[data-theme="dark"] .banner.warn {
+    background: #3f1212 !important;
+    border-color: #7f1d1d !important;
+    color: #fca5a5 !important;
+  }
+  :root[data-theme="dark"] .banner.ok {
+    background: #064e3b !important;
+    border-color: #047857 !important;
+    color: #6ee7b7 !important;
+  }
+  :root[data-theme="dark"] .banner.info {
+    background: #0c4a6e !important;
+    border-color: #0369a1 !important;
+    color: #7dd3fc !important;
+  }
+  :root[data-theme="dark"] #globalSearchModalOverlay .pin-card {
+    background: #0f172a !important;
+    border: 1px solid #1e293b !important;
+  }
+  :root[data-theme="dark"] #globalSearchInput {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+    border-color: #3b82f6 !important;
+  }
+  :root[data-theme="dark"] #closeGlobalSearchModalBtn {
+    background: #1e293b !important;
+    color: #94a3b8 !important;
+  }
+  :root[data-theme="dark"] #globalSearchResults > div {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+  }
+  :root[data-theme="dark"] .review-card-head {
+    background: #0f172a !important;
+    color: #38bdf8 !important;
+    border-bottom: 1px solid #334155 !important;
+  }
+  :root[data-theme="dark"] .review-label,
+  :root[data-theme="dark"] .detail-label {
+    color: #cbd5e1 !important;
+  }
+  :root[data-theme="dark"] .review-val,
+  :root[data-theme="dark"] .detail-val {
+    color: #f8fafc !important;
   }
 
   * { box-sizing: border-box; }
