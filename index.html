@@ -1436,9 +1436,9 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1.5px solid #e2e8f0; padding-bottom:10px;">
       <div>
         <h2 style="margin:0; font-size:18px; color:#0c4a6e; display:flex; align-items:center; gap:8px;">
-          <span>✏️</span> <span>Edit Bill Date & Payment</span>
+          <span>✏️</span> <span>Admin Edit Bill (Price & Date)</span>
         </h2>
-        <p style="margin:2px 0 0; font-size:11.5px; color:#64748b;">Correct dates or payment details</p>
+        <p style="margin:2px 0 0; font-size:11.5px; color:#64748b;">Correct invoice price, date or payment details</p>
       </div>
       <button type="button" id="closeEditDateModalBtn" style="background:#f1f5f9; border:none; width:28px; height:28px; border-radius:50%; font-size:15px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
     </div>
@@ -1456,12 +1456,20 @@
       </div>
     </div>
 
-    <!-- Correct Date Picker -->
-    <div style="margin-bottom:12px;">
-      <label for="editDateNewInput" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">
-        CORRECT BILL DATE <span style="color:#dc2626;">*</span>
-      </label>
-      <input type="date" id="editDateNewInput" style="width:100%; padding:9px 12px; font-size:14px; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
+    <!-- Correct Date & Price Pickers -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+      <div>
+        <label for="editDateNewInput" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">
+          BILL DATE <span style="color:#dc2626;">*</span>
+        </label>
+        <input type="date" id="editDateNewInput" style="width:100%; padding:9px 10px; font-size:13px; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
+      </div>
+      <div>
+        <label for="editAmountNewInput" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">
+          TOTAL PRICE (₹) <span style="color:#dc2626;">*</span>
+        </label>
+        <input type="number" step="0.01" id="editAmountNewInput" placeholder="e.g. 28389" style="width:100%; padding:9px 10px; font-size:13px; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box; font-weight:700;" />
+      </div>
     </div>
 
     <!-- Payment Details Section in Edit Modal -->
@@ -4174,7 +4182,8 @@
         // Close the bill detail modal first so the edit modal is visible on top
         const detailOverlay = document.getElementById('billDetailModalOverlay');
         if (detailOverlay) detailOverlay.style.display = 'none';
-        openEditDateModal(r);
+        const isDate = btn.textContent.toLowerCase().includes('date');
+        openEditDateModal(r, isDate ? 'date' : 'price');
       };
     });
 
@@ -4622,7 +4631,7 @@
                 <span style="background:#fef3c7; color:#92400e; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; display:inline-flex; align-items:center; gap:2px;" title="${billRet.reason || 'Goods Return'}">🔄 -₹${billRet.return_amount.toLocaleString('en-IN')}</span>
               </td>`;
             }
-            return `<td>₹${origVal ? origVal.toLocaleString('en-IN') : (r[key] || '-')}</td>`;
+            return `<td><div style="display:flex; align-items:center; gap:4px;"><span>₹${origVal ? origVal.toLocaleString('en-IN') : (r[key] || '-')}</span><button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" title="Edit Price & Date (Admin Protected PIN 5198)" style="border:none; background:transparent; cursor:pointer; font-size:11px; padding:0 2px; color:#94a3b8;">✏️</button></div></td>`;
           }
           return `<td>${r[key] ?? ''}</td>`;
         }).join('');
@@ -4630,7 +4639,7 @@
         const voucherBtn = isVoucher ? `<button type="button" class="btn-ghost" style="font-size:11px; padding:3px 8px; margin-right:4px;" onclick='openDigitalVoucher(${JSON.stringify(r).replace(/'/g, "&#39;")})'>📄 Voucher</button>` : '';
         const returnBtn = `<button type="button" class="btn-ghost btn-return-bill" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#92400e; border-color:#fde68a; background:#fffbeb;" title="Record Goods Return / Debit Note">🔄 Return</button>`;
         const detailBtn = `<button type="button" class="btn-ghost btn-view-detail" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px;" title="View Complete Bill Details">👁 Details</button>`;
-        const editDateBtn = `<button type="button" class="btn-ghost btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#0284c7;" title="Change Bill Date (Admin Protected)">📅 Date</button>`;
+        const editDateBtn = `<button type="button" class="btn-ghost btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#0284c7;" title="Edit Bill Price & Date (Admin Protected PIN 5198)">✏️ Edit</button>`;
         const deleteCell = `<td><div style="display:flex; align-items:center;">${detailBtn}${voucherBtn}${returnBtn}${editDateBtn}</div></td>`;
         return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}${deleteCell}</tr>`;
       }).join('');
@@ -4660,7 +4669,7 @@
         const bType = btn.dataset.billType || activeTab;
         const list = recordsCache[bType] || [];
         const matchRec = list.find(x => String(x.entry_id) === String(entryId));
-        if (matchRec) openEditDateModal(matchRec);
+        if (matchRec) openEditDateModal(matchRec, 'price');
       };
     });
     tableArea.querySelectorAll('.del-btn').forEach(btn => {
@@ -8034,7 +8043,7 @@
     return '';
   }
 
-  function openEditDateModal(rec) {
+  function openEditDateModal(rec, focusTarget) {
     if (!rec) return;
     activeEditDateRecord = rec;
 
@@ -8045,6 +8054,7 @@
     const curVal = document.getElementById('editDateCurrentVal');
     const curPayVal = document.getElementById('editPaymentCurrentVal');
     const dateInput = document.getElementById('editDateNewInput');
+    const amountInput = document.getElementById('editAmountNewInput');
     const pinInput = document.getElementById('editDatePinInput');
     const errMsg = document.getElementById('editDateErrorMsg');
     const saveBtn = document.getElementById('editDateSaveBtn');
@@ -8063,9 +8073,10 @@
       curPayVal.textContent = isPaid ? (isDirectCompanyPayment(rec) ? 'Paid (Rajiv Bawa)' : 'Paid (Self)') : 'Due (Unpaid)';
     }
 
-    // Pre-populate date
+    // Pre-populate date & amount
     const iso = parseDateToIsoInput(rec.date);
     if (dateInput) dateInput.value = iso || new Date().toISOString().split('T')[0];
+    if (amountInput) amountInput.value = origVal || '';
 
     // Pre-select payment status
     overlay.querySelectorAll('.edit-pay-status-btn').forEach(b => {
@@ -8129,7 +8140,12 @@
 
     overlay.style.display = 'flex';
     setTimeout(() => {
-      if (dateInput) dateInput.focus();
+      if (focusTarget === 'price' && amountInput) {
+        amountInput.focus();
+        amountInput.select();
+      } else if (dateInput) {
+        dateInput.focus();
+      }
     }, 100);
   }
   window.openEditDateModal = openEditDateModal;
@@ -8148,6 +8164,7 @@
     const saveBtn = document.getElementById('editDateSaveBtn');
     const pinInput = document.getElementById('editDatePinInput');
     const dateInput = document.getElementById('editDateNewInput');
+    const amountInput = document.getElementById('editAmountNewInput');
     const errMsg = document.getElementById('editDateErrorMsg');
     const paidSubSec = document.getElementById('editPaidSubSection');
 
@@ -8246,6 +8263,16 @@
         return;
       }
 
+      const newAmountVal = parseFloat(amountInput ? amountInput.value : rec.invoice_value) || 0;
+      if (!newAmountVal || newAmountVal <= 0) {
+        if (errMsg) {
+          errMsg.textContent = '❌ Please enter a valid bill amount / price.';
+          errMsg.style.display = 'block';
+        }
+        if (amountInput) amountInput.focus();
+        return;
+      }
+
       let newStatus = 'paid';
       const selStatusBtn = overlay.querySelector('.edit-pay-status-btn.selected');
       if (selStatusBtn) newStatus = selStatusBtn.dataset.pay;
@@ -8280,6 +8307,7 @@
           body: JSON.stringify({
             entry_id: rec.entry_id,
             new_date: newDateVal,
+            new_amount: newAmountVal,
             payment_status: newStatus,
             payment_mode: newPaymentMode,
             pin: enteredPin,
@@ -8299,6 +8327,7 @@
         // Update in-memory record
         rec.date = formattedDate;
         rec.bill_date = newDateVal;
+        rec.invoice_value = newAmountVal;
         rec.payment_status = newStatus;
         rec.payment_mode = newPaymentMode;
         rec.paid_by = paidBy;
@@ -8310,6 +8339,7 @@
             if (found) {
               found.date = formattedDate;
               found.bill_date = newDateVal;
+              found.invoice_value = newAmountVal;
               found.payment_status = newStatus;
               found.payment_mode = newPaymentMode;
               found.paid_by = paidBy;
@@ -8318,14 +8348,17 @@
         });
 
         closeEditDateModal();
-        showCelebrationToast('Updated bill date & payment details successfully!');
+        showCelebrationToast('Updated bill price & details successfully!');
 
-        // Update duplicate registry, month pills, and ledger
+        // Update duplicate registry, month pills, ledger, and all charts
         updateDuplicateBillRegistry();
         const all = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
         populateLedgerMonthBar(all);
         renderTable();
         renderPersonReport(all);
+        renderMonthlyBreakdown(all);
+        paintFinancierKpis(all);
+        renderDashboardCharts(all);
 
         // If Bill Detail modal is open, update subtitle & detail rows
         const subEl = document.getElementById('modalBillSubtitle');
