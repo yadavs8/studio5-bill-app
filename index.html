@@ -1490,6 +1490,7 @@
             <button class="btn-tally" id="syncTallyDirectBtn" style="background:#0284c7;" title="Sync approved bills directly into Tally Prime running on this computer">🔄 Sync with Tally</button>
             <button class="btn-tally" id="exportTallyXmlBtn" title="Download standards-compliant Tally XML for Import Data -> Vouchers">📥 Export to Tally (XML)</button>
             <button class="btn-ghost" id="exportGstr2bBtn" style="font-size:13px; padding:8px 14px;" title="Download ITC reconciliation spreadsheet">📄 GSTR-2B (CSV)</button>
+            <button class="btn-ghost" id="enablePushBtn" onclick="requestNotificationPermission()" style="font-size:13px; padding:8px 14px;" title="Enable push notifications for pending approval alerts">🔔 Push Alerts</button>
             <button class="btn-ghost" id="refreshDashboardBtn">Refresh</button>
           </div>
         </div>
@@ -5775,6 +5776,63 @@
     `;
   }
 
+  let lastNotificationPendingCount = 0;
+
+  async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+      alert('Push notifications are not supported on this browser.');
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      showCelebrationToast('🔔 Push Alerts Enabled for Pending Approvals!');
+      checkAndShowPushNotification(true);
+    } else {
+      alert('Notification permission was denied or blocked in browser settings.');
+    }
+  }
+  window.requestNotificationPermission = requestNotificationPermission;
+
+  function checkAndShowPushNotification(force = false) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const count = (approvalsCache || []).length;
+    if (count > 0 && (count > lastNotificationPendingCount || force)) {
+      lastNotificationPendingCount = count;
+      const totalAmt = (approvalsCache || []).reduce((sum, b) => {
+        const val = parseFloat(String(b.invoice_value || b.taxable_value || 0).replace(/[^0-9.]/g, '')) || 0;
+        return sum + val;
+      }, 0);
+
+      const title = `⏳ ${count} Bill(s) Pending Approval`;
+      const body = `Total Amount: ₹${totalAmt.toLocaleString('en-IN')}. Tap to review and approve.`;
+
+      if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification(title, {
+            body: body,
+            icon: './icon-192.png',
+            badge: './icon-192.png',
+            vibrate: [200, 100, 200],
+            tag: 'pending-approvals'
+          });
+        }).catch(() => {
+          new Notification(title, { body: body, icon: './icon-192.png' });
+        });
+      } else {
+        new Notification(title, { body: body, icon: './icon-192.png' });
+      }
+    }
+  }
+
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.action === 'open_approvals') {
+        switchView('approvals');
+      }
+    });
+  }
+
   async function refreshPendingCount() {
     try {
       const res = await fetch(`${BACKEND_URL}/pending-approvals?_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } });
@@ -5786,10 +5844,14 @@
       else { badge.style.display = 'none'; }
       approvalsCache = data.pending || [];
       approvalsLoaded = true;
+      checkAndShowPushNotification();
     } catch (e) {
       document.getElementById('dashPendingCount').textContent = '?';
     }
   }
+
+  // Poll pending approvals every 2 minutes in background
+  setInterval(refreshPendingCount, 120000);
 
   // ---------- Boss PIN gate for Approvals ----------
   const bossPinOverlay = document.getElementById('bossPinOverlay');

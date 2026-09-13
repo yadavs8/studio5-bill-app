@@ -2,7 +2,7 @@
 // Strategy: Network-First with Cache Fallback for app shell
 // API calls to Render/Supabase are always direct network calls.
 
-const CACHE_NAME = 'studio5-bills-v27';
+const CACHE_NAME = 'studio5-bills-v28';
 const APP_SHELL = [
   './',
   './index.html',
@@ -72,5 +72,43 @@ self.addEventListener('fetch', (event) => {
           headers: { 'Content-Type': 'text/plain' }
         });
       })
+  );
+});
+
+// Push notification click handler — opens or focuses the app to the Approvals tab
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.postMessage({ action: 'open_approvals' });
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow('./');
+      }
+    })
+  );
+});
+
+self.addEventListener('push', (event) => {
+  let data = { title: '⏳ Pending Approvals Alert', body: 'New bill(s) waiting for approval' };
+  try {
+    if (event.data) data = event.data.json();
+  } catch (e) {}
+
+  const options = {
+    body: data.body,
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    vibrate: [200, 100, 200],
+    data: { url: './' },
+    tag: 'pending-approvals'
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
   );
 });
