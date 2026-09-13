@@ -2431,11 +2431,19 @@
   const pinError = document.getElementById('pinError');
   const pinSubmit = document.getElementById('pinSubmit');
 
+
   function unlock() {
-    pinOverlay.style.display = 'none';
-    mainApp.style.display = '';
-    sessionStorage.setItem('bill_app_unlocked', 'yes');
-    startLogoIdleLoop();
+    try {
+      pinOverlay.style.display = 'none';
+      pinOverlay.style.visibility = 'hidden';
+      pinOverlay.style.pointerEvents = 'none';
+    } catch(e) {}
+    try {
+      mainApp.style.display = '';
+      mainApp.style.visibility = '';
+    } catch(e) {}
+    try { sessionStorage.setItem('bill_app_unlocked', 'yes'); } catch(e) {}
+    try { startLogoIdleLoop(); } catch(e) { console.warn('Logo idle loop error:', e); }
   }
 
   function startLogoIdleLoop() {
@@ -2450,13 +2458,12 @@
   }
 
   function tryUnlock() {
-    const val = (pinInput.value || '').trim();
+    const val = (pinInput ? pinInput.value || '' : '').trim();
     if (val === ACCESS_PIN || val.includes(ACCESS_PIN)) {
       unlock();
     } else {
-      pinError.textContent = 'Incorrect code — check with your admin.';
-      pinInput.value = '';
-      pinInput.focus();
+      if (pinError) pinError.textContent = 'Incorrect code — check with your admin.';
+      if (pinInput) { pinInput.value = ''; pinInput.focus(); }
     }
   }
 
@@ -2464,12 +2471,14 @@
     unlock();
   }
 
-  pinSubmit.addEventListener('click', tryUnlock);
-  pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
-  pinInput.addEventListener('input', () => {
-    const val = (pinInput.value || '').trim();
-    if (val.length >= ACCESS_PIN.length) tryUnlock();
-  });
+  if (pinSubmit) pinSubmit.addEventListener('click', tryUnlock);
+  if (pinInput) {
+    pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+    pinInput.addEventListener('input', () => {
+      const val = (pinInput.value || '').trim();
+      if (val.length >= ACCESS_PIN.length) tryUnlock();
+    });
+  }
 })();
 
 (function(){
