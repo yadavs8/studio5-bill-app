@@ -2,7 +2,7 @@
 // Strategy: Network-First with Cache Fallback for app shell
 // API calls to Render/Supabase are always direct network calls.
 
-const CACHE_NAME = 'studio5-bills-v32';
+const CACHE_NAME = 'studio5-bills-v33';
 const APP_SHELL = [
   './',
   './index.html',
@@ -39,7 +39,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Always bypass cache for backend API requests
-  if (url.hostname.includes('onrender.com') || url.pathname.includes('/api/') || url.pathname.includes('/bank/')) {
+  if (url.hostname.includes('onrender.com') || url.pathname.includes('/api/') || url.pathname.includes('/bank/') || url.pathname.includes('/push/')) {
     return;
   }
 
@@ -78,6 +78,8 @@ self.addEventListener('fetch', (event) => {
 // Push notification click handler — opens or focuses the app to the Approvals tab
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : './?view=approvals';
+  
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
@@ -87,25 +89,30 @@ self.addEventListener('notificationclick', (event) => {
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow('./');
+        return clients.openWindow(targetUrl);
       }
     })
   );
 });
 
 self.addEventListener('push', (event) => {
-  let data = { title: '⏳ Pending Approvals Alert', body: 'New bill(s) waiting for approval' };
+  let data = { title: '⏳ Studio5 ERP Lockscreen Alert', body: 'New bill(s) waiting for approval', url: './?view=approvals' };
   try {
-    if (event.data) data = event.data.json();
-  } catch (e) {}
+    if (event.data) {
+      const parsed = event.data.json();
+      data = Object.assign({}, data, parsed);
+    }
+  } catch (e) {
+    if (event.data) data.body = event.data.text();
+  }
 
   const options = {
     body: data.body,
-    icon: './icon-192.png',
-    badge: './icon-192.png',
+    icon: data.icon || './icon-192.png',
+    badge: data.badge || './icon-192.png',
     vibrate: [200, 100, 200],
-    data: { url: './' },
-    tag: 'pending-approvals'
+    data: { url: data.url || './?view=approvals' },
+    tag: data.tag || 'pending-approvals'
   };
 
   event.waitUntil(

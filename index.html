@@ -6379,6 +6379,42 @@
 
   let lastNotificationPendingCount = 0;
 
+  const VAPID_PUBLIC_KEY = 'BNCbieva2-XjVaqVHBjQj9xm4BwiSOFsoLsJIDLqTqC6FWUL3l7rx703Hw_hVTRDKzvBOWHakwJ8QnQenGn6bMM';
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  async function registerLockscreenPushSubscription() {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+      }
+      const activeUser = typeof getActiveUserName === 'function' ? getActiveUserName() : 'Manager';
+      await fetch(`${BACKEND_URL}/push/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+        body: JSON.stringify({ subscription: sub, user_name: activeUser })
+      });
+      console.log('[LockscreenPush] Registered VAPID device subscription on backend!');
+    } catch (e) {
+      console.warn('[LockscreenPush] Subscription registration failed:', e.message);
+    }
+  }
+
   async function requestNotificationPermission() {
     if (!('Notification' in window)) {
       alert('Push notifications are not supported on this browser.');
@@ -6386,13 +6422,18 @@
     }
     const perm = await Notification.requestPermission();
     if (perm === 'granted') {
-      showCelebrationToast('🔔 Push Alerts Enabled for Pending Approvals!');
+      showCelebrationToast('🔔 Lockscreen Push Alerts Enabled!');
+      await registerLockscreenPushSubscription();
       checkAndShowPushNotification(true);
     } else {
       alert('Notification permission was denied or blocked in browser settings.');
     }
   }
   window.requestNotificationPermission = requestNotificationPermission;
+
+  if ('Notification' in window && Notification.permission === 'granted') {
+    registerLockscreenPushSubscription();
+  }
 
   function checkAndShowPushNotification(force = false) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
