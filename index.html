@@ -38,6 +38,65 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 
+  :root[data-theme="dark"] {
+    --walnut: #090d16;
+    --walnut-light: #94a3b8;
+    --cream: #0f172a;
+    --brass: #3b82f6;
+    --brass-dark: #60a5fa;
+    --teal: #38bdf8;
+    --ink: #f8fafc;
+    --line: #1e293b;
+    --danger: #ef4444;
+    --good: #10b981;
+    --warning: #f59e0b;
+    --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+  }
+
+  :root[data-theme="dark"] body {
+    background: #030712;
+    color: #f8fafc;
+  }
+  :root[data-theme="dark"] .app {
+    background: #0b0f19;
+    color: #f8fafc;
+  }
+  :root[data-theme="dark"] .panel,
+  :root[data-theme="dark"] .dash-card,
+  :root[data-theme="dark"] .approval-card,
+  :root[data-theme="dark"] .pin-card {
+    background: #111827 !important;
+    border-color: #1f2937 !important;
+    color: #f9fafb !important;
+  }
+  :root[data-theme="dark"] .field {
+    background: #111827 !important;
+    color: #f9fafb !important;
+  }
+  :root[data-theme="dark"] input,
+  :root[data-theme="dark"] select,
+  :root[data-theme="dark"] textarea {
+    background: #1f2937 !important;
+    color: #f9fafb !important;
+    border-color: #374151 !important;
+  }
+  :root[data-theme="dark"] thead th {
+    background: #1f2937 !important;
+    color: #f3f4f6 !important;
+  }
+  :root[data-theme="dark"] tbody td {
+    border-color: #1f2937 !important;
+    color: #e5e7eb !important;
+  }
+  :root[data-theme="dark"] tbody tr:hover {
+    background: #1e293b !important;
+  }
+  :root[data-theme="dark"] .btn-ghost {
+    background: #1f2937 !important;
+    color: #f3f4f6 !important;
+    border-color: #374151 !important;
+  }
+
   * { box-sizing: border-box; }
 
   body {
@@ -1359,6 +1418,29 @@
   </div>
 </div>
 
+<div class="pin-overlay" id="globalSearchModalOverlay" style="display:none; z-index:10005;">
+  <div class="pin-card" style="max-width:680px; width:95%; text-align:left; max-height:85vh; display:flex; flex-direction:column; background:var(--cream); border-radius:14px; padding:20px; box-shadow:0 25px 30px -5px rgba(0,0,0,0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:12px;">
+      <div>
+        <h2 style="margin:0; font-size:18px; color:var(--walnut); display:flex; align-items:center; gap:8px;">
+          <span>🔍</span> <span>Universal Search</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:12px; color:var(--walnut-light);">Search vendors, invoices, materials, or supervisor names instantly</p>
+      </div>
+      <button type="button" id="closeGlobalSearchModalBtn" onclick="closeGlobalSearch()" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <div style="margin-bottom:14px; position:relative;">
+      <input type="text" id="globalSearchInput" placeholder="Type vendor, invoice no, GSTIN, material (e.g. plywood), or supervisor..." style="width:100%; padding:12px 16px; font-size:15px; font-weight:600; border:2px solid var(--brass); border-radius:8px; background:var(--cream); color:var(--ink); box-sizing:border-box;" />
+      <span style="position:absolute; right:14px; top:12px; font-size:11px; color:#94a3b8; font-weight:700;">ESC to close</span>
+    </div>
+
+    <div id="globalSearchResults" style="overflow-y:auto; flex:1; min-height:200px; max-height:450px;">
+      <div class="empty-state">Type a query above or press <kbd style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">Ctrl + K</kbd> to search anywhere.</div>
+    </div>
+  </div>
+</div>
+
 <div class="pin-overlay" id="nameCaptureOverlay" style="display:none; z-index:10000;">
   <div class="pin-card">
     <h2>One quick thing</h2>
@@ -1491,6 +1573,8 @@
             <button class="btn-tally" id="exportTallyXmlBtn" title="Download standards-compliant Tally XML for Import Data -> Vouchers">📥 Export to Tally (XML)</button>
             <button class="btn-ghost" id="exportGstr2bBtn" style="font-size:13px; padding:8px 14px;" title="Download ITC reconciliation spreadsheet">📄 GSTR-2B (CSV)</button>
             <button class="btn-ghost" id="enablePushBtn" onclick="requestNotificationPermission()" style="font-size:13px; padding:8px 14px;" title="Enable push notifications for pending approval alerts">🔔 Push Alerts</button>
+            <button class="btn-ghost" id="globalSearchBtn" onclick="openGlobalSearch()" style="font-size:13px; padding:8px 14px;" title="Universal Search across all records (Ctrl + K)">🔍 Search (Ctrl+K)</button>
+            <button class="btn-ghost" id="themeToggleBtn" onclick="toggleTheme()" style="font-size:13px; padding:8px 14px;" title="Toggle Executive Dark / Light Mode">🌙 Dark</button>
             <button class="btn-ghost" id="refreshDashboardBtn">Refresh</button>
           </div>
         </div>
@@ -1526,6 +1610,51 @@
               <div class="dash-label">Eligible Input GST (ITC)</div>
               <div class="dash-value" id="financierEligibleItc" style="color:var(--good);">–</div>
               <div class="dash-sub">Input Tax Credit claimable</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Executive Visual Analytics & CA Audit Health Meter -->
+        <div class="panel" style="margin-bottom:20px; border-top:3px solid var(--brass);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+            <div>
+              <span style="font-size:10.5px; text-transform:uppercase; letter-spacing:0.14em; color:var(--brass-dark); font-weight:800;">Executive Visual Analytics</span>
+              <h2 style="font-family:Georgia,serif; font-size:19px; color:var(--walnut); margin:2px 0 0;">Site Cost Distribution & CA Audit Health</h2>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; background:var(--cream); padding:8px 14px; border-radius:8px; border:1px solid var(--line);">
+              <div style="text-align:right;">
+                <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.08em; font-weight:700; color:#64748b;">CA Audit Readiness</div>
+                <div style="font-weight:800; font-size:15px; color:#059669;" id="caAuditScoreText">98% Audit Ready</div>
+              </div>
+              <div style="width:40px; height:40px; position:relative; display:flex; align-items:center; justify-content:center;">
+                <svg width="40" height="40" viewBox="0 0 36 36">
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3.5" />
+                  <path id="caAuditScoreCircle" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#059669" stroke-width="3.5" stroke-dasharray="98, 100" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
+            <!-- Site Spending Donut Chart -->
+            <div style="background:var(--cream); border:1px solid var(--line); border-radius:10px; padding:16px;">
+              <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--walnut-light); margin-bottom:12px; display:flex; justify-content:space-between;">
+                <span>📍 Site Expenditure Breakdown</span>
+                <span style="color:#2563eb; font-size:11px;" id="totalSiteSpendLabel">₹0</span>
+              </div>
+              <div id="siteDonutChartContainer" style="min-height:160px; display:flex; align-items:center; justify-content:center;">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Top Material Expenses Bars -->
+            <div style="background:var(--cream); border:1px solid var(--line); border-radius:10px; padding:16px;">
+              <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--walnut-light); margin-bottom:12px;">
+                📦 Top Material Categories
+              </div>
+              <div id="materialSpendBarsContainer" style="display:flex; flex-direction:column; gap:10px;">
+                <!-- Rendered dynamically -->
+              </div>
             </div>
           </div>
         </div>
@@ -3628,10 +3757,17 @@
     if (r.photo_link) {
       photoHtml = `
         <div style="margin-top:14px; text-align:center;">
-          <a href="${r.photo_link}" target="_blank" rel="noopener" style="display:inline-block; border:1px solid #cbd5e1; border-radius:6px; padding:4px; background:#f8fafc;">
-            <img src="${r.photo_link}" style="max-height:180px; max-width:100%; border-radius:4px; object-fit:contain;" alt="Bill Image" />
-            <div style="font-size:11.5px; font-weight:600; color:#0284c7; margin-top:4px;">🔍 Click to View Full Photo / PDF</div>
-          </a>
+          <div style="margin-bottom:6px; display:flex; justify-content:center; gap:6px; flex-wrap:wrap;">
+            <button type="button" class="btn-ghost btn-sm" onclick="zoomPhotoIn()" style="padding:4px 8px; font-size:11px;">🔍 Zoom +</button>
+            <button type="button" class="btn-ghost btn-sm" onclick="zoomPhotoOut()" style="padding:4px 8px; font-size:11px;">🔍 Zoom -</button>
+            <button type="button" class="btn-ghost btn-sm" onclick="rotatePhoto()" style="padding:4px 8px; font-size:11px;">🔄 Rotate 90°</button>
+            <button type="button" class="btn-ghost btn-sm" onclick="togglePhotoContrast()" style="padding:4px 8px; font-size:11px;">🎚️ OCR Boost</button>
+            <button type="button" class="btn-ghost btn-sm" onclick="resetPhotoTransform()" style="padding:4px 8px; font-size:11px;">↩️ Reset</button>
+          </div>
+          <div style="overflow:hidden; border:1px solid #cbd5e1; border-radius:6px; padding:8px; background:var(--cream); display:inline-block; max-width:100%;">
+            <img id="modalBillImage" src="${r.photo_link}" style="max-height:260px; max-width:100%; border-radius:4px; object-fit:contain;" alt="Bill Image" />
+          </div>
+          <div style="margin-top:4px;"><a href="${r.photo_link}" target="_blank" rel="noopener" style="font-size:11.5px; font-weight:600; color:#0284c7;">🔗 Open Original File in New Tab</a></div>
         </div>
       `;
     }
@@ -4759,6 +4895,7 @@
     renderMonthlyBreakdown(all);
     renderTrendChart(all);
     renderTopVendors(selectedRecords);
+    renderDashboardCharts(all);
   }
 
   function paintFinancierKpis(allRecords) {
@@ -5069,6 +5206,233 @@
       </table>
     `;
   }
+
+  // ─── Executive Visual Analytics & CA Audit Score Generator ────────────────
+  function renderDashboardCharts(allRecords) {
+    const siteContainer = document.getElementById('siteDonutChartContainer');
+    const materialContainer = document.getElementById('materialSpendBarsContainer');
+    const caScoreText = document.getElementById('caAuditScoreText');
+    const caScoreCircle = document.getElementById('caAuditScoreCircle');
+    const totalSiteSpendLabel = document.getElementById('totalSiteSpendLabel');
+
+    if (!siteContainer || !materialContainer || !Array.isArray(allRecords)) return;
+
+    const siteSpend = { 'Dehradun Site': 0, 'Gurgaon Sites': 0, 'Traudan Site': 0, 'Central / Projects': 0 };
+    let totalSpend = 0;
+    let validGstinCount = 0;
+    let photoCount = 0;
+    let bankMatchCount = 0;
+
+    const catSpend = { 'Plywood & Boards': 0, 'Hardware & Fittings': 0, 'Tiles & Marble': 0, 'Sanitary & Pipes': 0, 'Electrical & Lighting': 0, 'Paint & Chemicals': 0, 'Misc / General': 0 };
+
+    allRecords.forEach(b => {
+      const val = parseFloat(String(b.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0;
+      totalSpend += val;
+
+      const person = resolvePersonName(b.submitted_by_employee || b.purchased_by, b);
+      const siteInfo = getSupervisorSiteInfo(person, b);
+      const site = siteInfo.site;
+      siteSpend[site] = (siteSpend[site] || 0) + val;
+
+      if (b.gstin && b.gstin.length === 15) validGstinCount++;
+      if (b.photo_link || b.photo_base64) photoCount++;
+      if (b.bank_reconciled || b.payment_mode === 'UPI' || b.payment_mode === 'Cheque') bankMatchCount++;
+
+      const desc = ((b.description || '') + ' ' + (b.vendor_name || '')).toLowerCase();
+      if (desc.includes('ply') || desc.includes('board') || desc.includes('mica') || desc.includes('veneer')) catSpend['Plywood & Boards'] += val;
+      else if (desc.includes('hardware') || desc.includes('screw') || desc.includes('hinge') || desc.includes('channel')) catSpend['Hardware & Fittings'] += val;
+      else if (desc.includes('tile') || desc.includes('marble') || desc.includes('granite') || desc.includes('grout')) catSpend['Tiles & Marble'] += val;
+      else if (desc.includes('sanitary') || desc.includes('bath') || desc.includes('pipe') || desc.includes('tap')) catSpend['Sanitary & Pipes'] += val;
+      else if (desc.includes('wire') || desc.includes('light') || desc.includes('switch') || desc.includes('cable')) catSpend['Electrical & Lighting'] += val;
+      else if (desc.includes('paint') || desc.includes('polish') || desc.includes('pu') || desc.includes('primer')) catSpend['Paint & Chemicals'] += val;
+      else catSpend['Misc / General'] += val;
+    });
+
+    if (totalSiteSpendLabel) totalSiteSpendLabel.textContent = '₹' + Math.round(totalSpend).toLocaleString('en-IN');
+
+    const totalCount = allRecords.length || 1;
+    const gstinRatio = Math.min(1, validGstinCount / totalCount);
+    const photoRatio = Math.min(1, photoCount / totalCount);
+    const bankRatio = Math.min(1, bankMatchCount / totalCount);
+    const auditScore = Math.round((gstinRatio * 0.4 + photoRatio * 0.4 + bankRatio * 0.2) * 100);
+
+    if (caScoreText) caScoreText.textContent = `${auditScore}% Audit Ready`;
+    if (caScoreCircle) caScoreCircle.setAttribute('stroke-dasharray', `${auditScore}, 100`);
+
+    const colors = ['#2563eb', '#059669', '#d97706', '#4f46e5', '#7c3aed'];
+    const siteEntries = Object.entries(siteSpend).filter(([, val]) => val > 0);
+    if (siteEntries.length === 0) {
+      siteContainer.innerHTML = `<div class="empty-state" style="padding:20px 0;">No site spend recorded for visual breakdown.</div>`;
+    } else {
+      let cumulativePercent = 0;
+      const slices = siteEntries.map(([sName, sVal], idx) => {
+        const pct = (sVal / (totalSpend || 1)) * 100;
+        const color = colors[idx % colors.length];
+        const strokeDash = `${pct.toFixed(1)} ${100 - pct.toFixed(1)}`;
+        const offset = 100 - cumulativePercent + 25;
+        cumulativePercent += pct;
+        return `<path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="${color}" stroke-width="4.5" stroke-dasharray="${strokeDash}" stroke-dashoffset="${offset}" />`;
+      }).join('');
+
+      const legend = siteEntries.map(([sName, sVal], idx) => {
+        const pct = Math.round((sVal / (totalSpend || 1)) * 100);
+        const color = colors[idx % colors.length];
+        return `<div style="display:flex; align-items:center; justify-content:space-between; font-size:11.5px; margin-bottom:4px;"><span style="display:flex; align-items:center; gap:6px;"><span style="width:10px; height:10px; border-radius:50%; background:${color}; display:inline-block;"></span> <b>${sName}</b></span> <span>₹${Math.round(sVal).toLocaleString('en-IN')} (${pct}%)</span></div>`;
+      }).join('');
+
+      siteContainer.innerHTML = `
+        <div style="display:flex; align-items:center; gap:16px; width:100%; flex-wrap:wrap;">
+          <div style="width:100px; height:100px; position:relative; flex-shrink:0;">
+            <svg width="100" height="100" viewBox="0 0 36 36">${slices}</svg>
+          </div>
+          <div style="flex:1; min-width:140px;">${legend}</div>
+        </div>
+      `;
+    }
+
+    const catEntries = Object.entries(catSpend).filter(([, val]) => val > 0).sort((a, b) => b[1] - a[1]);
+    if (catEntries.length === 0) {
+      materialContainer.innerHTML = `<div class="empty-state" style="padding:20px 0;">No material line items available.</div>`;
+    } else {
+      const maxCatVal = catEntries[0][1] || 1;
+      materialContainer.innerHTML = catEntries.slice(0, 5).map(([cName, cVal]) => {
+        const pct = Math.round((cVal / maxCatVal) * 100);
+        return `
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:11.5px; font-weight:600; margin-bottom:3px;">
+              <span>${cName}</span>
+              <span>₹${Math.round(cVal).toLocaleString('en-IN')}</span>
+            </div>
+            <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;">
+              <div style="width:${pct}%; height:100%; background:#2563eb; border-radius:3px;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // ─── Theme Manager ────────────────────────────────────────────────────────
+  function initThemeManager() {
+    const savedTheme = localStorage.getItem('studio5_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeButtonLabel(savedTheme);
+  }
+
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('studio5_theme', next);
+    updateThemeButtonLabel(next);
+  }
+  window.toggleTheme = toggleTheme;
+
+  function updateThemeButtonLabel(theme) {
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) {
+      btn.innerHTML = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    }
+  }
+
+  // ─── Universal Search (Ctrl + K) ──────────────────────────────────────────
+  function openGlobalSearch() {
+    const modal = document.getElementById('globalSearchModalOverlay');
+    const input = document.getElementById('globalSearchInput');
+    if (modal) modal.style.display = 'flex';
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
+  }
+  window.openGlobalSearch = openGlobalSearch;
+
+  function closeGlobalSearch() {
+    const modal = document.getElementById('globalSearchModalOverlay');
+    if (modal) modal.style.display = 'none';
+  }
+  window.closeGlobalSearch = closeGlobalSearch;
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      openGlobalSearch();
+    } else if (e.key === 'Escape') {
+      closeGlobalSearch();
+    }
+  });
+
+  const searchInputEl = document.getElementById('globalSearchInput');
+  if (searchInputEl) {
+    searchInputEl.addEventListener('input', (e) => {
+      executeGlobalSearch(e.target.value);
+    });
+  }
+
+  function executeGlobalSearch(query) {
+    const resultsContainer = document.getElementById('globalSearchResults');
+    if (!resultsContainer) return;
+    const q = String(query || '').trim().toLowerCase();
+    if (!q || q.length < 2) {
+      resultsContainer.innerHTML = `<div class="empty-state">Type at least 2 characters to search across all records...</div>`;
+      return;
+    }
+
+    const allBills = [...(window.allGstRows || []), ...(window.allNonGstRows || [])];
+    const matches = allBills.filter(b => {
+      const vName = String(b.vendor_name || '').toLowerCase();
+      const bNo = String(b.bill_no || '').toLowerCase();
+      const gstin = String(b.gstin || '').toLowerCase();
+      const desc = String(b.description || '').toLowerCase();
+      const who = String(b.purchased_by || b.submitted_by_employee || '').toLowerCase();
+      return vName.includes(q) || bNo.includes(q) || gstin.includes(q) || desc.includes(q) || who.includes(q);
+    });
+
+    if (matches.length === 0) {
+      resultsContainer.innerHTML = `<div class="empty-state">No matching records found for "${escapeXml(query)}".</div>`;
+      return;
+    }
+
+    resultsContainer.innerHTML = matches.slice(0, 15).map(b => {
+      const amt = parseFloat(String(b.invoice_value || 0).replace(/[^0-9.]/g, '')) || 0;
+      return `
+        <div style="background:var(--cream); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="closeGlobalSearch(); openBillDetailModal(${b.id || b.entry_id}, '${b.bill_type || 'gst'}')">
+          <div>
+            <div style="font-weight:700; color:var(--walnut); font-size:13.5px;">${escapeXml(b.vendor_name || 'Vendor')}</div>
+            <div style="font-size:11.5px; color:var(--walnut-light); margin-top:2px;">Inv #${escapeXml(b.bill_no || 'N/A')} · ${escapeXml(b.date || '')} · By ${escapeXml(b.purchased_by || 'Staff')}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:800; color:var(--ink); font-size:14px;">₹${amt.toLocaleString('en-IN')}</div>
+            <span class="type-tag ${b.bill_type === 'gst' ? 'gst' : 'non_gst'}">${b.bill_type || 'gst'}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ─── Smart Receipt Photo Controls ─────────────────────────────────────────
+  let currentPhotoTransform = { scale: 1, rotate: 0, contrast: false };
+
+  function applyPhotoTransform() {
+    const img = document.getElementById('modalBillImage');
+    if (!img) return;
+    const filter = currentPhotoTransform.contrast ? 'contrast(1.6) brightness(1.1) grayscale(0.2)' : 'none';
+    img.style.transform = `scale(${currentPhotoTransform.scale}) rotate(${currentPhotoTransform.rotate}deg)`;
+    img.style.filter = filter;
+    img.style.transition = 'transform 0.2s ease, filter 0.2s ease';
+  }
+
+  function zoomPhotoIn() { currentPhotoTransform.scale += 0.25; applyPhotoTransform(); }
+  function zoomPhotoOut() { if (currentPhotoTransform.scale > 0.5) currentPhotoTransform.scale -= 0.25; applyPhotoTransform(); }
+  function rotatePhoto() { currentPhotoTransform.rotate = (currentPhotoTransform.rotate + 90) % 360; applyPhotoTransform(); }
+  function togglePhotoContrast() { currentPhotoTransform.contrast = !currentPhotoTransform.contrast; applyPhotoTransform(); }
+  function resetPhotoTransform() { currentPhotoTransform = { scale: 1, rotate: 0, contrast: false }; applyPhotoTransform(); }
+
+  window.zoomPhotoIn = zoomPhotoIn;
+  window.zoomPhotoOut = zoomPhotoOut;
+  window.rotatePhoto = rotatePhoto;
+  window.togglePhotoContrast = togglePhotoContrast;
+  window.resetPhotoTransform = resetPhotoTransform;
 
   function escapeXml(unsafe) {
     if (unsafe === null || unsafe === undefined) return '';
@@ -8147,6 +8511,9 @@
   // Refresh button
   const refreshBankBtn = document.getElementById('refreshBankBtn');
   if (refreshBankBtn) refreshBankBtn.addEventListener('click', loadBankTransactions);
+
+  // Initialize Executive Dark/Light Theme Manager
+  initThemeManager();
 
   // ────────────────────────────────────────────────────────────────────────────
 })();
