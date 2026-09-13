@@ -23,18 +23,19 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/studio5-bill-app/icon-512.png">
   <style>
   :root {
-    --walnut: #0c4a6e;
-    --walnut-light: #0284c7;
+    --walnut: #0f172a;
+    --walnut-light: #334155;
     --cream: #f8fafc;
-    --brass: #f59e0b;
-    --brass-dark: #d97706;
-    --teal: #0ea5e9;
+    --brass: #2563eb;
+    --brass-dark: #1d4ed8;
+    --teal: #0284c7;
     --ink: #0f172a;
     --line: #e2e8f0;
-    --danger: #ef4444;
-    --good: #10b981;
-    --card-shadow: 0 4px 20px -2px rgba(12, 74, 110, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
-    font-family: 'Inter', -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --danger: #dc2626;
+    --good: #059669;
+    --warning: #d97706;
+    --card-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 
   * { box-sizing: border-box; }
@@ -1470,7 +1471,7 @@
   </div>
 
   <!-- Mobile Floating Quick Camera Button for site supervisors -->
-  <button type="button" class="mobile-fab-cam" id="mobileFabCamBtn" title="Quick Snap Bill Photo" onclick="switchView('upload')">
+  <button type="button" class="mobile-fab-cam" id="mobileFabCamBtn" title="Quick Snap Bill Photo" onclick="handleMobileFabCamera(event)">
     📷
   </button>
 
@@ -4384,6 +4385,18 @@
     if (viewName === 'bank') loadBankTransactions();
   }
 
+  function handleMobileFabCamera(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    switchView('upload');
+    setTimeout(() => {
+      const fileInput = document.getElementById('billFileInput');
+      if (fileInput) {
+        fileInput.click();
+      }
+    }, 150);
+  }
+  window.handleMobileFabCamera = handleMobileFabCamera;
+
   function settleTrackToIndex(index, animate) {
     viewTrack.classList.toggle('dragging', !animate);
     viewTrack.style.transform = `translateX(-${index * 100}%)`;
@@ -6558,13 +6571,17 @@
   function setupAppTourModal() {
     const overlay = document.getElementById('appTourModalOverlay');
     const openBtn = document.getElementById('openAppTourBtn');
+    const systemBtn = document.getElementById('openSystemTourBtn');
     const closeBtn = document.getElementById('closeTourModalBtn');
+    const tourCloseBtn = document.getElementById('closeTourBtn');
     const skipBtn = document.getElementById('tourSkipBtn');
     const prevBtn = document.getElementById('tourPrevBtn');
     const nextBtn = document.getElementById('tourNextBtn');
 
     if (openBtn) openBtn.addEventListener('click', () => openAppTour(false));
+    if (systemBtn) systemBtn.addEventListener('click', () => openAppTour(false));
     if (closeBtn) closeBtn.addEventListener('click', () => { if (overlay) overlay.style.display = 'none'; });
+    if (tourCloseBtn) tourCloseBtn.addEventListener('click', () => { if (overlay) overlay.style.display = 'none'; });
     if (skipBtn) skipBtn.addEventListener('click', () => { if (overlay) overlay.style.display = 'none'; });
     
     if (prevBtn) {
