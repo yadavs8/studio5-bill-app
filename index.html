@@ -157,16 +157,25 @@
     background: #1e293b !important;
   }
 
-  /* Buttons & Tabs */
+  /* Buttons & Underline Tabs in Dark Mode */
+  :root[data-theme="dark"] .tabs {
+    border-bottom-color: #334155 !important;
+  }
   :root[data-theme="dark"] .tab-btn {
-    background: #1f2937 !important;
+    background: transparent !important;
     color: #cbd5e1 !important;
-    border-color: #374151 !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
   }
   :root[data-theme="dark"] .tab-btn.active {
-    background: #2563eb !important;
+    background: transparent !important;
+    color: #38bdf8 !important;
+    border-bottom: 2px solid #3b82f6 !important;
+    font-weight: 700 !important;
+  }
+  :root[data-theme="dark"] .tab-btn:hover {
     color: #ffffff !important;
-    border-color: #3b82f6 !important;
   }
   :root[data-theme="dark"] .btn-ghost {
     background: #1f2937 !important;
@@ -176,6 +185,96 @@
   :root[data-theme="dark"] .btn-ghost:hover {
     background: #374151 !important;
     color: #ffffff !important;
+  }
+
+  /* Identity Bar & On-Behalf Selector (Image 1) */
+  :root[data-theme="dark"] .identity-bar {
+    background: #111827 !important;
+    border-color: #1f2937 !important;
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] .identity-tag {
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] .identity-pill {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #38bdf8 !important;
+  }
+  :root[data-theme="dark"] #submittingForSelect {
+    background: #1f2937 !important;
+    color: #f8fafc !important;
+    border-color: #374151 !important;
+  }
+  :root[data-theme="dark"] label[for="submittingForSelect"] {
+    color: #cbd5e1 !important;
+  }
+
+  /* Monthly Bills Breakdown Table (Image 2) */
+  :root[data-theme="dark"] #monthlyBreakdownArea table {
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] #monthlyBreakdownArea tr[style*="background:#e0f2fe"],
+  :root[data-theme="dark"] #monthlyBreakdownArea tr[style*="background: #e0f2fe"],
+  :root[data-theme="dark"] #monthlyBreakdownArea tr.highlight-row {
+    background: #1e3a8a !important;
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] #monthlyBreakdownArea tr[style*="background:#f8fafc"],
+  :root[data-theme="dark"] #monthlyBreakdownArea tr[style*="background: #f8fafc"],
+  :root[data-theme="dark"] #monthlyBreakdownArea tr.total-row {
+    background: #1f2937 !important;
+    border-top-color: #3b82f6 !important;
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] #monthlyBreakdownArea td {
+    color: #f1f5f9 !important;
+  }
+  :root[data-theme="dark"] #monthlyBreakdownArea tr:hover {
+    background: #1e293b !important;
+  }
+
+  /* Material Purchases & Price Radar (Image 3) */
+  :root[data-theme="dark"] #dashMaterialsArea {
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] #dashMaterialsCountBadge {
+    background: #1e3a8a !important;
+    color: #93c5fd !important;
+  }
+  :root[data-theme="dark"] #dashMaterialSearchInput {
+    background: #1f2937 !important;
+    color: #f8fafc !important;
+    border-color: #374151 !important;
+  }
+  :root[data-theme="dark"] #dashMaterialsListContainer {
+    background: #0f172a !important;
+    border-color: #1e293b !important;
+  }
+  :root[data-theme="dark"] #dashMaterialsListContainer > div {
+    background: #111827 !important;
+    border-color: #1f2937 !important;
+    color: #f8fafc !important;
+  }
+
+  /* Upload Zone (Image 4) */
+  :root[data-theme="dark"] .upload-zone {
+    background: linear-gradient(180deg, #111827 0%, #0f172a 100%) !important;
+    border-color: #334155 !important;
+  }
+  :root[data-theme="dark"] .upload-icon {
+    color: #38bdf8 !important;
+  }
+  :root[data-theme="dark"] .upload-label {
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] .upload-hint {
+    color: #cbd5e1 !important;
+  }
+  :root[data-theme="dark"] .upload-zone:hover,
+  :root[data-theme="dark"] .upload-zone.dragover {
+    background: #1e293b !important;
+    border-color: #38bdf8 !important;
   }
 
   /* Tags, Banners & Universal Search */

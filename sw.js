@@ -2,7 +2,7 @@
 // Strategy: Network-First with Cache Fallback for app shell
 // API calls to Render/Supabase are always direct network calls.
 
-const CACHE_NAME = 'studio5-bills-v31';
+const CACHE_NAME = 'studio5-bills-v32';
 const APP_SHELL = [
   './',
   './index.html',
