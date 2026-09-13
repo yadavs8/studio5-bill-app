@@ -4168,13 +4168,15 @@
       </div>
     `;
 
-    const modalDateBtn = bodyEl.querySelector('.btn-edit-bill-date');
-    if (modalDateBtn) {
-      modalDateBtn.onclick = (e) => {
+    bodyEl.querySelectorAll('.btn-edit-bill-date').forEach(btn => {
+      btn.onclick = (e) => {
         e.stopPropagation();
+        // Close the bill detail modal first so the edit modal is visible on top
+        const detailOverlay = document.getElementById('billDetailModalOverlay');
+        if (detailOverlay) detailOverlay.style.display = 'none';
         openEditDateModal(r);
       };
-    }
+    });
 
     const modalDelBtn = bodyEl.querySelector('.btn-open-delete-modal');
     if (modalDelBtn) {
