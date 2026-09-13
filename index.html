@@ -1436,9 +1436,9 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1.5px solid #e2e8f0; padding-bottom:10px;">
       <div>
         <h2 style="margin:0; font-size:18px; color:#0c4a6e; display:flex; align-items:center; gap:8px;">
-          <span>✏️</span> <span>Admin Edit Bill (Price & Date)</span>
+          <span>✏️</span> <span>Edit Bill Date & Payment</span>
         </h2>
-        <p style="margin:2px 0 0; font-size:11.5px; color:#64748b;">Admin protected price, date, and payment editor</p>
+        <p style="margin:2px 0 0; font-size:11.5px; color:#64748b;">Correct dates or payment details</p>
       </div>
       <button type="button" id="closeEditDateModalBtn" style="background:#f1f5f9; border:none; width:28px; height:28px; border-radius:50%; font-size:15px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
     </div>
@@ -1456,20 +1456,12 @@
       </div>
     </div>
 
-    <!-- Editable Date & Amount Grid -->
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-      <div>
-        <label for="editDateNewInput" style="display:block; font-size:11.5px; font-weight:700; color:var(--walnut); margin-bottom:4px;">
-          BILL DATE <span style="color:#dc2626;">*</span>
-        </label>
-        <input type="date" id="editDateNewInput" style="width:100%; padding:9px 12px; font-size:14px; border:1.5px solid var(--line); border-radius:6px; background:var(--cream); color:var(--walnut); box-sizing:border-box;" />
-      </div>
-      <div>
-        <label for="editAmountNewInput" style="display:block; font-size:11.5px; font-weight:700; color:var(--walnut); margin-bottom:4px;">
-          TOTAL PRICE (₹) <span style="color:#dc2626;">*</span>
-        </label>
-        <input type="number" step="0.01" id="editAmountNewInput" placeholder="e.g. 28389" style="width:100%; padding:9px 12px; font-size:14px; font-weight:700; border:1.5px solid var(--line); border-radius:6px; background:var(--cream); color:var(--walnut); box-sizing:border-box;" />
-      </div>
+    <!-- Correct Date Picker -->
+    <div style="margin-bottom:12px;">
+      <label for="editDateNewInput" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">
+        CORRECT BILL DATE <span style="color:#dc2626;">*</span>
+      </label>
+      <input type="date" id="editDateNewInput" style="width:100%; padding:9px 12px; font-size:14px; border:1.5px solid #cbd5e1; border-radius:6px; background:#fff; font-family:inherit; color:#0f172a; box-sizing:border-box;" />
     </div>
 
     <!-- Payment Details Section in Edit Modal -->
@@ -2431,19 +2423,11 @@
   const pinError = document.getElementById('pinError');
   const pinSubmit = document.getElementById('pinSubmit');
 
-
   function unlock() {
-    try {
-      pinOverlay.style.display = 'none';
-      pinOverlay.style.visibility = 'hidden';
-      pinOverlay.style.pointerEvents = 'none';
-    } catch(e) {}
-    try {
-      mainApp.style.display = '';
-      mainApp.style.visibility = '';
-    } catch(e) {}
-    try { sessionStorage.setItem('bill_app_unlocked', 'yes'); } catch(e) {}
-    try { startLogoIdleLoop(); } catch(e) { console.warn('Logo idle loop error:', e); }
+    pinOverlay.style.display = 'none';
+    mainApp.style.display = '';
+    sessionStorage.setItem('bill_app_unlocked', 'yes');
+    startLogoIdleLoop();
   }
 
   function startLogoIdleLoop() {
@@ -2458,12 +2442,13 @@
   }
 
   function tryUnlock() {
-    const val = (pinInput ? pinInput.value || '' : '').trim();
+    const val = (pinInput.value || '').trim();
     if (val === ACCESS_PIN || val.includes(ACCESS_PIN)) {
       unlock();
     } else {
-      if (pinError) pinError.textContent = 'Incorrect code — check with your admin.';
-      if (pinInput) { pinInput.value = ''; pinInput.focus(); }
+      pinError.textContent = 'Incorrect code — check with your admin.';
+      pinInput.value = '';
+      pinInput.focus();
     }
   }
 
@@ -2471,14 +2456,12 @@
     unlock();
   }
 
-  if (pinSubmit) pinSubmit.addEventListener('click', tryUnlock);
-  if (pinInput) {
-    pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
-    pinInput.addEventListener('input', () => {
-      const val = (pinInput.value || '').trim();
-      if (val.length >= ACCESS_PIN.length) tryUnlock();
-    });
-  }
+  pinSubmit.addEventListener('click', tryUnlock);
+  pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+  pinInput.addEventListener('input', () => {
+    const val = (pinInput.value || '').trim();
+    if (val.length >= ACCESS_PIN.length) tryUnlock();
+  });
 })();
 
 (function(){
@@ -4148,10 +4131,7 @@
       <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px 16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
         <div>
           <div style="font-size:11px; font-weight:700; color:#0369a1; text-transform:uppercase;">Net Payable</div>
-          <div style="font-size:22px; font-weight:800; color:#0c4a6e; display:flex; align-items:center; gap:8px;">
-            ₹${netVal.toLocaleString('en-IN')}
-            <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:3px 9px; border-radius:6px; border:1px solid #0284c7; background:#e0f2fe; cursor:pointer; color:#0284c7; font-weight:700; display:inline-flex; align-items:center; gap:4px;" title="Edit Price & Date (Admin Protected PIN 5198)">✏️ Edit Price</button>
-          </div>
+          <div style="font-size:22px; font-weight:800; color:#0c4a6e; display:inline-flex; align-items:center; gap:8px;">₹${netVal.toLocaleString('en-IN')} <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:3px 9px; border-radius:6px; border:1px solid #0284c7; background:#e0f2fe; cursor:pointer; color:#0284c7; font-weight:700;" title="Edit Price and Date (Admin PIN required)">✏️ Edit Price</button></div>
           ${billRet ? `<div style="font-size:11px; color:#b45309;">Original: ₹${origVal.toLocaleString('en-IN')} · Return: -₹${billRet.return_amount.toLocaleString('en-IN')}</div>` : ''}
         </div>
         <div style="text-align:right;">
@@ -4164,7 +4144,7 @@
       ${row('Vendor Name', r.vendor_name)}
       ${row('GSTIN', r.gstin ? `${r.gstin} (${r.gstin_status || 'Unverified'})` : 'Non-GST')}
       ${row('Invoice Number', r.bill_no)}
-      ${row('Invoice Date', `<div style="display:inline-flex; align-items:center; gap:6px;"><span>${r.date || '—'}</span> <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:2px 7px; border-radius:4px; border:1px solid #0284c7; background:#f0f9ff; cursor:pointer; color:#0284c7; font-weight:700;" title="Edit Date & Price (Admin Protected PIN 5198)">✏️ Edit Date</button></div>`)}
+      ${row('Invoice Date', `<div style="display:inline-flex; align-items:center; gap:6px;"><span>${r.date || '—'}</span> <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:2px 7px; border-radius:4px; border:1px solid #0284c7; background:#f0f9ff; cursor:pointer; color:#0284c7; font-weight:700;" title="Change Date (Admin Protected)">✏️ Change Date</button></div>`)}
       ${row('Incurred By', r.purchased_by)}
       ${row('Submitted By', r.submitted_by_employee)}
       ${row('Taxable Value', r.taxable_value ? `₹${parseFloat(r.taxable_value).toLocaleString('en-IN')}` : '—')}
@@ -8081,11 +8061,9 @@
       curPayVal.textContent = isPaid ? (isDirectCompanyPayment(rec) ? 'Paid (Rajiv Bawa)' : 'Paid (Self)') : 'Due (Unpaid)';
     }
 
-    // Pre-populate date & amount
+    // Pre-populate date
     const iso = parseDateToIsoInput(rec.date);
     if (dateInput) dateInput.value = iso || new Date().toISOString().split('T')[0];
-    const amountInput = document.getElementById('editAmountNewInput');
-    if (amountInput) amountInput.value = origVal || '';
 
     // Pre-select payment status
     overlay.querySelectorAll('.edit-pay-status-btn').forEach(b => {
@@ -8168,7 +8146,6 @@
     const saveBtn = document.getElementById('editDateSaveBtn');
     const pinInput = document.getElementById('editDatePinInput');
     const dateInput = document.getElementById('editDateNewInput');
-    const amountInput = document.getElementById('editAmountNewInput');
     const errMsg = document.getElementById('editDateErrorMsg');
     const paidSubSec = document.getElementById('editPaidSubSection');
 
@@ -8234,13 +8211,6 @@
     if (dateInput) {
       dateInput.onkeydown = (e) => {
         if (e.key === 'Enter') {
-          if (amountInput) amountInput.focus();
-        }
-      };
-    }
-    if (amountInput) {
-      amountInput.onkeydown = (e) => {
-        if (e.key === 'Enter') {
           if (pinInput) pinInput.focus();
         }
       };
@@ -8269,15 +8239,6 @@
       if (!newDateVal || !/^\d{4}-\d{2}-\d{2}$/.test(newDateVal)) {
         if (errMsg) {
           errMsg.textContent = '❌ Please choose a valid date.';
-          errMsg.style.display = 'block';
-        }
-        return;
-      }
-
-      const newAmountVal = parseFloat(amountInput ? amountInput.value : rec.invoice_value) || 0;
-      if (!newAmountVal || newAmountVal <= 0) {
-        if (errMsg) {
-          errMsg.textContent = '❌ Please enter a valid bill amount / price.';
           errMsg.style.display = 'block';
         }
         return;
@@ -8317,7 +8278,6 @@
           body: JSON.stringify({
             entry_id: rec.entry_id,
             new_date: newDateVal,
-            new_amount: newAmountVal,
             payment_status: newStatus,
             payment_mode: newPaymentMode,
             pin: enteredPin,
@@ -8337,7 +8297,6 @@
         // Update in-memory record
         rec.date = formattedDate;
         rec.bill_date = newDateVal;
-        rec.invoice_value = newAmountVal;
         rec.payment_status = newStatus;
         rec.payment_mode = newPaymentMode;
         rec.paid_by = paidBy;
@@ -8349,7 +8308,6 @@
             if (found) {
               found.date = formattedDate;
               found.bill_date = newDateVal;
-              found.invoice_value = newAmountVal;
               found.payment_status = newStatus;
               found.payment_mode = newPaymentMode;
               found.paid_by = paidBy;
@@ -8358,17 +8316,14 @@
         });
 
         closeEditDateModal();
-        showCelebrationToast('Updated bill price & details successfully!');
+        showCelebrationToast('Updated bill date & payment details successfully!');
 
-        // Update duplicate registry, month pills, ledger, and charts
+        // Update duplicate registry, month pills, and ledger
         updateDuplicateBillRegistry();
         const all = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
         populateLedgerMonthBar(all);
         renderTable();
         renderPersonReport(all);
-        renderMonthlyBreakdown(all);
-        paintFinancierKpis(all);
-        renderDashboardCharts(all);
 
         // If Bill Detail modal is open, update subtitle & detail rows
         const subEl = document.getElementById('modalBillSubtitle');
@@ -8380,12 +8335,6 @@
           errMsg.textContent = `❌ Error: ${err.message}`;
           errMsg.style.display = 'block';
         }
-        if (saveBtn) {
-          saveBtn.disabled = false;
-          saveBtn.textContent = '💾 Save Changes';
-        }
-      }
-    }
       } finally {
         if (saveBtn) {
           saveBtn.disabled = false;
