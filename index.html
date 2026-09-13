@@ -334,6 +334,123 @@
     color: #f8fafc !important;
   }
 
+  /* Bank Status Badges & Tags */
+  .bank-tag { padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; display: inline-block; }
+  .bank-tag.unmatched { background: #fce4ec; color: #c62828; }
+  .bank-tag.pending { background: #fff8e1; color: #e65100; }
+  .bank-tag.reconciled { background: #e8f5e9; color: #2e7d32; }
+  .bank-tag.synced { background: #e3f2fd; color: #1565c0; }
+  .bank-tag.ignored { background: #f5f5f5; color: #757575; }
+
+  :root[data-theme="dark"] .bank-tag.unmatched { background: #78350f !important; color: #f87171 !important; border: 1px solid #991b1b !important; }
+  :root[data-theme="dark"] .bank-tag.pending { background: #78350f !important; color: #fbbf24 !important; border: 1px solid #b45309 !important; }
+  :root[data-theme="dark"] .bank-tag.reconciled { background: #064e3b !important; color: #34d399 !important; border: 1px solid #047857 !important; }
+  :root[data-theme="dark"] .bank-tag.synced { background: #1e3a8a !important; color: #60a5fa !important; border: 1px solid #1d4ed8 !important; }
+  :root[data-theme="dark"] .bank-tag.ignored { background: #1e293b !important; color: #94a3b8 !important; border: 1px solid #334155 !important; }
+
+  /* Site Badges across views */
+  :root[data-theme="dark"] .site-badge.dehradun { background: #064e3b !important; color: #6ee7b7 !important; border-color: #047857 !important; }
+  :root[data-theme="dark"] .site-badge.traudan { background: #78350f !important; color: #fde68a !important; border-color: #b45309 !important; }
+  :root[data-theme="dark"] .site-badge.gurgaon { background: #312e81 !important; color: #c7d2fe !important; border-color: #4338ca !important; }
+  :root[data-theme="dark"] .site-badge.central { background: #1e293b !important; color: #cbd5e1 !important; border-color: #334155 !important; }
+
+  /* Payment Choice Buttons & Tags */
+  :root[data-theme="dark"] .payment-btn { background: #111827 !important; color: #cbd5e1 !important; border-color: #374151 !important; }
+  :root[data-theme="dark"] .payment-btn.selected.paid { background: #064e3b !important; color: #34d399 !important; border-color: #10b981 !important; }
+  :root[data-theme="dark"] .payment-btn.selected.unpaid { background: #1e3a8a !important; color: #60a5fa !important; border-color: #3b82f6 !important; }
+  :root[data-theme="dark"] .pay-tag.paid { background: #064e3b !important; color: #34d399 !important; }
+  :root[data-theme="dark"] .pay-tag.unpaid { background: #78350f !important; color: #fbbf24 !important; }
+  :root[data-theme="dark"] .category-chip { background: #1f2937 !important; color: #f8fafc !important; border-color: #374151 !important; }
+
+  /* Master Overrides for All Modals & Overlays */
+  :root[data-theme="dark"] .pin-overlay .pin-card {
+    background: #0f172a !important;
+    border: 1px solid #1e293b !important;
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] .pin-card button[id*="close"],
+  :root[data-theme="dark"] .pin-card button[class*="close"],
+  :root[data-theme="dark"] .pin-card button[style*="background:#f1f5f9"] {
+    background: #1e293b !important;
+    color: #cbd5e1 !important;
+  }
+  :root[data-theme="dark"] .pin-card div[style*="background:#f0f9ff"],
+  :root[data-theme="dark"] .pin-card div[style*="background:#f8fafc"],
+  :root[data-theme="dark"] .pin-card div[style*="background:#fef2f2"],
+  :root[data-theme="dark"] .pin-card div[style*="background:#fffbeb"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] .pin-card p,
+  :root[data-theme="dark"] .pin-card span,
+  :root[data-theme="dark"] .pin-card b,
+  :root[data-theme="dark"] .pin-card strong {
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] .pin-card .edit-pay-status-btn,
+  :root[data-theme="dark"] .pin-card .edit-paid-by-btn,
+  :root[data-theme="dark"] .pin-card .edit-pay-method-btn {
+    background: #1f2937 !important;
+    color: #f8fafc !important;
+    border-color: #374151 !important;
+  }
+
+  /* Approval Cards & Inner Elements */
+  :root[data-theme="dark"] .approval-card {
+    background: #111827 !important;
+    border-color: #1f2937 !important;
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] .approval-card div[style*="background:#f8fafc"],
+  :root[data-theme="dark"] .approval-card div[style*="background:#ecfdf5"],
+  :root[data-theme="dark"] .approval-card div[style*="background:#fffbeb"],
+  :root[data-theme="dark"] .approval-card div[style*="background:#eef5fc"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+  }
+  :root[data-theme="dark"] .approval-card button.btn-verify-gstin-card {
+    background: #1e3a8a !important;
+    color: #93c5fd !important;
+    border-color: #1d4ed8 !important;
+  }
+  :root[data-theme="dark"] .approval-card div[style*="color:#475569"],
+  :root[data-theme="dark"] .approval-card div[style*="color:#334155"],
+  :root[data-theme="dark"] .approval-card div[style*="color:#64748b"] {
+    color: #cbd5e1 !important;
+  }
+
+  /* Smart Table Group Rows & Badges */
+  :root[data-theme="dark"] table tr[style*="background:#f1f5f9"],
+  :root[data-theme="dark"] table tr[style*="background: #f1f5f9"] {
+    background: #1e293b !important;
+    border-top-color: #334155 !important;
+    border-bottom-color: #334155 !important;
+  }
+  :root[data-theme="dark"] table tr[style*="background:#f1f5f9"] td,
+  :root[data-theme="dark"] table tr[style*="background: #f1f5f9"] td {
+    color: #60a5fa !important;
+  }
+  :root[data-theme="dark"] table span[style*="background:#fee2e2"] {
+    background: #78350f !important;
+    color: #f87171 !important;
+  }
+  :root[data-theme="dark"] table span[style*="background:#fef3c7"] {
+    background: #78350f !important;
+    color: #fbbf24 !important;
+  }
+  :root[data-theme="dark"] table td span[style*="color:#555"],
+  :root[data-theme="dark"] table td div[style*="color:#64748b"] {
+    color: #cbd5e1 !important;
+  }
+
+  /* Quick Cash Voucher Card Section */
+  :root[data-theme="dark"] #quickVoucherSection div[style*="background:var(--cream"] {
+    background: #111827 !important;
+    border-color: #1f2937 !important;
+  }
+
   * { box-sizing: border-box; }
 
   body {
@@ -8403,11 +8520,11 @@
   let bankCurrentFilter = 'ALL';
 
   const BANK_STATUS_BADGE = {
-    'UNMATCHED':             '<span style="background:#fce4ec; color:#c62828; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600;">🔴 Unmatched</span>',
-    'PENDING_CLARIFICATION': '<span style="background:#fff8e1; color:#e65100; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600;">🟡 Pending</span>',
-    'RECONCILED':            '<span style="background:#e8f5e9; color:#2e7d32; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600;">🟢 Reconciled</span>',
-    'TALLY_SYNCED':          '<span style="background:#e3f2fd; color:#1565c0; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600;">✅ Synced</span>',
-    'IGNORED':               '<span style="background:#f5f5f5; color:#757575; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600;">⏭ Ignored</span>'
+    'UNMATCHED':             '<span class="bank-tag unmatched">⚡ Unmatched</span>',
+    'PENDING_CLARIFICATION': '<span class="bank-tag pending">⏳ Pending</span>',
+    'RECONCILED':            '<span class="bank-tag reconciled">✓ Reconciled</span>',
+    'TALLY_SYNCED':          '<span class="bank-tag synced">📊 Synced</span>',
+    'IGNORED':               '<span class="bank-tag ignored">🚫 Ignored</span>'
   };
 
   async function loadBankTransactions() {
