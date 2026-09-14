@@ -3870,8 +3870,8 @@
           return false;
         }
       }
-      // 2. Month filter
-      if (ledgerSelectedMonthKey && ledgerSelectedMonthKey !== 'ALL_TIME') {
+      // 2. Month filter (bypass if DUPLICATES filter is active so duplicate bills across any month are immediately visible)
+      if (ledgerSelectedMonthKey && ledgerSelectedMonthKey !== 'ALL_TIME' && ledgerStatusFilter !== 'DUPLICATES') {
         const mKey = getMonthKey(r);
         if (mKey !== ledgerSelectedMonthKey) {
           return false;
@@ -4019,7 +4019,8 @@
     if (qfPaid) qfPaid.textContent = paidCount;
     if (qfReturns) qfReturns.textContent = returnsCount;
     if (qfDuplicates) {
-      const dupCount = allFiltered.filter(r => isDuplicateBill(r)).length;
+      const allRecords = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
+      const dupCount = allRecords.filter(r => isDuplicateBill(r)).length;
       qfDuplicates.textContent = dupCount;
     }
   }
@@ -4640,8 +4641,10 @@
         const returnBtn = `<button type="button" class="btn-ghost btn-return-bill" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#92400e; border-color:#fde68a; background:#fffbeb;" title="Record Goods Return / Debit Note">🔄 Return</button>`;
         const detailBtn = `<button type="button" class="btn-ghost btn-view-detail" data-entry-id="${r.entry_id || ''}" style="font-size:11px; padding:3px 7px; margin-right:4px;" title="View Complete Bill Details">👁 Details</button>`;
         const editDateBtn = `<button type="button" class="btn-ghost btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 7px; margin-right:4px; color:#0284c7;" title="Edit Bill Price & Date (Admin Protected PIN 5198)">✏️ Edit</button>`;
-        const deleteCell = `<td><div style="display:flex; align-items:center;">${detailBtn}${voucherBtn}${returnBtn}${editDateBtn}</div></td>`;
-        return `<tr style="${overdue ? 'background:#fef2f2;' : ''}">${cells}${deleteCell}</tr>`;
+        const isDupRow = isDuplicateBill(r);
+        const deleteDupBtn = isDupRow ? `<button type="button" class="btn-ghost btn-delete-dup" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" style="font-size:11px; padding:3px 7px; margin-right:2px; color:#b91c1c; border-color:#fecaca; background:#fff1f2; font-weight:700;" title="Delete this duplicate bill (Admin PIN required)">🗑️ Del Dup</button>` : '';
+        const deleteCell = `<td><div style="display:flex; align-items:center; flex-wrap:wrap; gap:2px;">${detailBtn}${voucherBtn}${returnBtn}${editDateBtn}${deleteDupBtn}</div></td>`;
+        return `<tr style="${overdue ? 'background:#fef2f2;' : isDupRow ? 'background:#fff1f2;' : ''}">${cells}${deleteCell}</tr>`;
       }).join('');
       tableArea.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
     }
@@ -4675,6 +4678,12 @@
     tableArea.querySelectorAll('.del-btn').forEach(btn => {
       btn.onclick = () => requestLedgerDelete(btn.dataset.entryId, btn.dataset.billType, btn);
     });
+    tableArea.querySelectorAll('.btn-delete-dup').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        requestLedgerDelete(btn.dataset.entryId, btn.dataset.billType, btn, true);
+      };
+    });
     tableArea.querySelectorAll('.btn-verify-gstin-table').forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
@@ -4683,24 +4692,33 @@
     });
   }
 
-  function requestLedgerDelete(entryId, billType, btnEl) {
+  function requestLedgerDelete(entryId, billType, btnEl, isDup) {
     ensureBossUnlockedThenRun(async () => {
-      const reason = prompt('Reason for deleting this entry (e.g. "duplicate upload"):');
-      if (reason === null) return; // cancelled
-      const row = btnEl.closest('tr');
-      row.style.opacity = '0.5';
+      const defaultReason = isDup ? 'Duplicate bill - confirmed by admin' : '';
+      const reason = prompt(
+        isDup ? 'Confirm reason for deleting this DUPLICATE bill:' : 'Reason for deleting this entry:',
+        defaultReason
+      );
+      if (reason === null) return;
+      const row = btnEl ? btnEl.closest('tr') : null;
+      if (row) row.style.opacity = '0.5';
       try {
         const res = await fetch(`${BACKEND_URL}/delete-ledger-entry`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
-          body: JSON.stringify({ entry_id: entryId, bill_type: billType, reason: reason || '' })
+          body: JSON.stringify({ entry_id: entryId, bill_type: billType || activeTab, reason: reason || '', pin: BOSS_PIN })
         });
         const result = await res.json();
         if (!res.ok || result.error) throw new Error(result.error || 'Delete failed');
-        recordsCache[billType] = recordsCache[billType].filter(r => r.entry_id !== entryId);
+        const cacheKey = billType || activeTab;
+        if (recordsCache[cacheKey]) {
+          recordsCache[cacheKey] = recordsCache[cacheKey].filter(r => String(r.entry_id) !== String(entryId));
+        }
+        updateDuplicateBillRegistry();
         renderTable();
+        showCelebrationToast('🗑️ Bill deleted successfully.');
       } catch (e) {
-        row.style.opacity = '1';
+        if (row) row.style.opacity = '1';
         alert('Could not delete this entry: ' + e.message);
       }
     });
