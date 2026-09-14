@@ -2897,35 +2897,71 @@
   }
 
   async function checkDuplicate(rec) {
+    if (!rec) return null;
     try {
-      const existing = await fetchRecords(rec.bill_type);
-      for (const ex of existing) {
-        if (rec.bill_type === 'gst') {
-          if (
-            rec.gstin && ex.gstin &&
-            ex.gstin.trim().toLowerCase() === rec.gstin.trim().toLowerCase() &&
-            rec.bill_no && ex.bill_no &&
-            ex.bill_no.trim().toLowerCase() === rec.bill_no.trim().toLowerCase()
-          ) return ex;
-        } else {
-          const v1 = (rec.vendor_name || '').trim().toLowerCase();
-          const v2 = (ex.vendor_name || '').trim().toLowerCase();
-          const b1 = (rec.bill_no || '').trim().toLowerCase();
-          const b2 = (ex.bill_no || '').trim().toLowerCase();
-          const d1 = (rec.date || '').trim();
-          const d2 = (ex.date || '').trim();
+      // Ensure we check across BOTH GST and Non-GST records to catch cross-type duplicates
+      let allRecords = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
+      if (allRecords.length === 0) {
+        const [g, ng] = await Promise.all([
+          fetchRecords('gst').catch(() => []),
+          fetchRecords('non_gst').catch(() => [])
+        ]);
+        recordsCache.gst = g;
+        recordsCache.non_gst = ng;
+        allRecords = [...g, ...ng];
+      }
 
-          const toVal = (o) => parseFloat(String(o.invoice_value || o.taxable_value || o.total || '0').replace(/[^0-9.]/g, '')) || 0;
-          const a1 = toVal(rec);
-          const a2 = toVal(ex);
+      const cleanBillNo = s => String(s || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      const cleanStr = s => String(s || '').trim().toLowerCase();
+      const cleanVend = s => cleanStr(s).replace(/^(m\/s\.?|m\/s|shree|sri|hotel|mess)\s+/i, '').replace(/[^a-z0-9]/g, '');
+      const toVal = o => Math.round(parseFloat(String(o.invoice_value || o.taxable_value || o.total || 0).replace(/[^0-9.]/g, '')) || 0);
 
-          // If bill_no is present: match on vendor + bill_no + date
-          if (b1 !== '' && b2 !== '' && b1 === b2 && v1 === v2 && d1 === d2) {
-            return ex;
-          }
-          // If bill_no is blank or missing: match on vendor + date + amount
-          if ((b1 === '' || b2 === '') && v1 !== '' && v1 === v2 && d1 !== '' && d1 === d2 && a1 > 0 && Math.abs(a1 - a2) < 0.5) {
-            return ex;
+      const bno = cleanBillNo(rec.bill_no);
+      const gstin = cleanStr(rec.gstin).toUpperCase();
+      const vend = cleanVend(rec.vendor_name);
+      const amt = toVal(rec);
+      const date = (rec.date || '').trim();
+
+      for (const ex of allRecords) {
+        const exBno = cleanBillNo(ex.bill_no);
+        const exGstin = cleanStr(ex.gstin).toUpperCase();
+        const exVend = cleanVend(ex.vendor_name);
+        const exAmt = toVal(ex);
+        const exDate = (ex.date || '').trim();
+
+        // Rule 1: GSTIN + Clean Bill No (high confidence match)
+        if (gstin && exGstin && gstin === exGstin && bno && exBno && bno === exBno && bno.length >= 2) {
+          return {
+            conflictWith: ex,
+            reason: `Matches existing bill #${ex.entry_id || ''} with same GSTIN (${ex.gstin}) and Invoice No. (${ex.bill_no}) from "${ex.vendor_name}" (₹${ex.invoice_value || exAmt}).`
+          };
+        }
+
+        // Rule 2: Clean Vendor Name + Clean Bill No (catches OCR GSTIN slips or missing GSTIN)
+        if (vend && exVend && (vend === exVend || vend.includes(exVend) || exVend.includes(vend)) && bno && exBno && bno === exBno && bno.length >= 2) {
+          return {
+            conflictWith: ex,
+            reason: `Matches existing bill #${ex.entry_id || ''} from vendor "${ex.vendor_name}" with Invoice No. "${ex.bill_no}" (₹${ex.invoice_value || exAmt}).`
+          };
+        }
+
+        // Rule 3: Exact Invoice Number + Exact Amount (if bill_no is at least 4 characters)
+        if (bno && exBno && bno.length >= 4 && bno === exBno && amt > 0 && Math.abs(amt - exAmt) <= 1) {
+          return {
+            conflictWith: ex,
+            reason: `Matches existing bill #${ex.entry_id || ''} with identical Invoice No. "${ex.bill_no}" and amount ₹${exAmt} from "${ex.vendor_name}".`
+          };
+        }
+
+        // Rule 4: Vendor Name + Date + Exact Amount (catches vouchers or slips with missing/different bill_no)
+        if (vend && exVend && (vend === exVend || vend.includes(exVend) || exVend.includes(vend)) && amt > 0 && Math.abs(amt - exAmt) <= 1 && date && exDate) {
+          const normD1 = date.replace(/[^0-9]/g, '');
+          const normD2 = exDate.replace(/[^0-9]/g, '');
+          if (normD1 === normD2 || date === exDate) {
+            return {
+              conflictWith: ex,
+              reason: `Matches existing bill #${ex.entry_id || ''} from "${ex.vendor_name}" with exact same date (${ex.date}) and amount (₹${ex.invoice_value || exAmt}).`
+            };
           }
         }
       }
@@ -3105,7 +3141,18 @@
           <span>Review before sending <span class="type-tag ${extracted.bill_type}" style="margin-left:8px;">${isGst ? 'GST Bill' : 'Non-GST Bill'}</span></span>
           <span>${dup ? '<span class="dup-tag">Possible duplicate</span>' : ''}</span>
         </div>
-        ${dup ? `<div class="banner warn" style="margin:12px 16px 0;">A bill with this ${isGst ? 'GSTIN + invoice number' : 'vendor + invoice number + date'} is already in the sheet. Sending is blocked by default — this is almost always the same bill uploaded twice.</div>` : ''}
+        ${dup ? `
+        <div style="margin:12px 16px 0; padding:12px 14px; background:#fef2f2; border:1.5px solid #ef4444; border-radius:8px;">
+          <div style="font-size:13px; font-weight:800; color:#991b1b; display:flex; align-items:center; gap:6px;">
+            <span>🚫</span> <span>DUPLICATE BILL DETECTED!</span>
+          </div>
+          <div style="font-size:12px; color:#7f1d1d; margin-top:4px; line-height:1.4;">
+            ${escapeHtml(dup.reason || 'A bill with matching details is already recorded in the ledger.')}
+          </div>
+          <div style="font-size:11.5px; color:#b91c1c; font-weight:600; margin-top:6px;">
+            ⚠️ Sending is blocked by default to prevent duplicate expense entry and double-payment.
+          </div>
+        </div>` : ''}
 
         <!-- Proxy Submission: Whose expense is this? -->
         <div style="margin:12px 16px 0; padding:10px 14px; background:var(--cream, #f9f8f6); border:1px solid var(--line); border-radius:6px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
