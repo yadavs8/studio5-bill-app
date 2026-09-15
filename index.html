@@ -1635,34 +1635,6 @@
   </div>
 </div>
 
-<div class="pin-overlay" id="systemTourOverlay" style="display:none; z-index:10005;">
-  <div class="pin-card" style="max-width:540px; text-align:left; background:#ffffff; border-radius:14px; padding:24px; box-shadow:0 25px 30px -5px rgba(0, 0, 0, 0.3);">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
-      <div>
-        <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; font-weight:800; color:#0284c7;" id="tourStepBadge">STEP 1 OF 7</span>
-        <h2 style="margin:2px 0 0; font-size:19px; color:#0c4a6e; font-family:Georgia, serif; display:flex; align-items:center; gap:8px;" id="tourStepTitle">
-          <span>🚀</span> <span>Welcome to Studio5 ERP</span>
-        </h2>
-      </div>
-      <button type="button" id="closeTourBtn" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
-    </div>
-
-    <div style="height:5px; background:#e2e8f0; border-radius:3px; margin-bottom:16px; overflow:hidden;">
-      <div id="tourProgressBar" style="height:100%; width:14%; background:#059669; transition:width 0.3s ease;"></div>
-    </div>
-
-    <div id="tourStepContent" style="min-height:220px; font-size:13.5px; line-height:1.6; color:#334155;">
-    </div>
-
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:14px; border-top:1px solid #f1f5f9;">
-      <button type="button" id="tourPrevBtn" class="btn-ghost" style="padding:9px 16px; font-size:13px; font-weight:600;" disabled>‹ Previous</button>
-      <div style="display:flex; gap:8px;">
-        <button type="button" id="tourSkipBtn" class="btn-ghost" style="padding:9px 12px; font-size:12.5px; color:#64748b;">Skip Tour</button>
-        <button type="button" id="tourNextBtn" class="btn-primary" style="padding:9px 20px; font-size:13px; font-weight:700; background:#059669;">Next Step ›</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <div class="pin-overlay" id="returnModalOverlay" style="display:none; z-index:10000;">
   <div class="pin-card" style="max-width:540px; text-align:left; max-height:90vh; display:flex; flex-direction:column; background:#ffffff; border-radius:12px; padding:20px; box-shadow:0 20px 25px -5px rgba(0, 0, 0, 0.2);">
@@ -7408,6 +7380,7 @@
   // ─── Guided Interactive App Tour Modal ──────────────────────────────────────
   const TOUR_STEPS = [
     {
+      view: 'dashboard',
       topic: '🚀 Welcome & Overview',
       title: 'Welcome to Studio5 ERP Bill Ledger!',
       content: `
@@ -7420,6 +7393,7 @@
       `
     },
     {
+      view: 'dashboard',
       topic: '📊 Executive Dashboard',
       title: 'Real-Time Financial & Material Analytics',
       content: `
@@ -7432,6 +7406,7 @@
       `
     },
     {
+      view: 'upload',
       topic: '📄 Bill Upload & AI Scanning',
       title: 'Instant AI Data Extraction & Cash Vouchers',
       content: `
@@ -7447,18 +7422,21 @@
       `
     },
     {
+      view: 'ledger',
       topic: '📑 Smart Ledger & Verification',
       title: 'Ledger Table, Line Items & GST Verification',
       content: `
         <p style="margin-bottom:12px;">The <b>Ledger</b> tab displays all approved and recorded bills in a searchable, filterable list:</p>
         <ul style="margin:0 0 12px 18px; padding:0; font-size:12.5px;">
-          <li style="margin-bottom:8px;"><b>Smart View vs Full View:</b> Toggle between compact mobile layout or complete 22-column accounting table.</li>
+          <li style="margin-bottom:8px;"><b>Smart View vs Full View:</b> Toggle between compact mobile layout or complete accounting table.</li>
           <li style="margin-bottom:8px;"><b>📦 Line Items Breakdown:</b> Click the <code>📦 X Materials</code> badge on any row to expand a sub-table showing exact items, quantities, and rates purchased!</li>
           <li style="margin-bottom:8px;"><b>🔍 1-Click GST Verification:</b> Click the 🔍 icon next to any GSTIN to instantly copy the 15-digit GSTIN to your clipboard and launch the Govt GST Portal for verification.</li>
+          <li style="margin-bottom:8px;"><b>✏️ Edit Record (PIN 5198):</b> Full permission to edit all fields (date, vendor, invoice no, price, payment details) or delete duplicates.</li>
         </ul>
       `
     },
     {
+      view: 'approvals',
       topic: '🛡️ Manager Approvals Queue',
       title: 'Quality Control & Approval Workflow',
       content: `
@@ -7471,6 +7449,7 @@
       `
     },
     {
+      view: 'bank',
       topic: '🏦 Bank Reconciliation & Export',
       title: 'Bank Debit Matching & Tally XML Export',
       content: `
@@ -7490,20 +7469,30 @@
   let currentTourStep = 0;
 
   function renderTourStep(stepIdx) {
-    const step = TOUR_STEPS[stepIdx];
-    if (!step) return;
+    const overlay = document.getElementById('appTourModalOverlay');
+    if (!overlay) return;
+    if (stepIdx < 0) stepIdx = 0;
+    if (stepIdx >= TOUR_STEPS.length) stepIdx = TOUR_STEPS.length - 1;
     currentTourStep = stepIdx;
-    
-    const stepBadge = document.getElementById('tourStepBadge');
-    const topicBadge = document.getElementById('tourTopicBadge');
-    const progressBar = document.getElementById('tourProgressBar');
-    const contentBody = document.getElementById('tourContentBody');
-    const prevBtn = document.getElementById('tourPrevBtn');
-    const nextBtn = document.getElementById('tourNextBtn');
 
-    if (stepBadge) stepBadge.textContent = `Step ${stepIdx + 1} of ${TOUR_STEPS.length}`;
+    const step = TOUR_STEPS[currentTourStep];
+    if (!step) return;
+
+    // Switch view to match what is being explained so user sees it in background
+    if (step.view && typeof switchView === 'function') {
+      try { switchView(step.view); } catch(e) {}
+    }
+
+    const stepBadge = overlay.querySelector('#tourStepBadge') || document.getElementById('tourStepBadge');
+    const topicBadge = overlay.querySelector('#tourTopicBadge') || document.getElementById('tourTopicBadge');
+    const progressBar = overlay.querySelector('#tourProgressBar') || document.getElementById('tourProgressBar');
+    const contentBody = overlay.querySelector('#tourContentBody') || document.getElementById('tourContentBody');
+    const prevBtn = overlay.querySelector('#tourPrevBtn') || document.getElementById('tourPrevBtn');
+    const nextBtn = overlay.querySelector('#tourNextBtn') || document.getElementById('tourNextBtn');
+
+    if (stepBadge) stepBadge.textContent = `Step ${currentTourStep + 1} of ${TOUR_STEPS.length}`;
     if (topicBadge) topicBadge.textContent = step.topic;
-    if (progressBar) progressBar.style.width = `${((stepIdx + 1) / TOUR_STEPS.length) * 100}%`;
+    if (progressBar) progressBar.style.width = `${((currentTourStep + 1) / TOUR_STEPS.length) * 100}%`;
     if (contentBody) {
       contentBody.innerHTML = `
         <h3 style="font-size:16px; margin:0 0 10px; color:#0c4a6e;">${step.title}</h3>
@@ -7511,9 +7500,9 @@
       `;
     }
 
-    if (prevBtn) prevBtn.style.visibility = stepIdx === 0 ? 'hidden' : 'visible';
+    if (prevBtn) prevBtn.style.visibility = currentTourStep === 0 ? 'hidden' : 'visible';
     if (nextBtn) {
-      if (stepIdx === TOUR_STEPS.length - 1) {
+      if (currentTourStep === TOUR_STEPS.length - 1) {
         nextBtn.textContent = '🎉 Done / Start App';
         nextBtn.style.background = '#16a34a';
       } else {
@@ -7529,44 +7518,71 @@
     renderTourStep(0);
     overlay.style.display = 'flex';
   }
+  window.openAppTour = openAppTour;
+  window.startSystemTour = openAppTour;
+
+  function closeAppTour() {
+    const overlay = document.getElementById('appTourModalOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+  window.closeAppTour = closeAppTour;
+  window.closeSystemTour = closeAppTour;
 
   function setupAppTourModal() {
     const overlay = document.getElementById('appTourModalOverlay');
+    if (!overlay) return;
+
     const openBtn = document.getElementById('openAppTourBtn');
     const systemBtn = document.getElementById('openSystemTourBtn');
     const closeBtn = document.getElementById('closeTourModalBtn');
-    const tourCloseBtn = document.getElementById('closeTourBtn');
-    const skipBtn = document.getElementById('tourSkipBtn');
-    const prevBtn = document.getElementById('tourPrevBtn');
-    const nextBtn = document.getElementById('tourNextBtn');
+    const skipBtn = overlay.querySelector('#tourSkipBtn');
+    const prevBtn = overlay.querySelector('#tourPrevBtn');
+    const nextBtn = overlay.querySelector('#tourNextBtn');
 
-    if (openBtn) openBtn.addEventListener('click', () => openAppTour(false));
-    if (systemBtn) systemBtn.addEventListener('click', () => openAppTour(false));
-    if (closeBtn) closeBtn.addEventListener('click', () => { if (overlay) overlay.style.display = 'none'; });
-    if (tourCloseBtn) tourCloseBtn.addEventListener('click', () => { if (overlay) overlay.style.display = 'none'; });
-    if (skipBtn) skipBtn.addEventListener('click', () => { if (overlay) overlay.style.display = 'none'; });
-    
+    if (openBtn) openBtn.onclick = () => openAppTour(false);
+    if (systemBtn) systemBtn.onclick = () => openAppTour(false);
+    if (closeBtn) closeBtn.onclick = closeAppTour;
+    if (skipBtn) skipBtn.onclick = closeAppTour;
+
     if (prevBtn) {
-      prevBtn.addEventListener('click', () => {
+      prevBtn.onclick = () => {
         if (currentTourStep > 0) renderTourStep(currentTourStep - 1);
-      });
+      };
     }
     if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
+      nextBtn.onclick = () => {
         if (currentTourStep < TOUR_STEPS.length - 1) {
           renderTourStep(currentTourStep + 1);
         } else {
-          if (overlay) overlay.style.display = 'none';
+          closeAppTour();
           localStorage.setItem('studio5_tour_seen', 'yes');
+          if (typeof showCelebrationToast === 'function') {
+            showCelebrationToast('Tour complete! You\'re ready to use Studio5 ERP like a pro 🚀');
+          }
         }
-      });
+      };
     }
 
-    if (overlay) {
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) overlay.style.display = 'none';
-      });
-    }
+    overlay.onclick = (e) => {
+      if (e.target === overlay) closeAppTour();
+    };
+
+    window.addEventListener('keydown', (e) => {
+      if (overlay.style.display !== 'flex') return;
+      if (e.key === 'Escape') {
+        closeAppTour();
+      } else if (e.key === 'ArrowRight') {
+        if (currentTourStep < TOUR_STEPS.length - 1) {
+          renderTourStep(currentTourStep + 1);
+        } else {
+          closeAppTour();
+        }
+      } else if (e.key === 'ArrowLeft') {
+        if (currentTourStep > 0) {
+          renderTourStep(currentTourStep - 1);
+        }
+      }
+    });
   }
 
   updateIdentityDisplay();
