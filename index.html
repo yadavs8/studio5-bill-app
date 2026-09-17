@@ -2407,12 +2407,15 @@
           </div>
 
           <!-- Filter Tabs -->
-          <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+          <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center;">
             <button class="tab-btn active" data-bankfilter="ALL" id="bankFilterAll">All</button>
             <button class="tab-btn" data-bankfilter="UNMATCHED" id="bankFilterUnmatched">🔴 Unmatched</button>
             <button class="tab-btn" data-bankfilter="PENDING_CLARIFICATION" id="bankFilterPending">🟡 Pending</button>
             <button class="tab-btn" data-bankfilter="RECONCILED" id="bankFilterReconciled">🟢 Reconciled</button>
             <button class="tab-btn" data-bankfilter="TALLY_SYNCED" id="bankFilterSynced">✅ Tally Synced</button>
+            <button id="btnSyncGmailBank" style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:6px 14px; background:#1a237e; color:#fff; border:none; border-radius:6px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
+              🔄 Sync Bank Emails
+            </button>
           </div>
 
           <!-- Transactions Table -->
@@ -9124,6 +9127,32 @@
         } finally {
           reconcileAllBtn.disabled = false;
           reconcileAllBtn.textContent = origText;
+        }
+      });
+    }
+
+    const syncGmailBtn = document.getElementById('btnSyncGmailBank');
+    if (syncGmailBtn) {
+      syncGmailBtn.addEventListener('click', async () => {
+        const origText = syncGmailBtn.textContent;
+        syncGmailBtn.disabled = true;
+        syncGmailBtn.textContent = '⏳ Fetching Emails...';
+        try {
+          const res = await fetch(`${BACKEND_URL}/bank/sync-emails`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+            body: JSON.stringify({ count: 50 })
+          });
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || 'Failed to sync bank emails');
+          const syncRes = data.sync_result || {};
+          showCelebrationToast(`📬 Sync complete! Added ${syncRes.added || 0} new transactions (${syncRes.reconciled || 0} auto-reconciled). Total: ${syncRes.total || data.summary?.total_count || 0}`);
+          await loadBankTransactions();
+        } catch (err) {
+          alert('Bank email sync error: ' + err.message);
+        } finally {
+          syncGmailBtn.disabled = false;
+          syncGmailBtn.textContent = origText;
         }
       });
     }
