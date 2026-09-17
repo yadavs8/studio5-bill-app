@@ -126,6 +126,27 @@
   :root[data-theme="dark"] #bankSynced { color: #34d399 !important; }
   :root[data-theme="dark"] #bankPending { color: #38bdf8 !important; }
 
+  /* CA Monthly Closeout Card Dark Theme */
+  :root[data-theme="dark"] #caAuditCard {
+    background: #111827 !important;
+    border-color: #374151 !important;
+  }
+  :root[data-theme="dark"] #caAuditCard h3 {
+    color: #e0e7ff !important;
+  }
+  :root[data-theme="dark"] #caAuditCard p {
+    color: #94a3b8 !important;
+  }
+  :root[data-theme="dark"] #caAuditCard .ca-metric-box {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+  }
+  :root[data-theme="dark"] #caAuditCard .btn-ghost {
+    background: #1f2937 !important;
+    color: #f3f4f6 !important;
+    border-color: #4b5563 !important;
+  }
+
   /* Form Controls & Inputs */
   :root[data-theme="dark"] .field {
     background: #111827 !important;
@@ -2403,6 +2424,65 @@
             <div class="dash-card" style="background:#e3f2fd;">
               <div class="dash-number" id="bankPending" style="color:#1565c0;">—</div>
               <div class="dash-label">Pending Clarification</div>
+            </div>
+          </div>
+
+          <!-- ═══ MONTHLY CA AUDIT & CLOSEOUT CARD ═══ -->
+          <div id="caAuditCard" class="panel" style="background:linear-gradient(135deg, #f8faff 0%, #edf2f7 100%); border:1px solid #c7d2fe; border-radius:10px; padding:16px 20px; margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+              <div>
+                <h3 style="margin:0 0 4px; font-size:16px; color:#1e1b4b; display:flex; align-items:center; gap:8px;">
+                  <span>🏛️</span> Monthly CA Audit Packet & Auto-Closeout
+                </h3>
+                <p style="margin:0; font-size:12.5px; color:#475569;">
+                  Auto-compiled on the 1st of every month at 9:00 AM IST for Chartered Accountant audit & filing.
+                </p>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <label style="font-size:12px; font-weight:600; color:#334155;">Target Month:</label>
+                <input type="month" id="caMonthPicker" style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12.5px; font-weight:600; background:#fff; cursor:pointer;" />
+                <button class="btn-primary" id="btnRunCaCloseout" style="font-size:12.5px; padding:7px 14px; background:#4338ca; border-color:#4338ca; display:flex; align-items:center; gap:6px;">
+                  <span>⚡</span> Run Closeout Now
+                </button>
+              </div>
+            </div>
+
+            <!-- CA Metrics Row -->
+            <div id="caPacketMetrics" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;">
+              <div class="ca-metric-box" style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px;">
+                <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Reconciliation Rate</div>
+                <div id="caBrsRate" style="font-size:18px; font-weight:800; color:#059669; margin:2px 0;">—</div>
+                <div id="caBrsDetail" style="font-size:11px; color:#64748b;">Bank Recon (BRS)</div>
+              </div>
+              <div class="ca-metric-box" style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px;">
+                <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Eligible GST ITC</div>
+                <div id="caItcTotal" style="font-size:18px; font-weight:800; color:#2563eb; margin:2px 0;">—</div>
+                <div id="caItcDetail" style="font-size:11px; color:#64748b;">GSTR-2B Input Credit</div>
+              </div>
+              <div class="ca-metric-box" style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px;">
+                <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Site Petty Cash</div>
+                <div id="caSiteTotal" style="font-size:18px; font-weight:800; color:#d97706; margin:2px 0;">—</div>
+                <div id="caSiteDetail" style="font-size:11px; color:#64748b;">Non-GST site expenses</div>
+              </div>
+              <div class="ca-metric-box" style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px;">
+                <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Total Bank Debits</div>
+                <div id="caBankDebits" style="font-size:18px; font-weight:800; color:#dc2626; margin:2px 0;">—</div>
+                <div id="caBankCredits" style="font-size:11px; color:#64748b;">Inflows: —</div>
+              </div>
+            </div>
+
+            <!-- CA Quick Download Links -->
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <span style="font-size:12px; font-weight:700; color:#475569;">📥 One-Click CA Sheets:</span>
+              <button class="btn-ghost" id="btnDownloadBrs" style="font-size:12px; padding:6px 12px; background:#fff; border:1px solid #cbd5e1; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                📊 BRS Statement (.CSV)
+              </button>
+              <button class="btn-ghost" id="btnDownloadGstr2b" style="font-size:12px; padding:6px 12px; background:#fff; border:1px solid #cbd5e1; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                🧾 GSTR-2B ITC Sheet (.CSV)
+              </button>
+              <button class="btn-ghost" id="btnDownloadSiteExpenses" style="font-size:12px; padding:6px 12px; background:#fff; border:1px solid #cbd5e1; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                🏗️ Site Petty Cash (.CSV)
+              </button>
             </div>
           </div>
 
@@ -8798,6 +8878,7 @@
       const data = await res.json();
       allBankTxns = data.transactions || [];
       applyBankFilters();
+      if (window.refreshCaPacket) window.refreshCaPacket();
     } catch (e) {
       tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Could not load bank transactions: ${e.message}</td></tr>`;
     }
@@ -9175,6 +9256,119 @@
   }
 
   setupBankUpload();
+
+  function setupCaAuditPacket() {
+    const monthPicker = document.getElementById('caMonthPicker');
+    const btnCloseout = document.getElementById('btnRunCaCloseout');
+    const btnBrs = document.getElementById('btnDownloadBrs');
+    const btnGstr2b = document.getElementById('btnDownloadGstr2b');
+    const btnSite = document.getElementById('btnDownloadSiteExpenses');
+
+    if (!monthPicker) return;
+
+    // Set default month to current month YYYY-MM
+    const now = new Date();
+    const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    monthPicker.value = curMonth;
+
+    async function fetchAndDisplayCaPacket(month) {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/ca/monthly-packet?month=${month}`, {
+          headers: { 'x-app-secret': APP_SECRET }
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const b = data.summary?.bank || {};
+        const g = data.summary?.gstr2b || {};
+        const s = data.summary?.site_expenses || {};
+
+        const fmt = n => '₹' + Math.round(n || 0).toLocaleString('en-IN');
+
+        const rateEl = document.getElementById('caBrsRate');
+        if (rateEl) rateEl.textContent = `${b.reconciliation_rate_pct || 0}%`;
+        const brsDetailEl = document.getElementById('caBrsDetail');
+        if (brsDetailEl) brsDetailEl.textContent = `${b.reconciled_count || 0}/${b.total_transactions || 0} txns (${fmt(b.reconciled_bills_amt)})`;
+
+        const itcEl = document.getElementById('caItcTotal');
+        if (itcEl) itcEl.textContent = fmt(g.total_eligible_itc);
+        const itcDetailEl = document.getElementById('caItcDetail');
+        if (itcDetailEl) itcDetailEl.textContent = `${g.bill_count || 0} GST bills (${fmt(g.taxable_total)} taxable)`;
+
+        const siteEl = document.getElementById('caSiteTotal');
+        if (siteEl) siteEl.textContent = fmt(s.total_amount);
+        const siteDetailEl = document.getElementById('caSiteDetail');
+        if (siteDetailEl) siteDetailEl.textContent = `${s.slip_count || 0} non-GST slips`;
+
+        const debitsEl = document.getElementById('caBankDebits');
+        if (debitsEl) debitsEl.textContent = fmt(b.total_debits);
+        const creditsEl = document.getElementById('caBankCredits');
+        if (creditsEl) creditsEl.textContent = `Inflows: ${fmt(b.total_credits)}`;
+      } catch (e) {
+        console.warn('Could not load CA packet preview:', e.message);
+      }
+    }
+
+    // Load initial packet
+    fetchAndDisplayCaPacket(curMonth);
+
+    monthPicker.addEventListener('change', () => {
+      fetchAndDisplayCaPacket(monthPicker.value);
+    });
+
+    if (btnCloseout) {
+      btnCloseout.addEventListener('click', async () => {
+        const month = monthPicker.value || curMonth;
+        const origHtml = btnCloseout.innerHTML;
+        btnCloseout.disabled = true;
+        btnCloseout.innerHTML = '<span>⏳</span> Running...';
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/ca/closeout-month`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+            body: JSON.stringify({ month })
+          });
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || 'Failed to run month closeout');
+
+          const autoCount = data.autoCategorizedCount || 0;
+          const waStatus = data.whatsappSent ? '📱 WhatsApp packet sent to Rajiv Bawa.' : '';
+          showCelebrationToast(`🎉 Closeout for ${month} complete! ${autoCount} overheads auto-categorized. ${waStatus}`);
+          await fetchAndDisplayCaPacket(month);
+          await loadBankTransactions();
+        } catch (err) {
+          alert('Month closeout error: ' + err.message);
+        } finally {
+          btnCloseout.disabled = false;
+          btnCloseout.innerHTML = origHtml;
+        }
+      });
+    }
+
+    if (btnBrs) {
+      btnBrs.addEventListener('click', () => {
+        const month = monthPicker.value || curMonth;
+        window.open(`${BACKEND_URL}/api/ca/download-brs?month=${month}&secret=${APP_SECRET}`, '_blank');
+      });
+    }
+
+    if (btnGstr2b) {
+      btnGstr2b.addEventListener('click', () => {
+        const month = monthPicker.value || curMonth;
+        window.open(`${BACKEND_URL}/api/ca/download-gstr2b?month=${month}&secret=${APP_SECRET}`, '_blank');
+      });
+    }
+
+    if (btnSite) {
+      btnSite.addEventListener('click', () => {
+        const month = monthPicker.value || curMonth;
+        window.open(`${BACKEND_URL}/api/ca/download-site-expenses?month=${month}&secret=${APP_SECRET}`, '_blank');
+      });
+    }
+
+    window.refreshCaPacket = () => fetchAndDisplayCaPacket(monthPicker.value || curMonth);
+  }
+
+  setupCaAuditPacket();
 
   // Bank filter tab buttons
   document.querySelectorAll('[data-bankfilter]').forEach(btn => {
