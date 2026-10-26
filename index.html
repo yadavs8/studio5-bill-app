@@ -6748,7 +6748,35 @@
 
   let lastNotificationPendingCount = 0;
 
-  const VAPID_PUBLIC_KEY = 'BNCbieva2-XjVaqVHBjQj9xm4BwiSOFsoLsJIDLqTqC6FWUL3l7rx703Hw_hVTRDKzvBOWHakwJ8QnQenGn6bMM';
+  // Lockscreen alerts are sent by the approval-alerts function in Supabase, which keeps each
+  // phone's registration in the database and checks for new bills every minute — so alerts
+  // keep coming even while the Render backend is asleep or restarting.
+  const ALERTS_URL = 'https://vxnbqctughowcrvruvyb.supabase.co/functions/v1/approval-alerts';
+  const APPROVAL_ALERTS_FLAG = 'studio5_approval_alerts';
+  const ALERTS_KEY_STORAGE = 'studio5_alerts_public_key';
+
+  // Approval alerts go only to phones of people who approve bills: whoever has entered the
+  // boss PIN or turned on 🔔 Push Alerts on that phone.
+  function wantsApprovalAlerts() {
+    return localStorage.getItem(APPROVAL_ALERTS_FLAG) === 'on' || sessionStorage.getItem('boss_unlocked') === 'yes';
+  }
+
+  async function getAlertsPublicKey() {
+    const saved = localStorage.getItem(ALERTS_KEY_STORAGE);
+    if (saved) return saved;
+    const res = await fetch(`${ALERTS_URL}?action=public-key`);
+    const data = await res.json();
+    if (!data.publicKey) throw new Error(data.error || 'no alerts key');
+    localStorage.setItem(ALERTS_KEY_STORAGE, data.publicKey);
+    return data.publicKey;
+  }
+
+  function subscriptionUsesKey(sub, keyBytes) {
+    const current = sub.options && sub.options.applicationServerKey;
+    if (!current) return false;
+    const a = new Uint8Array(current);
+    return a.length === keyBytes.length && a.every((v, i) => v === keyBytes[i]);
+  }
 
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -6765,20 +6793,26 @@
     try {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
       const reg = await navigator.serviceWorker.ready;
+      const keyBytes = urlBase64ToUint8Array(await getAlertsPublicKey());
       let sub = await reg.pushManager.getSubscription();
+      if (sub && !subscriptionUsesKey(sub, keyBytes)) {
+        await sub.unsubscribe(); // registered with the old Render alerts — move it to the new alert service
+        sub = null;
+      }
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          applicationServerKey: keyBytes
         });
       }
       const activeUser = typeof getActiveUserName === 'function' ? getActiveUserName() : 'Manager';
-      await fetch(`${BACKEND_URL}/push/subscribe`, {
+      const res = await fetch(ALERTS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
-        body: JSON.stringify({ subscription: sub, user_name: activeUser })
+        body: JSON.stringify({ action: 'subscribe', subscription: sub, user_name: activeUser, wants_approval_alerts: wantsApprovalAlerts() })
       });
-      console.log('[LockscreenPush] Registered VAPID device subscription on backend!');
+      if (!res.ok) throw new Error('alerts service answered ' + res.status);
+      console.log('[LockscreenPush] Registered this phone for lockscreen alerts');
     } catch (e) {
       console.warn('[LockscreenPush] Subscription registration failed:', e.message);
     }
@@ -6791,6 +6825,7 @@
     }
     const perm = await Notification.requestPermission();
     if (perm === 'granted') {
+      localStorage.setItem(APPROVAL_ALERTS_FLAG, 'on');
       showCelebrationToast('🔔 Lockscreen Push Alerts Enabled!');
       await registerLockscreenPushSubscription();
       checkAndShowPushNotification(true);
@@ -6801,6 +6836,9 @@
   window.requestNotificationPermission = requestNotificationPermission;
 
   if ('Notification' in window && Notification.permission === 'granted') {
+    // Allowing notifications used to be possible only through 🔔 Push Alerts, so a phone that
+    // already allows them asked for approval alerts — keep that wish across this update.
+    if (localStorage.getItem(APPROVAL_ALERTS_FLAG) === null) localStorage.setItem(APPROVAL_ALERTS_FLAG, 'on');
     registerLockscreenPushSubscription();
   }
 
@@ -6920,6 +6958,12 @@
     if (bossPinInput.value.trim() === BOSS_PIN) {
       sessionStorage.setItem('boss_unlocked', 'yes');
       bossPinOverlay.style.display = 'none';
+      // This phone approves bills, so it should get the lockscreen alerts for new ones.
+      if (localStorage.getItem(APPROVAL_ALERTS_FLAG) !== 'on') {
+        localStorage.setItem(APPROVAL_ALERTS_FLAG, 'on');
+        if ('Notification' in window && Notification.permission === 'granted') registerLockscreenPushSubscription();
+        else if ('Notification' in window && Notification.permission === 'default') requestNotificationPermission();
+      }
       const action = pendingBossAction;
       pendingBossAction = null;
       if (action) action();
