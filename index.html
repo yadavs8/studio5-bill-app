@@ -752,6 +752,8 @@
     white-space: nowrap;
   }
   tbody tr:hover { background: #e0f2fe; }
+  .alerts-setup { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:13px; line-height:1.45; }
+  .alerts-setup button { flex-shrink:0; }
   .empty-state {
     text-align: center;
     padding: 40px 20px;
@@ -1972,6 +1974,7 @@
     <div class="view-track" id="viewTrack">
 
       <div class="view" id="view-dashboard">
+        <div class="alerts-setup" style="display:none;"></div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
           <div style="display:flex; align-items:center; gap:8px;">
             <label for="dashMonthSelect" style="font-size:12.5px; font-weight:600; color:var(--walnut-light);">Viewing:</label>
@@ -2391,6 +2394,7 @@
           <div class="table-toolbar">
             <h2>Pending Approvals</h2>
           </div>
+          <div class="alerts-setup" style="display:none;"></div>
           <div id="approvalsArea"><div class="empty-state">Enter the manager PIN to view pending bills.</div></div>
         </div>
       </div>
@@ -2533,7 +2537,6 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 (function() {
@@ -2593,6 +2596,23 @@
 (function(){
   const BACKEND_URL = 'https://studio5-bill-backened.onrender.com';
   const APP_SECRET = 'studio5-field-2026'; // must exactly match APP_SHARED_SECRET on Render
+  // The Excel library is large (~900 KB), so it's only fetched the first time an export or a
+  // bank-statement import actually needs it, instead of slowing down every app start.
+  let xlsxLoadPromise = null;
+  function ensureXlsx() {
+    if (typeof XLSX !== 'undefined') return Promise.resolve();
+    if (!xlsxLoadPromise) {
+      xlsxLoadPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = () => resolve();
+        s.onerror = () => { xlsxLoadPromise = null; reject(new Error('Excel processing library (XLSX) could not be loaded. Check your connection.')); };
+        document.head.appendChild(s);
+      });
+    }
+    return xlsxLoadPromise;
+  }
+
   const TEAM_MEMBERS = ['Sanjeev Yadav', 'Sanjeev Sharma', 'Prince', 'Anil Kori', 'Rajiv Bawa', 'Kuhu Bawa', 'Vishal'];
   const fileInput = document.getElementById('fileInput');
   const dropZone = document.getElementById('dropZone');
@@ -2856,6 +2876,24 @@
   let recordsCache = { gst: [], non_gst: [] };
   let paymentsCache = []; // [{ person, amount, date }, ...] — cash advances given to field people
 
+  // Last-known data is kept on the phone so every screen paints instantly on open, even
+  // while the backend is still waking up; fresh data replaces it as soon as it arrives.
+  const SAVED_DATA_KEY = 'studio5_saved_data_v1';
+  function saveDataForNextOpen() {
+    try {
+      localStorage.setItem(SAVED_DATA_KEY, JSON.stringify({
+        gst: recordsCache.gst,
+        non_gst: recordsCache.non_gst,
+        payments: paymentsCache,
+        returns: returnsCache,
+        pending_count: approvalsLoaded ? approvalsCache.length : null
+      }));
+    } catch (e) { /* storage full or blocked — the app still works, it just starts without saved data */ }
+  }
+  function loadSavedData() {
+    try { return JSON.parse(localStorage.getItem(SAVED_DATA_KEY) || 'null'); } catch (e) { return null; }
+  }
+
   // Alias lists for Payments sheet columns — tries each name in order until one matches.
   // This makes fetchPayments resilient to whatever column names the Apps Script uses.
   const PAYMENT_COL_ALIASES = {
@@ -2948,7 +2986,19 @@
     return null;
   }
 
-  async function fetchRecords(billType) {
+  // The dashboard and the ledger both ask for the same sheet data, often at the same moment
+  // (app start, auto-refresh). Share one request per bill type instead of hitting the slow
+  // Sheet-backed backend twice.
+  const recordsInFlight = {};
+  function fetchRecords(billType) {
+    if (!recordsInFlight[billType]) {
+      recordsInFlight[billType] = fetchRecordsFromBackend(billType)
+        .finally(() => { delete recordsInFlight[billType]; });
+    }
+    return recordsInFlight[billType];
+  }
+
+  async function fetchRecordsFromBackend(billType) {
     const res = await fetch(`${BACKEND_URL}/records?bill_type=${billType}&_t=${Date.now()}`, {
       headers: { 'x-app-secret': APP_SECRET }
     });
@@ -3845,6 +3895,7 @@
       recordsCache.gst = gst;
       recordsCache.non_gst = nonGst;
       updateDuplicateBillRegistry();
+      saveDataForNextOpen();
 
       if (!silent || dataChanged || !hasCache) {
         const allRecords = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
@@ -4905,7 +4956,7 @@
     await loadRecords();
   });
 
-  exportBtn.addEventListener('click', () => {
+  exportBtn.addEventListener('click', async () => {
     const gstFiltered = filterRecordsList(recordsCache.gst || []);
     const nonGstFiltered = filterRecordsList(recordsCache.non_gst || []);
 
@@ -4924,6 +4975,7 @@
       return;
     }
 
+    try { await ensureXlsx(); } catch (e) { alert(e.message); return; }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gstRows.length ? gstRows : [{}]), 'GST Bills');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(nonGstRows.length ? nonGstRows : [{}]), 'Non-GST Bills');
@@ -6531,6 +6583,7 @@
       recordsCache.non_gst = nonGst;
       paymentsCache = payments;
       updateDuplicateBillRegistry();
+      saveDataForNextOpen();
     } catch (e) {
       if (!hasCache) { /* nothing to show yet and the fetch failed — leave placeholders */ }
       await pendingCountPromise;
@@ -6699,7 +6752,36 @@
 
   let lastNotificationPendingCount = 0;
 
-  const VAPID_PUBLIC_KEY = 'BNCbieva2-XjVaqVHBjQj9xm4BwiSOFsoLsJIDLqTqC6FWUL3l7rx703Hw_hVTRDKzvBOWHakwJ8QnQenGn6bMM';
+  // Lockscreen alerts are sent by the approval-alerts function in Supabase, which keeps each
+  // phone's registration in the database and checks for new bills every minute — so alerts
+  // keep coming even while the Render backend is asleep or restarting.
+  const ALERTS_URL = 'https://vxnbqctughowcrvruvyb.supabase.co/functions/v1/approval-alerts';
+  const APPROVAL_ALERTS_FLAG = 'studio5_approval_alerts';
+  const ALERTS_KEY_STORAGE = 'studio5_alerts_public_key';
+
+  // Approval alerts go only to phones of people who approve bills: whoever has entered the
+  // boss PIN or turned on 🔔 Push Alerts on that phone.
+  function wantsApprovalAlerts() {
+    return localStorage.getItem(APPROVAL_ALERTS_FLAG) === 'on' || sessionStorage.getItem('boss_unlocked') === 'yes';
+  }
+
+  async function getAlertsPublicKey() {
+    const saved = localStorage.getItem(ALERTS_KEY_STORAGE);
+    if (saved) return saved;
+    const res = await fetch(`${ALERTS_URL}?action=public-key`);
+    const data = await res.json();
+    if (!data.publicKey) throw new Error(data.error || 'no alerts key');
+    localStorage.setItem(ALERTS_KEY_STORAGE, data.publicKey);
+    return data.publicKey;
+  }
+
+  const SUBSCRIBED_KEY_STORAGE = 'studio5_alerts_subscribed_key';
+  function subscriptionUsesKey(sub, keyBytes) {
+    const current = sub.options && sub.options.applicationServerKey;
+    if (!current) return localStorage.getItem(SUBSCRIBED_KEY_STORAGE) === localStorage.getItem(ALERTS_KEY_STORAGE);
+    const a = new Uint8Array(current);
+    return a.length === keyBytes.length && a.every((v, i) => v === keyBytes[i]);
+  }
 
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -6716,42 +6798,98 @@
     try {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
       const reg = await navigator.serviceWorker.ready;
+      const keyBytes = urlBase64ToUint8Array(await getAlertsPublicKey());
       let sub = await reg.pushManager.getSubscription();
+      if (sub && !subscriptionUsesKey(sub, keyBytes)) {
+        await sub.unsubscribe(); // registered with the old Render alerts — move it to the new alert service
+        sub = null;
+      }
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          applicationServerKey: keyBytes
         });
+        localStorage.setItem(SUBSCRIBED_KEY_STORAGE, localStorage.getItem(ALERTS_KEY_STORAGE));
       }
       const activeUser = typeof getActiveUserName === 'function' ? getActiveUserName() : 'Manager';
-      await fetch(`${BACKEND_URL}/push/subscribe`, {
+      const res = await fetch(ALERTS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
-        body: JSON.stringify({ subscription: sub, user_name: activeUser })
+        body: JSON.stringify({ action: 'subscribe', subscription: sub, user_name: activeUser, wants_approval_alerts: wantsApprovalAlerts() })
       });
-      console.log('[LockscreenPush] Registered VAPID device subscription on backend!');
+      if (!res.ok) throw new Error('alerts service answered ' + res.status);
+      console.log('[LockscreenPush] Registered this phone for lockscreen alerts');
     } catch (e) {
       console.warn('[LockscreenPush] Subscription registration failed:', e.message);
     }
   }
 
+  const isIphone = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isHomeScreenApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  // What this phone still needs before approval alerts can reach it (null = all set).
+  // iPhones only allow alerts for apps opened from the Home Screen icon (iOS 16.4+), and only
+  // ask for permission straight after a button tap — hence a button rather than an automatic prompt.
+  function alertsSetupNeeded() {
+    if (isIphone && !isHomeScreenApp) {
+      return { text: '📲 To get bill alerts on this iPhone, add the app to your Home Screen (Share 📤 → Add to Home Screen), then always open Studio5 Bills from the Home Screen icon.', button: 'Show me how', action: () => window.triggerPwaInstall() };
+    }
+    if (!('Notification' in window) || !('PushManager' in window)) {
+      return { text: isIphone ? '🔔 Bill alerts need iOS 16.4 or newer. Update the iPhone in Settings → General → Software Update.' : '🔔 This browser can\'t show bill alerts. Open the app in Chrome.' };
+    }
+    if (Notification.permission === 'default') {
+      return { text: '🔔 Get an alert on this phone as soon as a bill needs your approval.', button: 'Turn on alerts', action: requestNotificationPermission };
+    }
+    if (Notification.permission === 'denied') {
+      return { text: isIphone ? '🔕 Alerts are blocked on this iPhone. Open Settings → Notifications → Studio5 Bills and turn on Allow Notifications.' : '🔕 Alerts are blocked for this app. Allow notifications for it in the phone\'s settings.' };
+    }
+    return null;
+  }
+
+  function renderAlertsSetup() {
+    const needed = wantsApprovalAlerts() ? alertsSetupNeeded() : null;
+    document.querySelectorAll('.alerts-setup').forEach(el => {
+      if (!needed) { el.style.display = 'none'; return; }
+      el.innerHTML = '';
+      const text = document.createElement('span');
+      text.textContent = needed.text;
+      el.appendChild(text);
+      if (needed.button) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-primary';
+        btn.textContent = needed.button;
+        btn.addEventListener('click', needed.action);
+        el.appendChild(btn);
+      }
+      el.style.display = '';
+    });
+  }
+
   async function requestNotificationPermission() {
-    if (!('Notification' in window)) {
-      alert('Push notifications are not supported on this browser.');
+    if (!('Notification' in window) || !('PushManager' in window)) {
+      if (isIphone && !isHomeScreenApp) window.triggerPwaInstall();
+      else alert(alertsSetupNeeded().text);
       return;
     }
     const perm = await Notification.requestPermission();
     if (perm === 'granted') {
+      localStorage.setItem(APPROVAL_ALERTS_FLAG, 'on');
+      renderAlertsSetup();
       showCelebrationToast('🔔 Lockscreen Push Alerts Enabled!');
       await registerLockscreenPushSubscription();
       checkAndShowPushNotification(true);
     } else {
+      renderAlertsSetup();
       alert('Notification permission was denied or blocked in browser settings.');
     }
   }
   window.requestNotificationPermission = requestNotificationPermission;
 
   if ('Notification' in window && Notification.permission === 'granted') {
+    // Allowing notifications used to be possible only through 🔔 Push Alerts, so a phone that
+    // already allows them asked for approval alerts — keep that wish across this update.
+    if (localStorage.getItem(APPROVAL_ALERTS_FLAG) === null) localStorage.setItem(APPROVAL_ALERTS_FLAG, 'on');
     registerLockscreenPushSubscription();
   }
 
@@ -6792,20 +6930,52 @@
       if (event.data && event.data.action === 'open_approvals') {
         switchView('approvals');
       }
+      if (event.data && event.data.action === 'app_updated') {
+        appUpdateReady = true;
+      }
     });
   }
 
-  async function refreshPendingCount() {
+  // A newer version of the app has been published and is already stored on the phone. The
+  // next fresh open uses it automatically; for an app left open for days, it is switched in
+  // when he comes back after a while — never in the middle of uploading a bill.
+  let appUpdateReady = false;
+  function applyAppUpdateIfSafe() {
+    if (!appUpdateReady) return false;
+    const activeBtn = document.querySelector('.nav-btn.active');
+    const midUpload = (activeBtn && activeBtn.dataset.view === 'upload') || currentFileBase64;
+    if (midUpload) return false;
+    window.location.reload();
+    return true;
+  }
+
+  let pendingCountInFlight = null;
+  function refreshPendingCount() {
+    if (document.visibilityState === 'hidden') return Promise.resolve(); // phone locked / app in background
+    if (!pendingCountInFlight) {
+      pendingCountInFlight = fetchPendingCount().finally(() => { pendingCountInFlight = null; });
+    }
+    return pendingCountInFlight;
+  }
+
+  function showPendingCount(count) {
+    document.getElementById('dashPendingCount').textContent = count;
+    const badge = document.getElementById('approvalsBadge');
+    if (count > 0) { badge.style.display = 'inline-block'; badge.textContent = count; }
+    else { badge.style.display = 'none'; }
+    if (navigator.setAppBadge) {
+      (count > 0 ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(() => {});
+    }
+  }
+
+  async function fetchPendingCount() {
     try {
       const res = await fetch(`${BACKEND_URL}/pending-approvals?_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } });
       const data = await res.json();
-      const count = (data.pending || []).length;
-      document.getElementById('dashPendingCount').textContent = count;
-      const badge = document.getElementById('approvalsBadge');
-      if (count > 0) { badge.style.display = 'inline-block'; badge.textContent = count; }
-      else { badge.style.display = 'none'; }
       approvalsCache = data.pending || [];
       approvalsLoaded = true;
+      showPendingCount(approvalsCache.length);
+      saveDataForNextOpen();
       checkAndShowPushNotification();
     } catch (e) {
       document.getElementById('dashPendingCount').textContent = '?';
@@ -6842,6 +7012,12 @@
     if (bossPinInput.value.trim() === BOSS_PIN) {
       sessionStorage.setItem('boss_unlocked', 'yes');
       bossPinOverlay.style.display = 'none';
+      // This phone approves bills, so it should get the lockscreen alerts for new ones.
+      if (localStorage.getItem(APPROVAL_ALERTS_FLAG) !== 'on') {
+        localStorage.setItem(APPROVAL_ALERTS_FLAG, 'on');
+        if ('Notification' in window && Notification.permission === 'granted') registerLockscreenPushSubscription();
+      }
+      renderAlertsSetup();
       const action = pendingBossAction;
       pendingBossAction = null;
       if (action) action();
@@ -6879,6 +7055,8 @@
       const data = await res.json();
       approvalsCache = data.pending || [];
       approvalsLoaded = true;
+      showPendingCount(approvalsCache.length);
+      saveDataForNextOpen();
     } catch (e) {
       if (!approvalsLoaded) {
         area.innerHTML = `<div class="empty-state">Couldn't load pending approvals. Check your connection.</div>`;
@@ -7679,6 +7857,21 @@
   setupQuickCashVoucher();
   setupLedgerFilters();
   setupAppTourModal();
+
+  const savedData = loadSavedData();
+  if (savedData) {
+    recordsCache.gst = savedData.gst || [];
+    recordsCache.non_gst = savedData.non_gst || [];
+    paymentsCache = savedData.payments || [];
+    returnsCache = savedData.returns || [];
+    updateDuplicateBillRegistry();
+    if (recordsCache.gst.length || recordsCache.non_gst.length) {
+      populateLedgerMonthBar([...recordsCache.gst, ...recordsCache.non_gst]);
+      renderTable();
+    }
+    if (typeof savedData.pending_count === 'number') showPendingCount(savedData.pending_count);
+  }
+
   loadRecords();
   refreshDashboard();
   settleTrackToIndex(0, false);
@@ -7706,15 +7899,33 @@
     if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
   }
 
+  renderAlertsSetup();
+
+  let lastBackgroundedAt = 0;
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') startAutoRefresh();
-    else stopAutoRefresh();
+    if (document.visibilityState === 'visible') {
+      renderAlertsSetup();
+      startAutoRefresh();
+      // Returning after a while (e.g. tapping a notification) — show current numbers now.
+      if (lastBackgroundedAt && Date.now() - lastBackgroundedAt > 5 * 60000 && applyAppUpdateIfSafe()) return;
+      if (lastBackgroundedAt && Date.now() - lastBackgroundedAt > 30000) {
+        silentlyRefreshActiveView();
+        refreshPendingCount();
+      }
+    } else {
+      lastBackgroundedAt = Date.now();
+      stopAutoRefresh();
+    }
   });
   if (document.visibilityState === 'visible') startAutoRefresh();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(reg => {
       reg.update().catch(() => {});
+      // Installed apps can stay open for days — check for a new version whenever it's reopened.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
     }).catch(err => console.warn('Service worker registration failed:', err));
   }
 
@@ -8952,11 +9163,9 @@
 
   // ─── Bank Statement Parser & Upload ──────────────────────────────────────────
 
-  function parseBankStatementFile(file, bankName) {
+  async function parseBankStatementFile(file, bankName) {
+    await ensureXlsx();
     return new Promise((resolve, reject) => {
-      if (typeof XLSX === 'undefined') {
-        return reject(new Error('Excel processing library (XLSX) is not loaded. Please refresh the page.'));
-      }
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
