@@ -136,7 +136,12 @@ self.addEventListener('push', (event) => {
     renotify: true // a new alert buzzes the phone even when an older one is still in the tray
   };
 
+  // Number on the app icon = bills waiting (iPhone Home Screen apps, installed Android apps)
+  const badgeUpdate = (typeof data.badge_count === 'number' && self.navigator.setAppBadge)
+    ? self.navigator.setAppBadge(data.badge_count).catch(() => {})
+    : Promise.resolve();
+
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    Promise.all([self.registration.showNotification(data.title, options), badgeUpdate])
   );
 });

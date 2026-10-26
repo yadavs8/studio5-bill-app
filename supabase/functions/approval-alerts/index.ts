@@ -92,7 +92,7 @@ async function pendingBills(createdAfter?: string): Promise<Pending[]> {
   return (data || []) as Pending[];
 }
 
-async function notifyApprovers(message: { title: string; body: string }) {
+async function notifyApprovers(message: { title: string; body: string; badge_count: number }) {
   const config = await loadConfig();
   const vapid = await vapidKeys(config);
   const { data: subs, error } = await db.from('push_subscriptions')
@@ -137,6 +137,7 @@ async function alertNewBills(): Promise<Response> {
     message = {
       title: `🧾 New bill to approve: ${rupees(Number(b.invoice_value || 0))}`,
       body: `${b.vendor_name || 'Unknown vendor'}${b.submitted_by_employee ? ' · from ' + b.submitted_by_employee : ''}. ${waitingLine}`,
+      badge_count: pending.length,
     };
   } else {
     const freshTotal = fresh.reduce((s, b) => s + Number(b.invoice_value || 0), 0);
@@ -144,6 +145,7 @@ async function alertNewBills(): Promise<Response> {
     message = {
       title: `🧾 ${fresh.length} new bills to approve (${rupees(freshTotal)})`,
       body: `${names}${fresh.length > 3 ? '…' : ''}. ${waitingLine}`,
+      badge_count: pending.length,
     };
   }
   const results = await notifyApprovers(message);
@@ -158,6 +160,7 @@ async function remindPending(): Promise<Response> {
   const results = await notifyApprovers({
     title: `⏳ ${pending.length} bill${pending.length === 1 ? '' : 's'} waiting for your approval`,
     body: `${rupees(total)} in total${oldestDays >= 1 ? ` · oldest waiting ${oldestDays} day${oldestDays === 1 ? '' : 's'}` : ''}. Tap to review.`,
+    badge_count: pending.length,
   });
   return json({ sent: results.filter((s) => s >= 200 && s < 300).length, devices: results.length });
 }
