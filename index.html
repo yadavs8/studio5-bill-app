@@ -2533,7 +2533,6 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 (function() {
@@ -2593,6 +2592,23 @@
 (function(){
   const BACKEND_URL = 'https://studio5-bill-backened.onrender.com';
   const APP_SECRET = 'studio5-field-2026'; // must exactly match APP_SHARED_SECRET on Render
+  // The Excel library is large (~900 KB), so it's only fetched the first time an export or a
+  // bank-statement import actually needs it, instead of slowing down every app start.
+  let xlsxLoadPromise = null;
+  function ensureXlsx() {
+    if (typeof XLSX !== 'undefined') return Promise.resolve();
+    if (!xlsxLoadPromise) {
+      xlsxLoadPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = () => resolve();
+        s.onerror = () => { xlsxLoadPromise = null; reject(new Error('Excel processing library (XLSX) could not be loaded. Check your connection.')); };
+        document.head.appendChild(s);
+      });
+    }
+    return xlsxLoadPromise;
+  }
+
   const TEAM_MEMBERS = ['Sanjeev Yadav', 'Sanjeev Sharma', 'Prince', 'Anil Kori', 'Rajiv Bawa', 'Kuhu Bawa', 'Vishal'];
   const fileInput = document.getElementById('fileInput');
   const dropZone = document.getElementById('dropZone');
@@ -2856,6 +2872,24 @@
   let recordsCache = { gst: [], non_gst: [] };
   let paymentsCache = []; // [{ person, amount, date }, ...] — cash advances given to field people
 
+  // Last-known data is kept on the phone so every screen paints instantly on open, even
+  // while the backend is still waking up; fresh data replaces it as soon as it arrives.
+  const SAVED_DATA_KEY = 'studio5_saved_data_v1';
+  function saveDataForNextOpen() {
+    try {
+      localStorage.setItem(SAVED_DATA_KEY, JSON.stringify({
+        gst: recordsCache.gst,
+        non_gst: recordsCache.non_gst,
+        payments: paymentsCache,
+        returns: returnsCache,
+        pending_count: approvalsLoaded ? approvalsCache.length : null
+      }));
+    } catch (e) { /* storage full or blocked — the app still works, it just starts without saved data */ }
+  }
+  function loadSavedData() {
+    try { return JSON.parse(localStorage.getItem(SAVED_DATA_KEY) || 'null'); } catch (e) { return null; }
+  }
+
   // Alias lists for Payments sheet columns — tries each name in order until one matches.
   // This makes fetchPayments resilient to whatever column names the Apps Script uses.
   const PAYMENT_COL_ALIASES = {
@@ -2948,7 +2982,19 @@
     return null;
   }
 
-  async function fetchRecords(billType) {
+  // The dashboard and the ledger both ask for the same sheet data, often at the same moment
+  // (app start, auto-refresh). Share one request per bill type instead of hitting the slow
+  // Sheet-backed backend twice.
+  const recordsInFlight = {};
+  function fetchRecords(billType) {
+    if (!recordsInFlight[billType]) {
+      recordsInFlight[billType] = fetchRecordsFromBackend(billType)
+        .finally(() => { delete recordsInFlight[billType]; });
+    }
+    return recordsInFlight[billType];
+  }
+
+  async function fetchRecordsFromBackend(billType) {
     const res = await fetch(`${BACKEND_URL}/records?bill_type=${billType}&_t=${Date.now()}`, {
       headers: { 'x-app-secret': APP_SECRET }
     });
@@ -3845,6 +3891,7 @@
       recordsCache.gst = gst;
       recordsCache.non_gst = nonGst;
       updateDuplicateBillRegistry();
+      saveDataForNextOpen();
 
       if (!silent || dataChanged || !hasCache) {
         const allRecords = [...(recordsCache.gst || []), ...(recordsCache.non_gst || [])];
@@ -4905,7 +4952,7 @@
     await loadRecords();
   });
 
-  exportBtn.addEventListener('click', () => {
+  exportBtn.addEventListener('click', async () => {
     const gstFiltered = filterRecordsList(recordsCache.gst || []);
     const nonGstFiltered = filterRecordsList(recordsCache.non_gst || []);
 
@@ -4924,6 +4971,7 @@
       return;
     }
 
+    try { await ensureXlsx(); } catch (e) { alert(e.message); return; }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gstRows.length ? gstRows : [{}]), 'GST Bills');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(nonGstRows.length ? nonGstRows : [{}]), 'Non-GST Bills');
@@ -6531,6 +6579,7 @@
       recordsCache.non_gst = nonGst;
       paymentsCache = payments;
       updateDuplicateBillRegistry();
+      saveDataForNextOpen();
     } catch (e) {
       if (!hasCache) { /* nothing to show yet and the fetch failed — leave placeholders */ }
       await pendingCountPromise;
@@ -6792,20 +6841,49 @@
       if (event.data && event.data.action === 'open_approvals') {
         switchView('approvals');
       }
+      if (event.data && event.data.action === 'app_updated') {
+        appUpdateReady = true;
+      }
     });
   }
 
-  async function refreshPendingCount() {
+  // A newer version of the app has been published and is already stored on the phone. The
+  // next fresh open uses it automatically; for an app left open for days, it is switched in
+  // when he comes back after a while — never in the middle of uploading a bill.
+  let appUpdateReady = false;
+  function applyAppUpdateIfSafe() {
+    if (!appUpdateReady) return false;
+    const activeBtn = document.querySelector('.nav-btn.active');
+    const midUpload = (activeBtn && activeBtn.dataset.view === 'upload') || currentFileBase64;
+    if (midUpload) return false;
+    window.location.reload();
+    return true;
+  }
+
+  let pendingCountInFlight = null;
+  function refreshPendingCount() {
+    if (document.visibilityState === 'hidden') return Promise.resolve(); // phone locked / app in background
+    if (!pendingCountInFlight) {
+      pendingCountInFlight = fetchPendingCount().finally(() => { pendingCountInFlight = null; });
+    }
+    return pendingCountInFlight;
+  }
+
+  function showPendingCount(count) {
+    document.getElementById('dashPendingCount').textContent = count;
+    const badge = document.getElementById('approvalsBadge');
+    if (count > 0) { badge.style.display = 'inline-block'; badge.textContent = count; }
+    else { badge.style.display = 'none'; }
+  }
+
+  async function fetchPendingCount() {
     try {
       const res = await fetch(`${BACKEND_URL}/pending-approvals?_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } });
       const data = await res.json();
-      const count = (data.pending || []).length;
-      document.getElementById('dashPendingCount').textContent = count;
-      const badge = document.getElementById('approvalsBadge');
-      if (count > 0) { badge.style.display = 'inline-block'; badge.textContent = count; }
-      else { badge.style.display = 'none'; }
       approvalsCache = data.pending || [];
       approvalsLoaded = true;
+      showPendingCount(approvalsCache.length);
+      saveDataForNextOpen();
       checkAndShowPushNotification();
     } catch (e) {
       document.getElementById('dashPendingCount').textContent = '?';
@@ -6879,6 +6957,8 @@
       const data = await res.json();
       approvalsCache = data.pending || [];
       approvalsLoaded = true;
+      showPendingCount(approvalsCache.length);
+      saveDataForNextOpen();
     } catch (e) {
       if (!approvalsLoaded) {
         area.innerHTML = `<div class="empty-state">Couldn't load pending approvals. Check your connection.</div>`;
@@ -7679,6 +7759,21 @@
   setupQuickCashVoucher();
   setupLedgerFilters();
   setupAppTourModal();
+
+  const savedData = loadSavedData();
+  if (savedData) {
+    recordsCache.gst = savedData.gst || [];
+    recordsCache.non_gst = savedData.non_gst || [];
+    paymentsCache = savedData.payments || [];
+    returnsCache = savedData.returns || [];
+    updateDuplicateBillRegistry();
+    if (recordsCache.gst.length || recordsCache.non_gst.length) {
+      populateLedgerMonthBar([...recordsCache.gst, ...recordsCache.non_gst]);
+      renderTable();
+    }
+    if (typeof savedData.pending_count === 'number') showPendingCount(savedData.pending_count);
+  }
+
   loadRecords();
   refreshDashboard();
   settleTrackToIndex(0, false);
@@ -7706,15 +7801,30 @@
     if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
   }
 
+  let lastBackgroundedAt = 0;
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') startAutoRefresh();
-    else stopAutoRefresh();
+    if (document.visibilityState === 'visible') {
+      startAutoRefresh();
+      // Returning after a while (e.g. tapping a notification) — show current numbers now.
+      if (lastBackgroundedAt && Date.now() - lastBackgroundedAt > 5 * 60000 && applyAppUpdateIfSafe()) return;
+      if (lastBackgroundedAt && Date.now() - lastBackgroundedAt > 30000) {
+        silentlyRefreshActiveView();
+        refreshPendingCount();
+      }
+    } else {
+      lastBackgroundedAt = Date.now();
+      stopAutoRefresh();
+    }
   });
   if (document.visibilityState === 'visible') startAutoRefresh();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(reg => {
       reg.update().catch(() => {});
+      // Installed apps can stay open for days — check for a new version whenever it's reopened.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
     }).catch(err => console.warn('Service worker registration failed:', err));
   }
 
@@ -8952,11 +9062,9 @@
 
   // ─── Bank Statement Parser & Upload ──────────────────────────────────────────
 
-  function parseBankStatementFile(file, bankName) {
+  async function parseBankStatementFile(file, bankName) {
+    await ensureXlsx();
     return new Promise((resolve, reject) => {
-      if (typeof XLSX === 'undefined') {
-        return reject(new Error('Excel processing library (XLSX) is not loaded. Please refresh the page.'));
-      }
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
