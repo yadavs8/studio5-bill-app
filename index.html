@@ -2016,6 +2016,113 @@
       <!-- Content populated dynamically -->
 </div>
 
+<!-- ═══ MATERIAL ISSUE / CHECKOUT MODAL ═════════════════════════════════ -->
+<div class="pin-overlay" id="inventoryIssueModal" style="display:none; z-index:10006;">
+  <div class="pin-card" style="max-width:540px; width:95%; text-align:left; max-height:92vh; display:flex; flex-direction:column; background:#ffffff; border-radius:14px; padding:22px; box-shadow:0 25px 35px -5px rgba(0,0,0,0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+      <div>
+        <h2 style="margin:0; font-size:18px; color:var(--walnut); display:flex; align-items:center; gap:8px;">
+          <span>📤</span> <span>Issue Material / Take from Room</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:12px; color:#64748b;">Record who took items from the inventory room & update remaining stock</p>
+      </div>
+      <button type="button" id="closeInvIssueModalBtn" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <div style="overflow-y:auto; flex:1; padding-right:4px;">
+      <!-- Step 1: Select Item -->
+      <div style="margin-bottom:14px;">
+        <label for="invIssueItemSelect" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">SELECT ITEM FROM INVENTORY ROOM *</label>
+        <select id="invIssueItemSelect" style="width:100%; padding:9px 12px; font-size:13.5px; font-weight:600; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff; color:var(--walnut);">
+          <!-- Populated dynamically -->
+        </select>
+      </div>
+
+      <!-- Current Stock in Room vs Remaining After Issue -->
+      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 14px; margin-bottom:14px; display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:center;">
+        <div>
+          <div style="font-size:11px; font-weight:600; color:#166534; text-transform:uppercase;">Current In Room</div>
+          <div style="font-size:20px; font-weight:800; color:#15803d; margin-top:2px;" id="invIssueCurrentStockDisplay">—</div>
+        </div>
+        <div style="border-left:1px solid #bbf7d0; padding-left:12px;">
+          <div style="font-size:11px; font-weight:600; color:#0369a1; text-transform:uppercase;">Remaining After Issue</div>
+          <div style="font-size:20px; font-weight:800; color:#0284c7; margin-top:2px;" id="invIssueRemainingDisplay">—</div>
+        </div>
+      </div>
+
+      <!-- Step 2: Number of Pieces Taken -->
+      <div style="margin-bottom:14px;">
+        <label for="invIssueQtyInput" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">HOW MANY PIECES / QUANTITY TAKEN? *</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="number" step="any" id="invIssueQtyInput" value="1" min="0.1" placeholder="1" style="flex:1; padding:10px 14px; font-size:18px; font-weight:800; border:2px solid #059669; border-radius:6px; box-sizing:border-box; color:#065f46;" />
+          <span id="invIssueUnitDisplay" style="font-size:14px; font-weight:700; color:#475569; min-width:40px;">Pcs</span>
+        </div>
+        <!-- Quick pieces buttons -->
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-ghost btn-sm" onclick="setIssueQty(1)" style="padding:4px 10px; font-weight:700;">1</button>
+          <button type="button" class="btn-ghost btn-sm" onclick="setIssueQty(2)" style="padding:4px 10px; font-weight:700;">2</button>
+          <button type="button" class="btn-ghost btn-sm" onclick="setIssueQty(5)" style="padding:4px 10px; font-weight:700;">5</button>
+          <button type="button" class="btn-ghost btn-sm" onclick="setIssueQty(10)" style="padding:4px 10px; font-weight:700;">10</button>
+          <button type="button" class="btn-ghost btn-sm" onclick="setIssueQty(20)" style="padding:4px 10px; font-weight:700;">20</button>
+          <button type="button" class="btn-ghost btn-sm" onclick="setIssueQty(50)" style="padding:4px 10px; font-weight:700;">50</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Who Took It & For Which Site -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+        <div>
+          <label for="invIssueTakenBySelect" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">WHO TOOK IT? (PERSON) *</label>
+          <select id="invIssueTakenBySelect" style="width:100%; padding:9px 10px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
+            <option value="Site Electrician / Wireman">Site Electrician / Wireman</option>
+            <option value="Prince">Prince (Gurgaon Sites)</option>
+            <option value="Sanjeev Sharma">Sanjeev Sharma (Dehradun)</option>
+            <option value="Vishal">Vishal (Traudan Site)</option>
+            <option value="Anil Kori">Anil Kori (Supervisor)</option>
+            <option value="Sanjeev Yadav">Sanjeev Yadav (Central)</option>
+            <option value="Site Carpenter Team">Site Carpenter Team</option>
+            <option value="Plumber / Sanitary Team">Plumber / Sanitary Team</option>
+            <option value="Painter / Polish Team">Painter / Polish Team</option>
+            <option value="__OTHER__">Other Person / Direct</option>
+          </select>
+          <input type="text" id="invIssueTakenByCustom" placeholder="Enter person name" style="display:none; width:100%; margin-top:6px; padding:7px 10px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+        </div>
+        <div>
+          <label for="invIssueSiteSelect" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">FOR WHICH SITE? *</label>
+          <select id="invIssueSiteSelect" style="width:100%; padding:9px 10px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
+            <option value="Traudan Site">Traudan Site</option>
+            <option value="Dehradun Site">Dehradun Site</option>
+            <option value="Gurgaon Site">Gurgaon Site</option>
+            <option value="Central Godown">Central Godown</option>
+            <option value="Factory / Workshop">Factory / Workshop</option>
+            <option value="DLF Phase 5">DLF Phase 5</option>
+            <option value="Nirvana Country">Nirvana Country</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Step 4: Date & Short Description -->
+      <div style="margin-bottom:14px;">
+        <label for="invIssueDateInput" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">DATE TAKEN *</label>
+        <input type="date" id="invIssueDateInput" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;" />
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <label for="invIssueDescriptionInput" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">SHORT DESCRIPTION / PURPOSE *</label>
+        <input type="text" id="invIssueDescriptionInput" placeholder="e.g. 1st floor living room ceiling light wiring, DB box connection" style="width:100%; padding:9px 12px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <button type="button" id="confirmInvIssueBtn" class="btn-primary" style="flex:1; padding:12px; font-size:14.5px; font-weight:700; background:#059669;">
+          📤 Confirm Issue & Update Remaining Stock
+        </button>
+        <button type="button" class="btn-ghost" onclick="document.getElementById('inventoryIssueModal').style.display='none'" style="padding:12px 18px;">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ INVENTORY SCAN & AI EXTRACT MODAL ═══════════════════════════════ -->
 <div class="pin-overlay" id="inventoryScanModal" style="display:none; z-index:10006;">
   <div class="pin-card" style="max-width:620px; width:95%; text-align:left; max-height:92vh; display:flex; flex-direction:column; background:#ffffff; border-radius:14px; padding:22px; box-shadow:0 25px 35px -5px rgba(0,0,0,0.3);">
@@ -3011,6 +3118,9 @@
               </div>
             </div>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button class="btn-primary" id="openIssueMaterialBtn" type="button" style="font-size:13.5px; padding:9px 16px; background:#d97706; display:flex; align-items:center; gap:6px; font-weight:700;" title="Record material taken out from the inventory room for a site">
+                <span>📤</span> <span>Issue Item / Take Out</span>
+              </button>
               <button class="btn-primary" id="openScanProductBtn" type="button" style="font-size:13.5px; padding:9px 16px; background:#059669; display:flex; align-items:center; gap:6px; font-weight:700;" title="Snap product photo or packaging tag to automatically extract specifications">
                 <span>📸</span> <span>Scan Product / Box</span>
               </button>
@@ -3026,78 +3136,118 @@
             </div>
           </div>
 
-          <!-- Quick Stats Cards -->
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:20px;">
-            <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #059669;">
-              <div class="dash-label">Total Unique Items</div>
-              <div class="dash-value" id="invStatTotalItems" style="font-size:24px;">0</div>
-              <div class="dash-sub">Tracked catalog SKUs</div>
-            </div>
-            <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #2563eb;">
-              <div class="dash-label">Total Stock Quantity</div>
-              <div class="dash-value" id="invStatTotalQty" style="font-size:24px;">0</div>
-              <div class="dash-sub">Total units across godowns</div>
-            </div>
-            <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #7c3aed;">
-              <div class="dash-label">Est. Stock Valuation</div>
-              <div class="dash-value" id="invStatValuation" style="font-size:24px;">₹0</div>
-              <div class="dash-sub">Total material value</div>
-            </div>
-            <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #dc2626;">
-              <div class="dash-label">Low / Out of Stock</div>
-              <div class="dash-value" id="invStatLowStock" style="font-size:24px; color:#dc2626;">0</div>
-              <div class="dash-sub" id="invStatLowStockSub">Items needing reorder</div>
-            </div>
+          <!-- Sub-Tabs: Stock vs Material Issue Register -->
+          <div class="tabs" style="margin-bottom:18px;">
+            <button class="tab-btn active" id="tabInvStock" type="button">📦 In-Stock Inventory (Room)</button>
+            <button class="tab-btn" id="tabInvIssues" type="button">📋 Material Issue Register (Who Took What)</button>
           </div>
 
-          <!-- Filter & Search Controls -->
-          <div style="background:var(--cream, #f8fafc); border:1px solid var(--line, #e2e8f0); border-radius:8px; padding:12px 14px; margin-bottom:18px; display:flex; flex-direction:column; gap:10px;">
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-              <div style="flex:1; min-width:220px; position:relative;">
-                <input type="text" id="inventorySearchInput" placeholder="🔍 Search item name, brand, model, dimensions, finish, material..." style="width:100%; padding:9px 12px; font-size:13.5px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;" />
+          <!-- TAB 1: IN-STOCK INVENTORY CONTENT -->
+          <div id="invStockTabContent">
+            <!-- Quick Stats Cards -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:20px;">
+              <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #059669;">
+                <div class="dash-label">Total Unique Items</div>
+                <div class="dash-value" id="invStatTotalItems" style="font-size:24px;">0</div>
+                <div class="dash-sub">Tracked catalog SKUs</div>
               </div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                <select id="inventoryCategoryFilter" style="padding:9px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:var(--walnut);">
-                  <option value="ALL">All Categories</option>
-                  <option value="Hardware & Fittings">Hardware & Fittings</option>
-                  <option value="Electrical & Lighting">Electrical & Lighting</option>
-                  <option value="Plywood & Boards">Plywood & Boards</option>
-                  <option value="Laminates & Veneers">Laminates & Veneers</option>
-                  <option value="Plumbing & Sanitary">Plumbing & Sanitary</option>
-                  <option value="Paints & Finishes">Paints & Finishes</option>
-                  <option value="Adhesives & Chemicals">Adhesives & Chemicals</option>
-                  <option value="Glass & Metal">Glass & Metal</option>
-                  <option value="Tools & Machinery">Tools & Machinery</option>
-                  <option value="Safety & PPE">Safety & PPE</option>
-                  <option value="General Consumables">General Consumables</option>
-                </select>
-                <select id="inventorySiteFilter" style="padding:9px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:var(--walnut);">
-                  <option value="ALL">All Sites / Warehouses</option>
-                  <option value="Traudan Site">Traudan Site</option>
-                  <option value="Dehradun Site">Dehradun Site</option>
-                  <option value="Gurgaon Site">Gurgaon Site</option>
-                  <option value="Central Godown">Central Godown</option>
-                  <option value="Factory / Workshop">Factory / Workshop</option>
-                </select>
-                <select id="inventoryStockStatusFilter" style="padding:9px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:var(--walnut);">
-                  <option value="ALL">All Stock Levels</option>
-                  <option value="in_stock">In Stock (> Threshold)</option>
-                  <option value="low_stock">⚠️ Low Stock (≤ 5)</option>
-                  <option value="out_of_stock">❌ Out of Stock (0)</option>
-                </select>
-                <div style="display:flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
-                  <button type="button" id="invViewModeGridBtn" class="category-chip active" style="padding:7px 11px; border-radius:0; margin:0;" title="Grid View">🔲 Grid</button>
-                  <button type="button" id="invViewModeTableBtn" class="category-chip" style="padding:7px 11px; border-radius:0; margin:0;" title="Table View">📑 List</button>
+              <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #2563eb;">
+                <div class="dash-label">Total Stock Quantity</div>
+                <div class="dash-value" id="invStatTotalQty" style="font-size:24px;">0</div>
+                <div class="dash-sub">Total units across godowns</div>
+              </div>
+              <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #7c3aed;">
+                <div class="dash-label">Est. Stock Valuation</div>
+                <div class="dash-value" id="invStatValuation" style="font-size:24px;">₹0</div>
+                <div class="dash-sub">Total material value</div>
+              </div>
+              <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #dc2626;">
+                <div class="dash-label">Low / Out of Stock</div>
+                <div class="dash-value" id="invStatLowStock" style="font-size:24px; color:#dc2626;">0</div>
+                <div class="dash-sub" id="invStatLowStockSub">Items needing reorder</div>
+              </div>
+            </div>
+
+            <!-- Filter & Search Controls -->
+            <div style="background:var(--cream, #f8fafc); border:1px solid var(--line, #e2e8f0); border-radius:8px; padding:12px 14px; margin-bottom:18px; display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <div style="flex:1; min-width:220px; position:relative;">
+                  <input type="text" id="inventorySearchInput" placeholder="🔍 Search item name, brand, model, dimensions, finish, material..." style="width:100%; padding:9px 12px; font-size:13.5px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;" />
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                  <select id="inventoryCategoryFilter" style="padding:9px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:var(--walnut);">
+                    <option value="ALL">All Categories</option>
+                    <option value="Hardware & Fittings">Hardware & Fittings</option>
+                    <option value="Electrical & Lighting">Electrical & Lighting</option>
+                    <option value="Plywood & Boards">Plywood & Boards</option>
+                    <option value="Laminates & Veneers">Laminates & Veneers</option>
+                    <option value="Plumbing & Sanitary">Plumbing & Sanitary</option>
+                    <option value="Paints & Finishes">Paints & Finishes</option>
+                    <option value="Adhesives & Chemicals">Adhesives & Chemicals</option>
+                    <option value="Glass & Metal">Glass & Metal</option>
+                    <option value="Tools & Machinery">Tools & Machinery</option>
+                    <option value="Safety & PPE">Safety & PPE</option>
+                    <option value="General Consumables">General Consumables</option>
+                  </select>
+                  <select id="inventorySiteFilter" style="padding:9px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:var(--walnut);">
+                    <option value="ALL">All Sites / Warehouses</option>
+                    <option value="Traudan Site">Traudan Site</option>
+                    <option value="Dehradun Site">Dehradun Site</option>
+                    <option value="Gurgaon Site">Gurgaon Site</option>
+                    <option value="Central Godown">Central Godown</option>
+                    <option value="Factory / Workshop">Factory / Workshop</option>
+                  </select>
+                  <select id="inventoryStockStatusFilter" style="padding:9px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:var(--walnut);">
+                    <option value="ALL">All Stock Levels</option>
+                    <option value="in_stock">In Stock (> Threshold)</option>
+                    <option value="low_stock">⚠️ Low Stock (≤ 5)</option>
+                    <option value="out_of_stock">❌ Out of Stock (0)</option>
+                  </select>
+                  <div style="display:flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
+                    <button type="button" id="invViewModeGridBtn" class="category-chip active" style="padding:7px 11px; border-radius:0; margin:0;" title="Grid View">🔲 Grid</button>
+                    <button type="button" id="invViewModeTableBtn" class="category-chip" style="padding:7px 11px; border-radius:0; margin:0;" title="Table View">📑 List</button>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <!-- Inventory Items Area -->
+            <div id="inventoryContainerArea">
+              <div class="empty-state" style="padding:40px 20px; text-align:center;">
+                <div style="font-size:32px; margin-bottom:8px;">📦</div>
+                <div style="font-size:16px; font-weight:700; color:var(--walnut);">Loading inventory catalog...</div>
+              </div>
+            </div>
           </div>
 
-          <!-- Inventory Items Area -->
-          <div id="inventoryContainerArea">
-            <div class="empty-state" style="padding:40px 20px; text-align:center;">
-              <div style="font-size:32px; margin-bottom:8px;">📦</div>
-              <div style="font-size:16px; font-weight:700; color:var(--walnut);">Loading inventory catalog...</div>
+          <!-- TAB 2: MATERIAL ISSUE & CHECKOUT REGISTER -->
+          <div id="invIssuesTabContent" style="display:none;">
+            <!-- Register Filter bar -->
+            <div style="background:var(--cream, #f8fafc); border:1px solid var(--line, #e2e8f0); border-radius:8px; padding:12px 14px; margin-bottom:18px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <div style="flex:1; min-width:200px;">
+                <input type="text" id="invIssueSearchInput" placeholder="🔍 Search by item name, person who took it, site, purpose..." style="width:100%; padding:9px 12px; font-size:13.5px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;" />
+              </div>
+              <select id="invIssueSiteFilter" style="padding:9px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:var(--walnut);">
+                <option value="ALL">All Sites</option>
+                <option value="Traudan Site">Traudan Site</option>
+                <option value="Dehradun Site">Dehradun Site</option>
+                <option value="Gurgaon Site">Gurgaon Site</option>
+                <option value="Central Godown">Central Godown</option>
+              </select>
+              <button type="button" class="btn-primary" onclick="openIssueMaterialModal()" style="font-size:13px; padding:8px 14px; background:#d97706; font-weight:700;">
+                <span>📤</span> <span>+ Record New Issue</span>
+              </button>
+              <button type="button" class="btn-ghost" id="exportIssuesCsvBtn" style="font-size:13px; padding:8px 12px;" title="Export issue register to CSV">
+                <span>📥 Export Issues CSV</span>
+              </button>
+            </div>
+
+            <!-- Issues Table Container -->
+            <div id="invIssuesTableArea">
+              <div class="empty-state" style="padding:40px 20px; text-align:center;">
+                <div style="font-size:32px; margin-bottom:8px;">📋</div>
+                <div style="font-size:16px; font-weight:700; color:var(--walnut);">No material issues recorded yet.</div>
+              </div>
             </div>
           </div>
         </div>
@@ -5842,6 +5992,7 @@
     settleTrackToIndex(index, true);
     if (viewName === 'dashboard') refreshDashboard();
     if (viewName === 'inventory') loadInventory();
+    loadInventoryIssues();
     if (viewName === 'approvals') openApprovals();
     if (viewName === 'bank') loadBankTransactions();
   }
@@ -10320,6 +10471,19 @@
   // STUDIO 5 PRODUCT & MATERIAL INVENTORY SECTION (LOGIC & SCANNER)
   // ════════════════════════════════════════════════════════════════════════════
   const INVENTORY_STORAGE_KEY = 'studio5_inventory_cache_v1';
+  const INVENTORY_ISSUES_STORAGE_KEY = 'studio5_inventory_issues_v1';
+  let inventoryIssues = [];
+
+  try {
+    const cachedIssues = localStorage.getItem(INVENTORY_ISSUES_STORAGE_KEY);
+    if (cachedIssues) inventoryIssues = JSON.parse(cachedIssues);
+  } catch (e) {}
+
+  function saveIssuesToCache() {
+    try {
+      localStorage.setItem(INVENTORY_ISSUES_STORAGE_KEY, JSON.stringify(inventoryIssues));
+    } catch (e) {}
+  }
   let inventoryItems = [];
   let inventoryCurrentViewMode = 'grid'; // 'grid' | 'table'
   let currentScanPhotoBase64 = null;
@@ -10541,6 +10705,7 @@
                     <button type="button" class="inv-qty-btn" onclick="quickAdjustQty('${it.id}', 1)" title="Add 1">+</button>
                   </div>
                   <div style="display:flex; gap:6px;">
+                    <button type="button" class="btn-primary btn-sm" onclick="openIssueMaterialModal('${it.id}')" title="Issue / Take Out" style="background:#d97706; padding:4px 9px; font-size:11.5px; font-weight:700;">📤 Issue</button>
                     <button type="button" class="btn-ghost btn-sm" onclick="openProductDossier('${it.id}')" title="View Full Specs & History" style="padding:4px 8px; font-size:11.5px;">🔍 Specs</button>
                     <button type="button" class="btn-ghost btn-sm" onclick="openManualAddItem('${it.id}')" title="Edit Item" style="padding:4px 8px; font-size:11.5px;">✏️</button>
                     <button type="button" class="btn-ghost btn-sm" onclick="deleteInventoryItemUI('${it.id}')" title="Delete" style="padding:4px 8px; font-size:11.5px; color:#dc2626;">🗑️</button>
@@ -10611,6 +10776,7 @@
                   <td><b>${totalVal > 0 ? '₹' + totalVal.toLocaleString('en-IN') : '—'}</b></td>
                   <td style="text-align:right; white-space:nowrap;">
                     <div style="display:inline-flex; gap:4px;">
+                      <button type="button" class="btn-ghost btn-sm" onclick="openIssueMaterialModal('${it.id}')" style="color:#d97706; font-weight:700;" title="Issue Item / Take Out">📤 Issue</button>
                       <button type="button" class="btn-ghost btn-sm" onclick="quickAdjustQty('${it.id}', -1)" title="Minus 1">−</button>
                       <button type="button" class="btn-ghost btn-sm" onclick="quickAdjustQty('${it.id}', 1)" title="Add 1">+</button>
                       <button type="button" class="btn-ghost btn-sm" onclick="openProductDossier('${it.id}')" title="Details">🔍</button>
@@ -11184,6 +11350,403 @@
     }
   }
 
+    async function loadInventoryIssues(forceRefresh = false) {
+    renderIssuesUI();
+    try {
+      const res = await fetch(`${BACKEND_URL}/inventory/issues?_t=${Date.now()}`, {
+        headers: { 'x-app-secret': APP_SECRET }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.issues)) {
+          inventoryIssues = data.issues;
+          saveIssuesToCache();
+          renderIssuesUI();
+        }
+      }
+    } catch (err) {
+      console.warn('Could not sync issues with backend:', err.message);
+    }
+  }
+
+  function openIssueMaterialModal(preselectedId = null) {
+    const modal = document.getElementById('inventoryIssueModal');
+    if (!modal) return;
+
+    const selectEl = document.getElementById('invIssueItemSelect');
+    if (selectEl) {
+      if (inventoryItems.length === 0) {
+        selectEl.innerHTML = '<option value="">No items in inventory. Add an item first!</option>';
+      } else {
+        const sorted = [...inventoryItems].sort((a, b) => (a.item_name || '').localeCompare(b.item_name || ''));
+        selectEl.innerHTML = sorted.map(it => {
+          const qty = parseFloat(it.quantity) || 0;
+          const unit = it.unit || 'Pcs';
+          const brand = it.brand ? ` (${it.brand})` : '';
+          const loc = it.site_location ? ` [📍 ${it.site_location}]` : '';
+          const isSelected = (preselectedId && it.id === preselectedId) ? 'selected' : '';
+          return `<option value="${escapeXml(it.id)}" ${isSelected}>${escapeXml(it.item_name)}${escapeXml(brand)} — Stock: ${qty} ${escapeXml(unit)}${escapeXml(loc)}</option>`;
+        }).join('');
+      }
+    }
+
+    // Set today's date
+    const dateInput = document.getElementById('invIssueDateInput');
+    if (dateInput) {
+      dateInput.value = new Date().toISOString().slice(0, 10);
+    }
+
+    // Reset quantity
+    const qtyInput = document.getElementById('invIssueQtyInput');
+    if (qtyInput) qtyInput.value = '1';
+
+    // Reset description
+    const descInput = document.getElementById('invIssueDescriptionInput');
+    if (descInput) descInput.value = '';
+
+    // Reset taken by
+    const takenBySelect = document.getElementById('invIssueTakenBySelect');
+    const customTakenBy = document.getElementById('invIssueTakenByCustom');
+    if (takenBySelect) takenBySelect.selectedIndex = 0;
+    if (customTakenBy) {
+      customTakenBy.style.display = 'none';
+      customTakenBy.value = '';
+    }
+
+    // Default site to current active site
+    const siteSelect = document.getElementById('invIssueSiteSelect');
+    if (siteSelect) {
+      const activeSite = getActiveSite();
+      for (let i = 0; i < siteSelect.options.length; i++) {
+        if (siteSelect.options[i].value.toLowerCase() === activeSite.toLowerCase()) {
+          siteSelect.selectedIndex = i;
+          break;
+        }
+      }
+    }
+
+    updateIssueModalStockDisplay();
+    modal.style.display = 'flex';
+  }
+
+  function updateIssueModalStockDisplay() {
+    const selectEl = document.getElementById('invIssueItemSelect');
+    const curStockEl = document.getElementById('invIssueCurrentStockDisplay');
+    const remStockEl = document.getElementById('invIssueRemainingDisplay');
+    const unitEl = document.getElementById('invIssueUnitDisplay');
+    const qtyInput = document.getElementById('invIssueQtyInput');
+
+    if (!selectEl || !curStockEl || !remStockEl) return;
+
+    const itemId = selectEl.value;
+    const item = inventoryItems.find(it => it.id === itemId);
+    const takenQty = parseFloat(qtyInput?.value) || 0;
+
+    if (!item) {
+      curStockEl.textContent = '—';
+      remStockEl.textContent = '—';
+      if (unitEl) unitEl.textContent = 'Pcs';
+      return;
+    }
+
+    const curQty = parseFloat(item.quantity) || 0;
+    const unit = item.unit || 'Pcs';
+    const thresh = parseFloat(item.min_threshold) || 5;
+    const remaining = Math.max(0, Math.round((curQty - takenQty) * 100) / 100);
+
+    curStockEl.textContent = `${curQty} ${unit}`;
+    if (unitEl) unitEl.textContent = unit;
+
+    if (takenQty > curQty) {
+      remStockEl.innerHTML = `<span style="color:#dc2626;">0 ${unit} (⚠️ Exceeds room stock by ${(takenQty - curQty).toFixed(1)})</span>`;
+    } else {
+      const color = remaining <= 0 ? '#dc2626' : (remaining <= thresh ? '#d97706' : '#0284c7');
+      remStockEl.innerHTML = `<span style="color:${color};">${remaining} ${unit}</span>`;
+    }
+  }
+
+  function setIssueQty(qty) {
+    const input = document.getElementById('invIssueQtyInput');
+    if (input) {
+      input.value = qty;
+      updateIssueModalStockDisplay();
+    }
+  }
+
+  async function confirmMaterialIssue() {
+    const selectEl = document.getElementById('invIssueItemSelect');
+    const itemId = selectEl ? selectEl.value : null;
+    const item = inventoryItems.find(it => it.id === itemId);
+
+    if (!item) {
+      alert('Please select an item from the inventory room.');
+      return;
+    }
+
+    const qtyInput = document.getElementById('invIssueQtyInput');
+    const pieces = parseFloat(qtyInput ? qtyInput.value : 0);
+    if (!pieces || pieces <= 0) {
+      alert('Please enter a valid number of pieces taken.');
+      return;
+    }
+
+    const curQty = parseFloat(item.quantity) || 0;
+    if (pieces > curQty) {
+      const proceed = confirm(`Warning: You entered ${pieces} ${item.unit || 'Pcs'}, but only ${curQty} are currently recorded in the room. Continue anyway?`);
+      if (!proceed) return;
+    }
+
+    const takenBySelect = document.getElementById('invIssueTakenBySelect');
+    const customTakenBy = document.getElementById('invIssueTakenByCustom');
+    let person = takenBySelect?.value || 'Site Electrician';
+    if (person === '__OTHER__') {
+      person = customTakenBy?.value.trim() || '';
+      if (!person) {
+        alert('Please enter the name of the person who took the item.');
+        customTakenBy?.focus();
+        return;
+      }
+    }
+
+    const siteSelect = document.getElementById('invIssueSiteSelect');
+    const site = siteSelect?.value || 'Traudan Site';
+
+    const dateInput = document.getElementById('invIssueDateInput');
+    const issueDate = dateInput?.value || new Date().toISOString().slice(0, 10);
+
+    const descInput = document.getElementById('invIssueDescriptionInput');
+    const description = descInput?.value.trim() || '';
+    if (!description) {
+      alert('Please enter a short description / purpose (e.g. "Living room false ceiling wiring").');
+      descInput?.focus();
+      return;
+    }
+
+    const confirmBtn = document.getElementById('confirmInvIssueBtn');
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = '⏳ Recording issue…';
+    }
+
+    const remainingQty = Math.max(0, Math.round((curQty - pieces) * 100) / 100);
+
+    // Optimistically update stock in local inventoryItems
+    item.quantity = remainingQty;
+    if (!Array.isArray(item.stock_history)) item.stock_history = [];
+    item.stock_history.unshift({
+      delta: -pieces,
+      reason: `Issued to ${person} for ${site}: ${description}`,
+      date: new Date().toISOString(),
+      by: getActiveUser()
+    });
+
+    const localIssueRecord = {
+      id: 'iss_' + Date.now(),
+      inventory_id: item.id,
+      item_name: item.brand ? `${item.brand} ${item.item_name}` : item.item_name,
+      quantity_taken: pieces,
+      unit: item.unit || 'Pcs',
+      remaining_quantity: remainingQty,
+      issued_to: person,
+      site_destination: site,
+      issue_date: issueDate,
+      description: description,
+      issued_by: getActiveUser(),
+      created_at: new Date().toISOString()
+    };
+
+    inventoryIssues.unshift(localIssueRecord);
+    saveInventoryToCache();
+    saveIssuesToCache();
+    renderInventoryUI();
+    renderIssuesUI();
+
+    // Call backend endpoint POST /inventory/issue
+    try {
+      const res = await fetch(`${BACKEND_URL}/inventory/issue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-app-secret': APP_SECRET
+        },
+        body: JSON.stringify({
+          inventory_id: item.id,
+          item_name: item.brand ? `${item.brand} ${item.item_name}` : item.item_name,
+          quantity_taken: pieces,
+          unit: item.unit || 'Pcs',
+          issued_to: person,
+          site_destination: site,
+          issue_date: issueDate,
+          description: description,
+          issued_by: getActiveUser()
+        })
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        if (result.issue) {
+          const idx = inventoryIssues.findIndex(i => i.id === localIssueRecord.id);
+          if (idx >= 0) inventoryIssues[idx] = result.issue;
+          if (typeof result.remaining_quantity === 'number') {
+            item.quantity = result.remaining_quantity;
+          }
+          saveInventoryToCache();
+          saveIssuesToCache();
+          renderInventoryUI();
+          renderIssuesUI();
+        }
+      }
+    } catch (e) {
+      console.warn('Network issue saving issue to server, saved locally:', e);
+    } finally {
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '📤 Confirm Issue & Update Remaining Stock';
+      }
+      document.getElementById('inventoryIssueModal').style.display = 'none';
+      alert(`✅ Success!\n\n${pieces} ${item.unit || 'Pcs'} of "${item.item_name}" issued to ${person} for ${site}.\n\nRemaining stock in room: ${item.quantity} ${item.unit || 'Pcs'}`);
+    }
+  }
+
+  function renderIssuesUI() {
+    const container = document.getElementById('invIssuesTableArea');
+    if (!container) return;
+
+    const searchInput = document.getElementById('invIssueSearchInput');
+    const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    const siteFilter = document.getElementById('invIssueSiteFilter')?.value || 'ALL';
+
+    const filtered = inventoryIssues.filter(iss => {
+      if (siteFilter !== 'ALL' && (iss.site_destination || '').toLowerCase() !== siteFilter.toLowerCase()) return false;
+      if (q) {
+        const text = [
+          iss.item_name, iss.issued_to, iss.site_destination, iss.description, iss.issued_by
+        ].filter(Boolean).join(' ').toLowerCase();
+        if (!text.includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state" style="padding:48px 20px; text-align:center; background:#ffffff; border:1px dashed #cbd5e1; border-radius:10px;">
+          <div style="font-size:36px; margin-bottom:8px;">📋</div>
+          <h3 style="font-size:17px; color:var(--walnut); margin:0 0 6px;">No material checkout entries found</h3>
+          <p style="font-size:12.5px; color:#64748b; margin:0 0 16px;">
+            ${inventoryIssues.length === 0 
+              ? 'Whenever someone takes electrical or hardware items from the room, record it here to track remaining stock.' 
+              : 'Try clearing your search query or switching the site filter.'}
+          </p>
+          <button type="button" class="btn-primary" onclick="openIssueMaterialModal()" style="background:#d97706; padding:9px 18px; font-weight:700;">
+            📤 + Record Material Issue
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="inv-table-wrap">
+        <table class="inv-table">
+          <thead>
+            <tr>
+              <th style="width:90px;">Date</th>
+              <th>Material / Item Name</th>
+              <th style="text-align:center;">Pieces Taken</th>
+              <th style="text-align:center;">Remaining in Room</th>
+              <th>Who Took It</th>
+              <th>Site Destination</th>
+              <th>Short Description / Purpose</th>
+              <th style="font-size:11px; color:#64748b;">Logged By</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map(iss => {
+              const qtyTaken = parseFloat(iss.quantity_taken) || 0;
+              const remaining = (iss.remaining_quantity !== undefined && iss.remaining_quantity !== null) 
+                ? iss.remaining_quantity 
+                : '—';
+              const unit = iss.unit || 'Pcs';
+              const remNum = parseFloat(remaining);
+              const remColor = isNaN(remNum) ? '#64748b' : (remNum <= 0 ? '#dc2626' : (remNum <= 5 ? '#d97706' : '#15803d'));
+
+              const dateStr = iss.issue_date 
+                ? new Date(iss.issue_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                : '—';
+
+              return `
+                <tr>
+                  <td style="font-weight:600; font-size:12px; color:#475569; white-space:nowrap;">${dateStr}</td>
+                  <td>
+                    <div style="font-weight:700; color:var(--walnut); font-size:13.5px;">${escapeXml(iss.item_name || 'Material Item')}</div>
+                  </td>
+                  <td style="text-align:center;">
+                    <span style="display:inline-block; background:#fee2e2; color:#b91c1c; font-weight:800; font-size:13.5px; padding:3px 8px; border-radius:6px; border:1px solid #fecaca;">
+                      −${qtyTaken} ${escapeXml(unit)}
+                    </span>
+                  </td>
+                  <td style="text-align:center;">
+                    <span style="font-weight:800; font-size:13.5px; color:${remColor};">
+                      ${remaining} ${escapeXml(unit)}
+                    </span>
+                  </td>
+                  <td>
+                    <span style="font-weight:700; color:#1e293b;">👤 ${escapeXml(iss.issued_to || 'Electrician')}</span>
+                  </td>
+                  <td>
+                    <span style="font-weight:600; color:#0369a1;">📍 ${escapeXml(iss.site_destination || 'Site')}</span>
+                  </td>
+                  <td style="max-width:280px; font-size:12.5px; color:#334155;">
+                    ${escapeXml(iss.description || '—')}
+                  </td>
+                  <td style="font-size:11px; color:#94a3b8; white-space:nowrap;">
+                    ${escapeXml(iss.issued_by || 'Admin')}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function exportIssuesToCsv() {
+    if (inventoryIssues.length === 0) {
+      alert('No material issue records to export.');
+      return;
+    }
+
+    const headers = [
+      'Issue Date', 'Item Name', 'Pieces Taken', 'Unit', 'Remaining In Room',
+      'Issued To (Person)', 'Site Destination', 'Description / Purpose', 'Logged By', 'Created Timestamp'
+    ];
+
+    const rows = inventoryIssues.map(iss => [
+      `"${iss.issue_date || ''}"`,
+      `"${(iss.item_name || '').replace(/"/g, '""')}"`,
+      parseFloat(iss.quantity_taken) || 0,
+      `"${(iss.unit || 'Pcs').replace(/"/g, '""')}"`,
+      iss.remaining_quantity !== undefined ? iss.remaining_quantity : '',
+      `"${(iss.issued_to || '').replace(/"/g, '""')}"`,
+      `"${(iss.site_destination || '').replace(/"/g, '""')}"`,
+      `"${(iss.description || '').replace(/"/g, '""')}"`,
+      `"${(iss.issued_by || '').replace(/"/g, '""')}"`,
+      `"${iss.created_at || ''}"`
+    ].join(','));
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Studio5_Material_Issue_Register_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function exportInventoryToCsv() {
     if (inventoryItems.length === 0) {
       alert('No inventory items to export.');
@@ -11243,9 +11806,61 @@
   window.openPhotoViewer = openPhotoViewer;
   window.deleteInventoryItemUI = deleteInventoryItemUI;
   window.loadInventory = loadInventory;
+  window.openIssueMaterialModal = openIssueMaterialModal;
+  window.updateIssueModalStockDisplay = updateIssueModalStockDisplay;
+  window.setIssueQty = setIssueQty;
+  window.confirmMaterialIssue = confirmMaterialIssue;
+  window.renderIssuesUI = renderIssuesUI;
+  window.exportIssuesToCsv = exportIssuesToCsv;
+  window.loadInventoryIssues = loadInventoryIssues;
 
   function setupInventorySection() {
     // Toolbar buttons
+    // Sub-Tabs: Stock vs Material Issue Register
+    const tabStock = document.getElementById('tabInvStock');
+    const tabIssues = document.getElementById('tabInvIssues');
+    const stockContent = document.getElementById('invStockTabContent');
+    const issuesContent = document.getElementById('invIssuesTabContent');
+
+    if (tabStock && tabIssues) {
+      tabStock.addEventListener('click', () => {
+        tabStock.classList.add('active');
+        tabIssues.classList.remove('active');
+        if (stockContent) stockContent.style.display = 'block';
+        if (issuesContent) issuesContent.style.display = 'none';
+        renderInventoryUI();
+      });
+
+      tabIssues.addEventListener('click', () => {
+        tabIssues.classList.add('active');
+        tabStock.classList.remove('active');
+        if (stockContent) stockContent.style.display = 'none';
+        if (issuesContent) issuesContent.style.display = 'block';
+        renderIssuesUI();
+      });
+    }
+
+    // Material Issue modal listeners
+    document.getElementById('openIssueMaterialBtn')?.addEventListener('click', () => openIssueMaterialModal());
+    document.getElementById('closeInvIssueModalBtn')?.addEventListener('click', () => {
+      document.getElementById('inventoryIssueModal').style.display = 'none';
+    });
+    document.getElementById('invIssueItemSelect')?.addEventListener('change', updateIssueModalStockDisplay);
+    document.getElementById('invIssueQtyInput')?.addEventListener('input', updateIssueModalStockDisplay);
+    document.getElementById('invIssueTakenBySelect')?.addEventListener('change', (e) => {
+      const customInput = document.getElementById('invIssueTakenByCustom');
+      if (customInput) {
+        customInput.style.display = e.target.value === '__OTHER__' ? 'block' : 'none';
+        if (e.target.value === '__OTHER__') customInput.focus();
+      }
+    });
+    document.getElementById('confirmInvIssueBtn')?.addEventListener('click', confirmMaterialIssue);
+
+    // Issues tab search & filter listeners
+    document.getElementById('invIssueSearchInput')?.addEventListener('input', () => renderIssuesUI());
+    document.getElementById('invIssueSiteFilter')?.addEventListener('change', () => renderIssuesUI());
+    document.getElementById('exportIssuesCsvBtn')?.addEventListener('click', exportIssuesToCsv);
+
     document.getElementById('openScanProductBtn')?.addEventListener('click', openProductScanner);
     document.getElementById('openAddManualItemBtn')?.addEventListener('click', () => openManualAddItem());
     document.getElementById('exportInventoryCsvBtn')?.addEventListener('click', exportInventoryToCsv);
@@ -11309,7 +11924,7 @@
     });
 
     // Close overlays on outside click
-    ['inventoryScanModal', 'inventoryItemModal', 'inventoryQuickQtyModal', 'inventorySpecsDetailModal', 'inventoryPhotoViewModal'].forEach(id => {
+    ['inventoryIssueModal', 'inventoryScanModal', 'inventoryItemModal', 'inventoryQuickQtyModal', 'inventorySpecsDetailModal', 'inventoryPhotoViewModal'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.addEventListener('click', (e) => {
