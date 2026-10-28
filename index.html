@@ -1361,6 +1361,193 @@
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.06); }
     }
+  /* --- Inventory Section Styles --- */
+  .inv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .inv-card {
+    background: #ffffff;
+    border: 1px solid var(--line, #e2e8f0);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .inv-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+  }
+  .inv-img-wrap {
+    position: relative;
+    width: 100%;
+    height: 180px;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .inv-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+  }
+  .inv-img-wrap:hover img {
+    transform: scale(1.03);
+  }
+  .inv-no-img {
+    font-size: 38px;
+    color: #94a3b8;
+  }
+  .inv-stock-tag {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 11.5px;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  .inv-stock-tag.in-stock { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+  .inv-stock-tag.low-stock { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+  .inv-stock-tag.out-stock { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+  .inv-body {
+    padding: 14px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .inv-title {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--walnut, #0f172a);
+    margin: 0 0 4px;
+    line-height: 1.3;
+  }
+  .inv-brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+  .inv-brand { font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; }
+  .inv-cat-pill { color: #64748b; font-size: 11.5px; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; }
+  .inv-specs-box {
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 8px 0;
+    font-size: 12px;
+    color: #334155;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .inv-spec-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .inv-spec-line span:first-child { color: #64748b; font-weight: 500; }
+  .inv-spec-line span:last-child { font-weight: 600; text-align: right; }
+  .inv-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 10px;
+    margin-top: auto;
+  }
+  .inv-qty-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #f1f5f9;
+    border-radius: 6px;
+    padding: 2px 6px;
+  }
+  .inv-qty-btn {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1e293b;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s;
+  }
+  .inv-qty-btn:active { background: #e2e8f0; }
+  .inv-qty-num {
+    font-size: 14px;
+    font-weight: 800;
+    min-width: 38px;
+    text-align: center;
+    color: var(--walnut, #0f172a);
+  }
+  .inv-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 14px;
+    border: 1px solid var(--line, #e2e8f0);
+    border-radius: 8px;
+    background: #ffffff;
+  }
+  .inv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    text-align: left;
+  }
+  .inv-table th {
+    background: #f8fafc;
+    color: var(--walnut-light, #475569);
+    padding: 10px 12px;
+    font-weight: 700;
+    border-bottom: 1px solid var(--line, #e2e8f0);
+    white-space: nowrap;
+  }
+  .inv-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+  }
+  .inv-table tr:hover td { background: #f8fafc; }
+  .inv-scan-preview {
+    max-height: 240px;
+    width: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #000;
+    margin-bottom: 12px;
+  }
+
+  :root[data-theme="dark"] .inv-card { background: #1e293b; border-color: #334155; }
+  :root[data-theme="dark"] .inv-img-wrap { background: #0f172a; }
+  :root[data-theme="dark"] .inv-title { color: #f8fafc; }
+  :root[data-theme="dark"] .inv-specs-box { background: #0f172a; border-color: #334155; color: #cbd5e1; }
+  :root[data-theme="dark"] .inv-qty-ctrl { background: #0f172a; }
+  :root[data-theme="dark"] .inv-qty-btn { background: #1e293b; border-color: #475569; color: #f8fafc; }
+  :root[data-theme="dark"] .inv-qty-num { color: #f8fafc; }
+  :root[data-theme="dark"] .inv-table-wrap { background: #1e293b; border-color: #334155; }
+  :root[data-theme="dark"] .inv-table th { background: #0f172a; color: #94a3b8; border-color: #334155; }
+  :root[data-theme="dark"] .inv-table td { border-color: #334155; }
+  :root[data-theme="dark"] .inv-table tr:hover td { background: #0f172a; }
   }
 </style>
 </head>
@@ -1827,7 +2014,427 @@
     </div>
     <div id="billDetailModalBody" style="overflow-y:auto; flex:1; font-size:13px;">
       <!-- Content populated dynamically -->
+</div>
+
+<!-- ═══ INVENTORY SCAN & AI EXTRACT MODAL ═══════════════════════════════ -->
+<div class="pin-overlay" id="inventoryScanModal" style="display:none; z-index:10006;">
+  <div class="pin-card" style="max-width:620px; width:95%; text-align:left; max-height:92vh; display:flex; flex-direction:column; background:#ffffff; border-radius:14px; padding:22px; box-shadow:0 25px 35px -5px rgba(0,0,0,0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+      <div>
+        <h2 style="margin:0; font-size:18px; color:var(--walnut); display:flex; align-items:center; gap:8px;">
+          <span>📸</span> <span>AI Product & Specs Scanner</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:12px; color:#64748b;">Snap product label, box, catalog tag or spec sheet to auto-fill inventory</p>
+      </div>
+      <button type="button" id="closeInvScanModalBtn" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
     </div>
+
+    <div style="overflow-y:auto; flex:1; padding-right:4px;" id="invScanModalBody">
+      <!-- Upload / Snap Area -->
+      <div id="invScanDropZone" style="border:2px dashed #059669; background:#f0fdf4; border-radius:10px; padding:26px 16px; text-align:center; cursor:pointer; transition:background 0.15s; margin-bottom:14px;">
+        <input type="file" id="invScanFileInput" accept="image/*" capture="environment" style="display:none;" />
+        <div style="font-size:36px; margin-bottom:6px;">📷</div>
+        <div style="font-size:15px; font-weight:700; color:#065f46; margin-bottom:4px;">Tap here to Snap Photo or Choose File</div>
+        <div style="font-size:12px; color:#047857;">Works on product packaging boxes, spec stickers, barcodes, catalog descriptions, or the item itself</div>
+      </div>
+
+      <!-- Scan Progress / Loading State -->
+      <div id="invScanStatusArea" style="display:none; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:14px;">
+          <div class="spinner"></div>
+          <div>
+            <div style="font-size:13.5px; font-weight:700; color:#1e40af;" id="invScanStatusText">Reading image & extracting specifications with AI…</div>
+            <div style="font-size:11.5px; color:#3b82f6;">Capturing product title, brand, dimensions, finish, material, and count…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanned Product Verification Form (Hidden until photo processed) -->
+      <div id="invScanFormArea" style="display:none;">
+        <div style="display:flex; gap:14px; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:14px;">
+          <img id="invScanPreviewImg" src="" alt="Scanned Product" style="width:74px; height:74px; object-fit:cover; border-radius:6px; border:1px solid #cbd5e1; cursor:pointer;" onclick="openPhotoViewer(this.src)" title="Click to enlarge" />
+          <div style="flex:1;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:#059669; letter-spacing:0.05em;">AI Extraction Complete</div>
+            <div style="font-size:12.5px; color:#334155; margin-top:2px;">Review specifications below. All fields can be adjusted before saving.</div>
+            <button type="button" class="btn-ghost" style="padding:2px 8px; font-size:11px; margin-top:4px;" onclick="document.getElementById('invScanFileInput').click()">📸 Resnap / Change Photo</button>
+          </div>
+        </div>
+
+        <!-- Duplicate Alert Warning if existing item found -->
+        <div id="invScanDuplicateNotice" style="display:none; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12.5px; color:#92400e;">
+          <strong>⚠️ Existing item found in stock:</strong> <span id="invScanDuplicateMsg"></span>
+        </div>
+
+        <!-- Form fields -->
+        <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:14px;">
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">ITEM / PRODUCT NAME *</label>
+            <input type="text" id="invScanItemName" placeholder="e.g. Hafele Metalla 3D Soft-Close Hinge 110°" style="width:100%; padding:9px 12px; font-size:13.5px; font-weight:600; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">BRAND / MAKE</label>
+            <input type="text" id="invScanBrand" placeholder="e.g. Hafele, Hettich, Philips" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">MODEL / ARTICLE / SKU NO</label>
+            <input type="text" id="invScanModelNo" placeholder="e.g. 311.90.500" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">QUANTITY *</label>
+            <input type="number" step="any" id="invScanQty" placeholder="1" style="width:100%; padding:8px 10px; font-size:14px; font-weight:700; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#047857;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNIT *</label>
+            <select id="invScanUnit" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
+              <option value="Pcs">Pcs / Nos</option>
+              <option value="Box">Box</option>
+              <option value="Set">Set</option>
+              <option value="Pack">Pack</option>
+              <option value="Sheets">Sheets</option>
+              <option value="Meters">Meters / Rmt</option>
+              <option value="Sq Ft">Sq Ft</option>
+              <option value="Kg">Kg</option>
+              <option value="Litre">Litre</option>
+              <option value="Rolls">Rolls</option>
+              <option value="Bundles">Bundles</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">LOW THRESHOLD</label>
+            <input type="number" id="invScanThreshold" value="5" placeholder="5" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" title="Alert when stock falls to or below this count" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">CATEGORY</label>
+            <select id="invScanCategory" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
+              <option value="Hardware & Fittings">Hardware & Fittings</option>
+              <option value="Electrical & Lighting">Electrical & Lighting</option>
+              <option value="Plywood & Boards">Plywood & Boards</option>
+              <option value="Laminates & Veneers">Laminates & Veneers</option>
+              <option value="Plumbing & Sanitary">Plumbing & Sanitary</option>
+              <option value="Paints & Finishes">Paints & Finishes</option>
+              <option value="Adhesives & Chemicals">Adhesives & Chemicals</option>
+              <option value="Glass & Metal">Glass & Metal</option>
+              <option value="Tools & Machinery">Tools & Machinery</option>
+              <option value="Safety & PPE">Safety & PPE</option>
+              <option value="General Consumables">General Consumables</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">SITE / GODOWN *</label>
+            <select id="invScanSite" style="width:100%; padding:8px 10px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
+              <option value="Traudan Site">Traudan Site</option>
+              <option value="Dehradun Site">Dehradun Site</option>
+              <option value="Gurgaon Site">Gurgaon Site</option>
+              <option value="Central Godown">Central Godown</option>
+              <option value="Factory / Workshop">Factory / Workshop</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Specifications Group -->
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px;">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:#475569; letter-spacing:0.06em; margin-bottom:8px;">📐 Technical Specifications</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
+            <div>
+              <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">DIMENSIONS / SIZE</label>
+              <input type="text" id="invScanDimensions" placeholder="e.g. 8ft x 4ft x 18mm, 450mm, 35mm" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">COLOR / FINISH</label>
+              <input type="text" id="invScanColorFinish" placeholder="e.g. Matte Black, Brushed Nickel, Glossy" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">MATERIAL</label>
+              <input type="text" id="invScanMaterial" placeholder="e.g. SS 304, Brass, Marine Ply, Aluminum" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">RATING / GRADE / TYPE</label>
+              <input type="text" id="invScanGradeType" placeholder="e.g. 12W 220V, Full Overlay, BWP 710" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNIT RATE / MRP (₹)</label>
+            <input type="number" step="any" id="invScanUnitPrice" placeholder="0.00" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">BARCODE / SERIAL #</label>
+            <input type="text" id="invScanBarcode" placeholder="e.g. 890123456789" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">NOTES / DESCRIPTION</label>
+          <input type="text" id="invScanNotes" placeholder="e.g. Pack contains mounting screws and plates" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        </div>
+
+        <!-- Buttons -->
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button type="button" id="invScanSaveBtn" class="btn-primary" style="flex:1; padding:12px; font-size:14.5px; font-weight:700; background:#059669;">
+            ✅ Confirm & Save to Inventory
+          </button>
+          <button type="button" class="btn-ghost" onclick="document.getElementById('inventoryScanModal').style.display='none'" style="padding:12px 18px;">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MANUAL ADD / EDIT INVENTORY ITEM MODAL ═══════════════════════════ -->
+<div class="pin-overlay" id="inventoryItemModal" style="display:none; z-index:10006;">
+  <div class="pin-card" style="max-width:580px; width:95%; text-align:left; max-height:92vh; display:flex; flex-direction:column; background:#ffffff; border-radius:14px; padding:22px; box-shadow:0 25px 35px -5px rgba(0,0,0,0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+      <div>
+        <h2 style="margin:0; font-size:18px; color:var(--walnut); display:flex; align-items:center; gap:8px;">
+          <span>📦</span> <span id="invItemModalTitle">Add New Inventory Item</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:12px; color:#64748b;">Enter material details, specifications, and current stock count</p>
+      </div>
+      <button type="button" id="closeInvItemModalBtn" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <div style="overflow-y:auto; flex:1; padding-right:4px;">
+      <input type="hidden" id="invItemEditId" value="" />
+
+      <!-- Item Photo upload -->
+      <div style="margin-bottom:14px;">
+        <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">PRODUCT PHOTO (OPTIONAL)</label>
+        <div style="display:flex; gap:12px; align-items:center;">
+          <input type="file" id="invItemPhotoInput" accept="image/*" style="font-size:12.5px; flex:1;" />
+          <div id="invItemPhotoPreviewWrap" style="display:none;">
+            <img id="invItemPhotoPreview" src="" alt="Item Photo" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid #cbd5e1;" />
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">ITEM / PRODUCT NAME *</label>
+        <input type="text" id="invItemNameInput" placeholder="e.g. Greenlam 1mm Laminate Slate Grey" style="width:100%; padding:9px 12px; font-size:13.5px; font-weight:600; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">BRAND / MAKE</label>
+          <input type="text" id="invItemBrandInput" placeholder="e.g. Greenlam, Century, Hafele" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        </div>
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">MODEL / ARTICLE NO</label>
+          <input type="text" id="invItemModelInput" placeholder="e.g. GL-104 or 311.90" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px;">
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">QUANTITY *</label>
+          <input type="number" step="any" id="invItemQtyInput" placeholder="0" style="width:100%; padding:8px 10px; font-size:14px; font-weight:700; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#047857;" />
+        </div>
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNIT *</label>
+          <select id="invItemUnitSelect" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
+            <option value="Pcs">Pcs / Nos</option>
+            <option value="Box">Box</option>
+            <option value="Set">Set</option>
+            <option value="Pack">Pack</option>
+            <option value="Sheets">Sheets</option>
+            <option value="Meters">Meters / Rmt</option>
+            <option value="Sq Ft">Sq Ft</option>
+            <option value="Kg">Kg</option>
+            <option value="Litre">Litre</option>
+            <option value="Rolls">Rolls</option>
+            <option value="Bundles">Bundles</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">LOW THRESHOLD</label>
+          <input type="number" id="invItemThresholdInput" value="5" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">CATEGORY</label>
+          <select id="invItemCategorySelect" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
+            <option value="Hardware & Fittings">Hardware & Fittings</option>
+            <option value="Electrical & Lighting">Electrical & Lighting</option>
+            <option value="Plywood & Boards">Plywood & Boards</option>
+            <option value="Laminates & Veneers">Laminates & Veneers</option>
+            <option value="Plumbing & Sanitary">Plumbing & Sanitary</option>
+            <option value="Paints & Finishes">Paints & Finishes</option>
+            <option value="Adhesives & Chemicals">Adhesives & Chemicals</option>
+            <option value="Glass & Metal">Glass & Metal</option>
+            <option value="Tools & Machinery">Tools & Machinery</option>
+            <option value="Safety & PPE">Safety & PPE</option>
+            <option value="General Consumables">General Consumables</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">SITE / GODOWN *</label>
+          <select id="invItemSiteSelect" style="width:100%; padding:8px 10px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
+            <option value="Traudan Site">Traudan Site</option>
+            <option value="Dehradun Site">Dehradun Site</option>
+            <option value="Gurgaon Site">Gurgaon Site</option>
+            <option value="Central Godown">Central Godown</option>
+            <option value="Factory / Workshop">Factory / Workshop</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Specs Box -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px;">
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:#475569; letter-spacing:0.06em; margin-bottom:8px;">📐 Technical Specifications</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
+          <div>
+            <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">DIMENSIONS / SIZE</label>
+            <input type="text" id="invItemDimensionsInput" placeholder="e.g. 8ft x 4ft x 1mm, 450mm" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">COLOR / FINISH</label>
+            <input type="text" id="invItemColorInput" placeholder="e.g. Slate Grey, Suede Finish" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">MATERIAL</label>
+            <input type="text" id="invItemMaterialInput" placeholder="e.g. Phenolic Resin, Kraft Paper" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">RATING / GRADE / TYPE</label>
+            <input type="text" id="invItemGradeInput" placeholder="e.g. Post-forming Grade" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNIT RATE / COST (₹)</label>
+          <input type="number" step="any" id="invItemUnitPriceInput" placeholder="0.00" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        </div>
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">BARCODE / TAG #</label>
+          <input type="text" id="invItemBarcodeInput" placeholder="Optional identifier" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">NOTES / STORAGE LOCATION DETAILS</label>
+        <input type="text" id="invItemNotesInput" placeholder="e.g. Stored in Rack B3, Traudan site container" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <button type="button" id="invItemSaveBtn" class="btn-primary" style="flex:1; padding:12px; font-size:14.5px; font-weight:700;">
+          💾 Save Inventory Item
+        </button>
+        <button type="button" class="btn-ghost" onclick="document.getElementById('inventoryItemModal').style.display='none'" style="padding:12px 18px;">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ QUICK STOCK ADJUSTMENT (+ / -) MODAL ═════════════════════════════ -->
+<div class="pin-overlay" id="inventoryQuickQtyModal" style="display:none; z-index:10006;">
+  <div class="pin-card" style="max-width:440px; width:95%; text-align:left; background:#ffffff; border-radius:14px; padding:20px; box-shadow:0 25px 35px -5px rgba(0,0,0,0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #e2e8f0; padding-bottom:10px; margin-bottom:12px;">
+      <div>
+        <h2 style="margin:0; font-size:17.5px; color:var(--walnut); display:flex; align-items:center; gap:8px;">
+          <span>⚡</span> <span>Quick Stock In / Out</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:11.5px; color:#64748b;" id="invQuickItemTitle">Adjust Item Stock</p>
+      </div>
+      <button type="button" id="closeInvQuickQtyBtn" style="background:#f1f5f9; border:none; width:28px; height:28px; border-radius:50%; font-size:15px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <input type="hidden" id="invQuickItemId" value="" />
+    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px; margin-bottom:14px; text-align:center;">
+      <div style="font-size:12px; color:#166534; font-weight:600;">Current Stock Available</div>
+      <div style="font-size:26px; font-weight:800; color:#15803d; margin:2px 0;" id="invQuickCurrentQty">0 Pcs</div>
+      <div style="font-size:11.5px; color:#64748b;" id="invQuickSiteTag">Central Godown</div>
+    </div>
+
+    <!-- Quick action chips -->
+    <div style="margin-bottom:14px;">
+      <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:6px;">QUICK STOCK IN (RECEIVE)</label>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button type="button" class="btn-ghost btn-sm" onclick="setQuickDelta(1)" style="color:#15803d; border-color:#86efac; background:#f0fdf4; font-weight:700;">+1</button>
+        <button type="button" class="btn-ghost btn-sm" onclick="setQuickDelta(5)" style="color:#15803d; border-color:#86efac; background:#f0fdf4; font-weight:700;">+5</button>
+        <button type="button" class="btn-ghost btn-sm" onclick="setQuickDelta(10)" style="color:#15803d; border-color:#86efac; background:#f0fdf4; font-weight:700;">+10</button>
+        <button type="button" class="btn-ghost btn-sm" onclick="setQuickDelta(25)" style="color:#15803d; border-color:#86efac; background:#f0fdf4; font-weight:700;">+25</button>
+        <button type="button" class="btn-ghost btn-sm" onclick="setQuickDelta(50)" style="color:#15803d; border-color:#86efac; background:#f0fdf4; font-weight:700;">+50</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:6px;">QUICK STOCK OUT (ISSUED / USED)</label>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button type="button" class="btn-ghost btn-sm" onclick="setQuickDelta(-1)" style="color:#b91c1c; border-color:#fca5a5; background:#fef2f2; font-weight:700;">-1</button>
+        <button type="button" class="btn-ghost btn-sm" onclick="setQuickDelta(-5)" style="color:#b91c1c; border-color:#fca5a5; background:#fef2f2; font-weight:700;">-5</button>
+        <button type="button" class="btn-ghost btn-sm" onclick="setQuickDelta(-10)" style="color:#b91c1c; border-color:#fca5a5; background:#fef2f2; font-weight:700;">-10</button>
+        <button type="button" class="btn-ghost btn-sm" onclick="setQuickDelta(-25)" style="color:#b91c1c; border-color:#fca5a5; background:#fef2f2; font-weight:700;">-25</button>
+      </div>
+    </div>
+
+    <!-- Manual Delta Input -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+      <div>
+        <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">CHANGE BY (+ / -)</label>
+        <input type="number" step="any" id="invQuickDeltaInput" placeholder="+10 or -5" style="width:100%; padding:8px 10px; font-size:14px; font-weight:700; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+      </div>
+      <div>
+        <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">REASON / NOTE</label>
+        <input type="text" id="invQuickReasonInput" placeholder="e.g. Issued for Site Wardrobe" style="width:100%; padding:8px 10px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px;">
+      <button type="button" id="invQuickSaveBtn" class="btn-primary" style="flex:1; padding:11px; font-size:14px; font-weight:700;">
+        ⚡ Apply Stock Adjustment
+      </button>
+      <button type="button" class="btn-ghost" onclick="document.getElementById('inventoryQuickQtyModal').style.display='none'" style="padding:11px 16px;">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FULL PRODUCT SPECS & HISTORY DETAIL DOSSIER MODAL ═══════════════ -->
+<div class="pin-overlay" id="inventorySpecsDetailModal" style="display:none; z-index:10006;">
+  <div class="pin-card" style="max-width:580px; width:95%; text-align:left; max-height:90vh; display:flex; flex-direction:column; background:#ffffff; border-radius:14px; padding:22px; box-shadow:0 25px 35px -5px rgba(0,0,0,0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+      <div>
+        <h2 style="margin:0; font-size:18px; color:var(--walnut); display:flex; align-items:center; gap:8px;">
+          <span>📦</span> <span id="invDetailTitle">Product Specifications</span>
+        </h2>
+        <p style="margin:2px 0 0; font-size:12px; color:#64748b;" id="invDetailSubtitle">Detailed dossier & stock history</p>
+      </div>
+      <button type="button" id="closeInvDetailModalBtn" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+    <div id="invDetailModalBody" style="overflow-y:auto; flex:1; font-size:13px;">
+      <!-- Populated dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PHOTO VIEWER MODAL ══════════════════════════════════════════════ -->
+<div class="pin-overlay" id="inventoryPhotoViewModal" style="display:none; z-index:10010; background:rgba(0,0,0,0.85); align-items:center; justify-content:center;">
+  <div style="position:relative; max-width:92vw; max-height:90vh; display:flex; flex-direction:column; align-items:center;">
+    <button type="button" onclick="document.getElementById('inventoryPhotoViewModal').style.display='none'" style="position:absolute; top:-38px; right:0; background:#fff; border:none; width:32px; height:32px; border-radius:50%; font-size:18px; font-weight:700; cursor:pointer; color:#000;">✕</button>
+    <img id="invPhotoViewerImg" src="" alt="Enlarged Product Photo" style="max-width:100%; max-height:85vh; border-radius:8px; box-shadow:0 20px 40px rgba(0,0,0,0.5); object-fit:contain;" />
   </div>
 </div>
 
@@ -1961,6 +2568,7 @@
     <button class="nav-btn active" data-view="dashboard"><span>📊</span> <span>Dashboard</span></button>
     <button class="nav-btn" data-view="upload"><span>📷</span> <span>Upload</span></button>
     <button class="nav-btn" data-view="ledger"><span>📑</span> <span>Ledger</span></button>
+    <button class="nav-btn" data-view="inventory"><span>📦</span> <span>Inventory</span> <span class="nav-badge" id="inventoryLowBadge" style="display:none; background:#dc2626;">0</span></button>
     <button class="nav-btn" data-view="approvals"><span>⏳</span> <span>Approvals</span> <span class="nav-badge" id="approvalsBadge" style="display:none;">0</span></button>
     <button class="nav-btn" data-view="bank"><span>🏦</span> <span>Bank</span></button>
   </div>
@@ -2386,6 +2994,112 @@
             <button class="tab-btn" data-tab="non_gst" id="tabNonGst">Non-GST Bills</button>
           </div>
           <div class="table-scroll" id="tableArea"></div>
+        </div>
+      </div>
+
+      <!-- ═══ INVENTORY SECTION VIEW ═══════════════════════════════════════════ -->
+      <div class="view" id="view-inventory">
+        <div class="panel">
+          <!-- Toolbar Header -->
+          <div class="table-toolbar" style="flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+            <div>
+              <h2 style="font-family:Georgia,serif; font-size:22px; color:var(--walnut); margin:0; display:flex; align-items:center; gap:8px;">
+                <span>📦</span> <span>Material & Product Inventory</span>
+              </h2>
+              <div style="font-size:12.5px; color:var(--walnut-light); margin-top:3px;">
+                Track physical in-stock items, specifications, dimensions, rates, and godown locations.
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button class="btn-primary" id="openScanProductBtn" type="button" style="font-size:13.5px; padding:9px 16px; background:#059669; display:flex; align-items:center; gap:6px; font-weight:700;" title="Snap product photo or packaging tag to automatically extract specifications">
+                <span>📸</span> <span>Scan Product / Box</span>
+              </button>
+              <button class="btn-primary" id="openAddManualItemBtn" type="button" style="font-size:13.5px; padding:9px 15px; background:var(--walnut); display:flex; align-items:center; gap:6px;">
+                <span>➕</span> <span>Manual Add</span>
+              </button>
+              <button class="btn-ghost" id="exportInventoryCsvBtn" type="button" style="font-size:13px; padding:8px 12px;" title="Export inventory list to CSV">
+                <span>📥</span> <span>Export CSV</span>
+              </button>
+              <button class="btn-ghost" id="refreshInventoryBtn" type="button" style="font-size:13px; padding:8px 12px;" title="Refresh Inventory">
+                <span>🔄</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Stats Cards -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:20px;">
+            <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #059669;">
+              <div class="dash-label">Total Unique Items</div>
+              <div class="dash-value" id="invStatTotalItems" style="font-size:24px;">0</div>
+              <div class="dash-sub">Tracked catalog SKUs</div>
+            </div>
+            <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #2563eb;">
+              <div class="dash-label">Total Stock Quantity</div>
+              <div class="dash-value" id="invStatTotalQty" style="font-size:24px;">0</div>
+              <div class="dash-sub">Total units across godowns</div>
+            </div>
+            <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #7c3aed;">
+              <div class="dash-label">Est. Stock Valuation</div>
+              <div class="dash-value" id="invStatValuation" style="font-size:24px;">₹0</div>
+              <div class="dash-sub">Total material value</div>
+            </div>
+            <div class="dash-card" style="padding:14px; border-radius:8px; border-left:4px solid #dc2626;">
+              <div class="dash-label">Low / Out of Stock</div>
+              <div class="dash-value" id="invStatLowStock" style="font-size:24px; color:#dc2626;">0</div>
+              <div class="dash-sub" id="invStatLowStockSub">Items needing reorder</div>
+            </div>
+          </div>
+
+          <!-- Filter & Search Controls -->
+          <div style="background:var(--cream, #f8fafc); border:1px solid var(--line, #e2e8f0); border-radius:8px; padding:12px 14px; margin-bottom:18px; display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <div style="flex:1; min-width:220px; position:relative;">
+                <input type="text" id="inventorySearchInput" placeholder="🔍 Search item name, brand, model, dimensions, finish, material..." style="width:100%; padding:9px 12px; font-size:13.5px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;" />
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <select id="inventoryCategoryFilter" style="padding:9px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:var(--walnut);">
+                  <option value="ALL">All Categories</option>
+                  <option value="Hardware & Fittings">Hardware & Fittings</option>
+                  <option value="Electrical & Lighting">Electrical & Lighting</option>
+                  <option value="Plywood & Boards">Plywood & Boards</option>
+                  <option value="Laminates & Veneers">Laminates & Veneers</option>
+                  <option value="Plumbing & Sanitary">Plumbing & Sanitary</option>
+                  <option value="Paints & Finishes">Paints & Finishes</option>
+                  <option value="Adhesives & Chemicals">Adhesives & Chemicals</option>
+                  <option value="Glass & Metal">Glass & Metal</option>
+                  <option value="Tools & Machinery">Tools & Machinery</option>
+                  <option value="Safety & PPE">Safety & PPE</option>
+                  <option value="General Consumables">General Consumables</option>
+                </select>
+                <select id="inventorySiteFilter" style="padding:9px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:var(--walnut);">
+                  <option value="ALL">All Sites / Warehouses</option>
+                  <option value="Traudan Site">Traudan Site</option>
+                  <option value="Dehradun Site">Dehradun Site</option>
+                  <option value="Gurgaon Site">Gurgaon Site</option>
+                  <option value="Central Godown">Central Godown</option>
+                  <option value="Factory / Workshop">Factory / Workshop</option>
+                </select>
+                <select id="inventoryStockStatusFilter" style="padding:9px 12px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:var(--walnut);">
+                  <option value="ALL">All Stock Levels</option>
+                  <option value="in_stock">In Stock (> Threshold)</option>
+                  <option value="low_stock">⚠️ Low Stock (≤ 5)</option>
+                  <option value="out_of_stock">❌ Out of Stock (0)</option>
+                </select>
+                <div style="display:flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
+                  <button type="button" id="invViewModeGridBtn" class="category-chip active" style="padding:7px 11px; border-radius:0; margin:0;" title="Grid View">🔲 Grid</button>
+                  <button type="button" id="invViewModeTableBtn" class="category-chip" style="padding:7px 11px; border-radius:0; margin:0;" title="Table View">📑 List</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Inventory Items Area -->
+          <div id="inventoryContainerArea">
+            <div class="empty-state" style="padding:40px 20px; text-align:center;">
+              <div style="font-size:32px; margin-bottom:8px;">📦</div>
+              <div style="font-size:16px; font-weight:700; color:var(--walnut);">Loading inventory catalog...</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -5127,6 +5841,7 @@
     currentViewIndex = index;
     settleTrackToIndex(index, true);
     if (viewName === 'dashboard') refreshDashboard();
+    if (viewName === 'inventory') loadInventory();
     if (viewName === 'approvals') openApprovals();
     if (viewName === 'bank') loadBankTransactions();
   }
@@ -5151,7 +5866,7 @@
   }
 
   // ---------- Swipe navigation (mobile) — real-time drag-following with snap ----------
-  const VIEW_ORDER = ['dashboard', 'upload', 'ledger', 'approvals', 'bank'];
+  const VIEW_ORDER = ['dashboard', 'upload', 'ledger', 'inventory', 'approvals', 'bank'];
   const viewport = document.querySelector('.view-viewport');
   const viewTrack = document.getElementById('viewTrack');
   let currentViewIndex = 0;
@@ -9600,6 +10315,1015 @@
   // Refresh button
   const refreshBankBtn = document.getElementById('refreshBankBtn');
   if (refreshBankBtn) refreshBankBtn.addEventListener('click', loadBankTransactions);
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // STUDIO 5 PRODUCT & MATERIAL INVENTORY SECTION (LOGIC & SCANNER)
+  // ════════════════════════════════════════════════════════════════════════════
+  const INVENTORY_STORAGE_KEY = 'studio5_inventory_cache_v1';
+  let inventoryItems = [];
+  let inventoryCurrentViewMode = 'grid'; // 'grid' | 'table'
+  let currentScanPhotoBase64 = null;
+  let currentScanMediaType = null;
+  let currentScannedItemData = null;
+
+  // Load from local storage immediately on startup
+  try {
+    const cached = localStorage.getItem(INVENTORY_STORAGE_KEY);
+    if (cached) inventoryItems = JSON.parse(cached);
+  } catch (e) {}
+
+  function saveInventoryToCache() {
+    try {
+      localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(inventoryItems));
+    } catch (e) {}
+  }
+
+  function getActiveSite() {
+    const submittingSelect = document.getElementById('submittingForSelect');
+    const val = submittingSelect ? submittingSelect.value : '';
+    if (val.includes('Dehradun')) return 'Dehradun Site';
+    if (val.includes('Traudan')) return 'Traudan Site';
+    if (val.includes('Gurgaon')) return 'Gurgaon Site';
+    return 'Central Godown';
+  }
+
+  function getActiveUser() {
+    const userBadge = document.getElementById('activeUserNameBadge');
+    return userBadge ? userBadge.textContent.trim() : 'Sanjeev Yadav';
+  }
+
+  async function loadInventory(forceRefresh = false) {
+    renderInventoryUI(); // render immediately from local cache
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/inventory?_t=${Date.now()}`, {
+        headers: { 'x-app-secret': APP_SECRET }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.items)) {
+          inventoryItems = data.items;
+          saveInventoryToCache();
+          renderInventoryUI();
+        }
+      }
+    } catch (err) {
+      console.warn('Could not sync inventory with backend:', err.message);
+    }
+  }
+
+  function renderInventoryUI() {
+    const container = document.getElementById('inventoryContainerArea');
+    if (!container) return;
+
+    const searchInput = document.getElementById('inventorySearchInput');
+    const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    const catFilter = document.getElementById('inventoryCategoryFilter')?.value || 'ALL';
+    const siteFilter = document.getElementById('inventorySiteFilter')?.value || 'ALL';
+    const statusFilter = document.getElementById('inventoryStockStatusFilter')?.value || 'ALL';
+
+    // Summary calculations across all items
+    let totalItems = inventoryItems.length;
+    let totalQty = 0;
+    let totalValuation = 0;
+    let lowStockCount = 0;
+
+    inventoryItems.forEach(it => {
+      const qty = parseFloat(it.quantity) || 0;
+      const price = parseFloat(it.unit_price) || 0;
+      const thresh = parseFloat(it.min_threshold) || 5;
+      totalQty += qty;
+      totalValuation += (qty * price);
+      if (qty <= thresh) lowStockCount++;
+    });
+
+    const statItemsEl = document.getElementById('invStatTotalItems');
+    const statQtyEl = document.getElementById('invStatTotalQty');
+    const statValEl = document.getElementById('invStatValuation');
+    const statLowEl = document.getElementById('invStatLowStock');
+    const lowBadgeEl = document.getElementById('inventoryLowBadge');
+
+    if (statItemsEl) statItemsEl.textContent = totalItems.toLocaleString();
+    if (statQtyEl) statQtyEl.textContent = totalQty.toLocaleString();
+    if (statValEl) statValEl.textContent = '₹' + Math.round(totalValuation).toLocaleString('en-IN');
+    if (statLowEl) statLowEl.textContent = lowStockCount.toLocaleString();
+
+    if (lowBadgeEl) {
+      if (lowStockCount > 0) {
+        lowBadgeEl.style.display = 'inline-block';
+        lowBadgeEl.textContent = lowStockCount;
+      } else {
+        lowBadgeEl.style.display = 'none';
+      }
+    }
+
+    // Filter items
+    let filtered = inventoryItems.filter(it => {
+      if (catFilter !== 'ALL' && (it.category || '').toLowerCase() !== catFilter.toLowerCase()) return false;
+      if (siteFilter !== 'ALL' && (it.site_location || '').toLowerCase() !== siteFilter.toLowerCase()) return false;
+
+      const qty = parseFloat(it.quantity) || 0;
+      const thresh = parseFloat(it.min_threshold) || 5;
+      if (statusFilter === 'out_of_stock' && qty > 0) return false;
+      if (statusFilter === 'low_stock' && (qty <= 0 || qty > thresh)) return false;
+      if (statusFilter === 'in_stock' && qty <= thresh) return false;
+
+      if (q) {
+        const text = [
+          it.item_name, it.brand, it.model_number, it.category, it.site_location,
+          it.specifications?.dimensions, it.specifications?.color_finish,
+          it.specifications?.material, it.specifications?.grade_or_type,
+          it.barcode_or_serial, it.notes
+        ].filter(Boolean).join(' ').toLowerCase();
+        if (!text.includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state" style="padding:48px 20px; text-align:center; background:#ffffff; border:1px dashed #cbd5e1; border-radius:10px; margin-top:14px;">
+          <div style="font-size:42px; margin-bottom:10px;">📦</div>
+          <h3 style="font-size:18px; color:var(--walnut); margin:0 0 6px;">No inventory items match your search</h3>
+          <p style="font-size:13px; color:#64748b; max-width:440px; margin:0 auto 18px;">
+            ${inventoryItems.length === 0 
+              ? 'No items have been logged in the inventory yet. Snap a product box or tag to add the first item!'
+              : 'Try clearing your search query or switching filters.'}
+          </p>
+          <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="btn-primary" onclick="openProductScanner()" style="background:#059669; padding:10px 18px; font-weight:700;">📸 Scan Product / Box</button>
+            <button type="button" class="btn-ghost" onclick="openManualAddItem()" style="padding:10px 18px; font-weight:600;">➕ Manual Add Item</button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    if (inventoryCurrentViewMode === 'table') {
+      renderTableView(container, filtered);
+    } else {
+      renderGridView(container, filtered);
+    }
+  }
+
+  function renderGridView(container, items) {
+    const html = `
+      <div class="inv-grid">
+        ${items.map(it => {
+          const qty = parseFloat(it.quantity) || 0;
+          const thresh = parseFloat(it.min_threshold) || 5;
+          const unit = it.unit || 'Pcs';
+          const price = parseFloat(it.unit_price) || 0;
+          const totalVal = Math.round(qty * price);
+
+          let stockStatusClass = 'in-stock';
+          let stockStatusText = `In Stock: ${qty} ${unit}`;
+          if (qty <= 0) {
+            stockStatusClass = 'out-stock';
+            stockStatusText = `Out of Stock`;
+          } else if (qty <= thresh) {
+            stockStatusClass = 'low-stock';
+            stockStatusText = `Low: ${qty} ${unit}`;
+          }
+
+          const specs = it.specifications || {};
+          const specEntries = [];
+          if (specs.dimensions) specEntries.push({ label: 'Size', val: specs.dimensions });
+          if (specs.color_finish) specEntries.push({ label: 'Finish', val: specs.color_finish });
+          if (specs.material) specEntries.push({ label: 'Material', val: specs.material });
+          if (specs.grade_or_type) specEntries.push({ label: 'Type', val: specs.grade_or_type });
+          if (specs.power_rating) specEntries.push({ label: 'Rating', val: specs.power_rating });
+
+          const photoHtml = it.photo_url 
+            ? `<img src="${escapeXml(it.photo_url)}" alt="${escapeXml(it.item_name)}" onclick="openPhotoViewer('${escapeXml(it.photo_url)}')" loading="lazy" />`
+            : `<div class="inv-no-img">📦</div>`;
+
+          return `
+            <div class="inv-card">
+              <div class="inv-img-wrap">
+                ${photoHtml}
+                <div class="inv-stock-tag ${stockStatusClass}">${stockStatusText}</div>
+              </div>
+              <div class="inv-body">
+                <div class="inv-brand-row">
+                  <span class="inv-brand">${escapeXml(it.brand || 'Studio 5 Spec')}</span>
+                  <span class="inv-cat-pill">${escapeXml(it.category || 'General')}</span>
+                </div>
+                <h3 class="inv-title" title="${escapeXml(it.item_name)}">${escapeXml(it.item_name)}</h3>
+                ${it.model_number ? `<div style="font-size:11.5px; color:#64748b; font-family:monospace; margin-bottom:4px;">Part #: ${escapeXml(it.model_number)}</div>` : ''}
+
+                <div style="font-size:11.5px; font-weight:600; color:#0369a1; margin-bottom:4px;">
+                  📍 ${escapeXml(it.site_location || 'Central Godown')}
+                </div>
+
+                ${specEntries.length > 0 ? `
+                  <div class="inv-specs-box">
+                    ${specEntries.slice(0, 3).map(s => `
+                      <div class="inv-spec-line">
+                        <span>${escapeXml(s.label)}:</span>
+                        <span>${escapeXml(s.val)}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+
+                ${price > 0 ? `
+                  <div style="font-size:12px; color:#475569; margin:4px 0 8px; display:flex; justify-content:space-between;">
+                    <span>Rate: <b>₹${price.toLocaleString('en-IN')}</b>/${unit}</span>
+                    <span style="color:#0f172a; font-weight:700;">Val: ₹${totalVal.toLocaleString('en-IN')}</span>
+                  </div>
+                ` : ''}
+
+                <div class="inv-footer">
+                  <div class="inv-qty-ctrl" title="Quick adjust stock">
+                    <button type="button" class="inv-qty-btn" onclick="quickAdjustQty('${it.id}', -1)" title="Minus 1">−</button>
+                    <span class="inv-qty-num" onclick="openQuickQtyModal('${it.id}')" title="Tap to adjust count" style="cursor:pointer;">${qty}</span>
+                    <button type="button" class="inv-qty-btn" onclick="quickAdjustQty('${it.id}', 1)" title="Add 1">+</button>
+                  </div>
+                  <div style="display:flex; gap:6px;">
+                    <button type="button" class="btn-ghost btn-sm" onclick="openProductDossier('${it.id}')" title="View Full Specs & History" style="padding:4px 8px; font-size:11.5px;">🔍 Specs</button>
+                    <button type="button" class="btn-ghost btn-sm" onclick="openManualAddItem('${it.id}')" title="Edit Item" style="padding:4px 8px; font-size:11.5px;">✏️</button>
+                    <button type="button" class="btn-ghost btn-sm" onclick="deleteInventoryItemUI('${it.id}')" title="Delete" style="padding:4px 8px; font-size:11.5px; color:#dc2626;">🗑️</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  function renderTableView(container, items) {
+    const html = `
+      <div class="inv-table-wrap">
+        <table class="inv-table">
+          <thead>
+            <tr>
+              <th style="width:50px;">Photo</th>
+              <th>Product / Title</th>
+              <th>Brand / Model</th>
+              <th>Category</th>
+              <th>Location</th>
+              <th>Specifications</th>
+              <th>Stock</th>
+              <th>Rate (₹)</th>
+              <th>Valuation (₹)</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(it => {
+              const qty = parseFloat(it.quantity) || 0;
+              const thresh = parseFloat(it.min_threshold) || 5;
+              const unit = it.unit || 'Pcs';
+              const price = parseFloat(it.unit_price) || 0;
+              const totalVal = Math.round(qty * price);
+
+              const photoHtml = it.photo_url 
+                ? `<img src="${escapeXml(it.photo_url)}" alt="${escapeXml(it.item_name)}" style="width:40px; height:40px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="openPhotoViewer('${escapeXml(it.photo_url)}')" />`
+                : `<span style="font-size:22px;">📦</span>`;
+
+              const specs = it.specifications || {};
+              const specsBrief = [specs.dimensions, specs.color_finish, specs.material].filter(Boolean).join(' · ');
+
+              const stockColor = qty <= 0 ? '#dc2626' : (qty <= thresh ? '#d97706' : '#15803d');
+
+              return `
+                <tr>
+                  <td>${photoHtml}</td>
+                  <td>
+                    <div style="font-weight:700; color:var(--walnut); cursor:pointer;" onclick="openProductDossier('${it.id}')">${escapeXml(it.item_name)}</div>
+                    ${it.barcode_or_serial ? `<div style="font-size:11px; color:#64748b;">Tag: ${escapeXml(it.barcode_or_serial)}</div>` : ''}
+                  </td>
+                  <td>
+                    <div><b>${escapeXml(it.brand || '—')}</b></div>
+                    <div style="font-size:11px; color:#64748b;">${escapeXml(it.model_number || '—')}</div>
+                  </td>
+                  <td><span class="inv-cat-pill">${escapeXml(it.category || '—')}</span></td>
+                  <td><span style="font-weight:600; color:#0284c7;">${escapeXml(it.site_location || 'Central Godown')}</span></td>
+                  <td style="max-width:180px; font-size:11.5px; color:#475569;">${escapeXml(specsBrief || '—')}</td>
+                  <td>
+                    <span style="font-weight:800; font-size:13.5px; color:${stockColor};">${qty} ${unit}</span>
+                  </td>
+                  <td>${price > 0 ? '₹' + price.toLocaleString('en-IN') : '—'}</td>
+                  <td><b>${totalVal > 0 ? '₹' + totalVal.toLocaleString('en-IN') : '—'}</b></td>
+                  <td style="text-align:right; white-space:nowrap;">
+                    <div style="display:inline-flex; gap:4px;">
+                      <button type="button" class="btn-ghost btn-sm" onclick="quickAdjustQty('${it.id}', -1)" title="Minus 1">−</button>
+                      <button type="button" class="btn-ghost btn-sm" onclick="quickAdjustQty('${it.id}', 1)" title="Add 1">+</button>
+                      <button type="button" class="btn-ghost btn-sm" onclick="openProductDossier('${it.id}')" title="Details">🔍</button>
+                      <button type="button" class="btn-ghost btn-sm" onclick="openManualAddItem('${it.id}')" title="Edit">✏️</button>
+                      <button type="button" class="btn-ghost btn-sm" onclick="deleteInventoryItemUI('${it.id}')" style="color:#dc2626;" title="Delete">🗑️</button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  function openProductScanner() {
+    const modal = document.getElementById('inventoryScanModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    document.getElementById('invScanDropZone').style.display = 'block';
+    document.getElementById('invScanStatusArea').style.display = 'none';
+    document.getElementById('invScanFormArea').style.display = 'none';
+    document.getElementById('invScanDuplicateNotice').style.display = 'none';
+    currentScanPhotoBase64 = null;
+    currentScanMediaType = null;
+    currentScannedItemData = null;
+
+    const fileInput = document.getElementById('invScanFileInput');
+    if (fileInput) fileInput.value = '';
+  }
+
+  async function handleInventoryScanFile(file) {
+    if (!file) return;
+    const dropZone = document.getElementById('invScanDropZone');
+    const statusArea = document.getElementById('invScanStatusArea');
+    const formArea = document.getElementById('invScanFormArea');
+    const statusText = document.getElementById('invScanStatusText');
+
+    dropZone.style.display = 'none';
+    statusArea.style.display = 'block';
+    formArea.style.display = 'none';
+    statusText.textContent = `Processing image (${file.name}) & running AI specification scan…`;
+
+    try {
+      const processed = await compressImageIfNeeded(file);
+      const b64 = await fileToBase64(processed);
+      const mediaType = processed.type || 'image/jpeg';
+      currentScanPhotoBase64 = b64;
+      currentScanMediaType = mediaType;
+
+      const previewImg = document.getElementById('invScanPreviewImg');
+      if (previewImg) previewImg.src = `data:${mediaType};base64,${b64}`;
+
+      let extracted = null;
+      try {
+        const res = await fetch(`${BACKEND_URL}/inventory/extract`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-app-secret': APP_SECRET
+          },
+          body: JSON.stringify({ file_base64: b64, media_type: mediaType })
+        });
+        if (res.ok) {
+          extracted = await res.json();
+        }
+      } catch (backendErr) {
+        console.warn('Backend extract failed, using fallback:', backendErr);
+      }
+
+      if (!extracted || extracted.error) {
+        extracted = {
+          item_name: file.name.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' '),
+          brand: '',
+          model_number: '',
+          quantity: 1,
+          unit: 'Pcs',
+          category: 'Hardware & Fittings',
+          specifications: { dimensions: '', color_finish: '', material: '', power_rating: '', grade_or_type: '' },
+          unit_price: 0,
+          barcode_or_serial: '',
+          notes: ''
+        };
+      }
+
+      currentScannedItemData = extracted;
+
+      document.getElementById('invScanItemName').value = extracted.item_name || '';
+      document.getElementById('invScanBrand').value = extracted.brand || '';
+      document.getElementById('invScanModelNo').value = extracted.model_number || '';
+      document.getElementById('invScanQty').value = extracted.quantity || 1;
+      document.getElementById('invScanUnit').value = extracted.unit || 'Pcs';
+      document.getElementById('invScanThreshold').value = 5;
+      document.getElementById('invScanCategory').value = extracted.category || 'Hardware & Fittings';
+      document.getElementById('invScanSite').value = getActiveSite();
+
+      const specs = extracted.specifications || {};
+      document.getElementById('invScanDimensions').value = specs.dimensions || '';
+      document.getElementById('invScanColorFinish').value = specs.color_finish || '';
+      document.getElementById('invScanMaterial').value = specs.material || '';
+      document.getElementById('invScanGradeType').value = specs.grade_or_type || specs.power_rating || '';
+
+      document.getElementById('invScanUnitPrice').value = extracted.unit_price || '';
+      document.getElementById('invScanBarcode').value = extracted.barcode_or_serial || '';
+      document.getElementById('invScanNotes').value = extracted.notes || '';
+
+      checkScanDuplicate(extracted.item_name, extracted.model_number);
+
+      statusArea.style.display = 'none';
+      formArea.style.display = 'block';
+
+    } catch (err) {
+      console.error('Scan processing error:', err);
+      statusArea.style.display = 'none';
+      dropZone.style.display = 'block';
+      alert('Could not read product photo: ' + (err.message || 'Unknown error'));
+    }
+  }
+
+  function checkScanDuplicate(itemName, modelNo) {
+    const dupNotice = document.getElementById('invScanDuplicateNotice');
+    const dupMsg = document.getElementById('invScanDuplicateMsg');
+    if (!dupNotice || !dupMsg) return;
+
+    const currentSite = document.getElementById('invScanSite')?.value || getActiveSite();
+    const cleanName = (itemName || '').toLowerCase().trim();
+    const cleanModel = (modelNo || '').toLowerCase().trim();
+
+    if (!cleanName && !cleanModel) {
+      dupNotice.style.display = 'none';
+      return;
+    }
+
+    const match = inventoryItems.find(it => {
+      const matchSite = (it.site_location || '').toLowerCase() === currentSite.toLowerCase();
+      const matchName = cleanName && (it.item_name || '').toLowerCase().includes(cleanName);
+      const matchModel = cleanModel && (it.model_number || '').toLowerCase() === cleanModel;
+      return matchSite && (matchName || matchModel);
+    });
+
+    if (match) {
+      dupNotice.style.display = 'block';
+      dupMsg.innerHTML = `Found existing stock of <b>${escapeXml(match.item_name)}</b> with <b>${match.quantity} ${match.unit || 'Pcs'}</b> at ${escapeXml(currentSite)}. Saving will add to this stock.`;
+      document.getElementById('invScanSaveBtn').dataset.mergeTargetId = match.id;
+    } else {
+      dupNotice.style.display = 'none';
+      delete document.getElementById('invScanSaveBtn').dataset.mergeTargetId;
+    }
+  }
+
+  async function saveScannedProduct() {
+    const itemName = document.getElementById('invScanItemName').value.trim();
+    if (!itemName) {
+      alert('Please enter a product name');
+      return;
+    }
+
+    const qty = parseFloat(document.getElementById('invScanQty').value) || 1;
+    const unit = document.getElementById('invScanUnit').value;
+    const brand = document.getElementById('invScanBrand').value.trim();
+    const model = document.getElementById('invScanModelNo').value.trim();
+    const cat = document.getElementById('invScanCategory').value;
+    const site = document.getElementById('invScanSite').value;
+    const thresh = parseFloat(document.getElementById('invScanThreshold').value) || 5;
+    const rate = parseFloat(document.getElementById('invScanUnitPrice').value) || 0;
+    const barcode = document.getElementById('invScanBarcode').value.trim();
+    const notes = document.getElementById('invScanNotes').value.trim();
+
+    const specs = {
+      dimensions: document.getElementById('invScanDimensions').value.trim(),
+      color_finish: document.getElementById('invScanColorFinish').value.trim(),
+      material: document.getElementById('invScanMaterial').value.trim(),
+      grade_or_type: document.getElementById('invScanGradeType').value.trim()
+    };
+
+    const saveBtn = document.getElementById('invScanSaveBtn');
+    const mergeId = saveBtn.dataset.mergeTargetId;
+    saveBtn.disabled = true;
+    saveBtn.textContent = '⏳ Saving…';
+
+    const payload = {
+      id: mergeId || undefined,
+      item_name: itemName,
+      brand,
+      model_number: model,
+      quantity: qty,
+      unit,
+      min_threshold: thresh,
+      category: cat,
+      site_location: site,
+      unit_price: rate,
+      barcode_or_serial: barcode,
+      specifications: specs,
+      notes,
+      photo_base64: currentScanPhotoBase64,
+      media_type: currentScanMediaType,
+      created_by: getActiveUser()
+    };
+
+    if (mergeId) {
+      const existing = inventoryItems.find(it => it.id === mergeId);
+      if (existing) {
+        payload.quantity = (parseFloat(existing.quantity) || 0) + qty;
+        payload.adjustment_reason = `Added +${qty} ${unit} via product scan`;
+      }
+    }
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/inventory/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-app-secret': APP_SECRET
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        if (result.item) {
+          const idx = inventoryItems.findIndex(it => it.id === result.item.id);
+          if (idx >= 0) inventoryItems[idx] = result.item;
+          else inventoryItems.unshift(result.item);
+          saveInventoryToCache();
+          renderInventoryUI();
+        }
+      } else {
+        const localItem = {
+          ...payload,
+          id: payload.id || ('inv_' + Date.now()),
+          photo_url: currentScanPhotoBase64 ? `data:${currentScanMediaType};base64,${currentScanPhotoBase64}` : '',
+          updated_at: new Date().toISOString()
+        };
+        const idx = inventoryItems.findIndex(it => it.id === localItem.id);
+        if (idx >= 0) inventoryItems[idx] = localItem;
+        else inventoryItems.unshift(localItem);
+        saveInventoryToCache();
+        renderInventoryUI();
+      }
+
+      document.getElementById('inventoryScanModal').style.display = 'none';
+    } catch (err) {
+      console.warn('Error saving to server, saved locally:', err.message);
+      document.getElementById('inventoryScanModal').style.display = 'none';
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '✅ Confirm & Save to Inventory';
+    }
+  }
+
+  async function quickAdjustQty(id, delta) {
+    const item = inventoryItems.find(it => it.id === id);
+    if (!item) return;
+
+    const numDelta = parseFloat(delta) || 0;
+    const oldQty = parseFloat(item.quantity) || 0;
+    const newQty = Math.max(0, Math.round((oldQty + numDelta) * 100) / 100);
+    item.quantity = newQty;
+    saveInventoryToCache();
+    renderInventoryUI();
+
+    try {
+      await fetch(`${BACKEND_URL}/inventory/adjust-qty`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-app-secret': APP_SECRET
+        },
+        body: JSON.stringify({
+          id,
+          delta: numDelta,
+          reason: numDelta > 0 ? 'Quick stock increment' : 'Quick issue from stock',
+          updated_by: getActiveUser()
+        })
+      });
+    } catch (e) {
+      console.warn('Backend adjust error:', e);
+    }
+  }
+
+  function openQuickQtyModal(id) {
+    const item = inventoryItems.find(it => it.id === id);
+    if (!item) return;
+    const modal = document.getElementById('inventoryQuickQtyModal');
+    if (!modal) return;
+
+    document.getElementById('invQuickItemId').value = item.id;
+    document.getElementById('invQuickItemTitle').textContent = item.item_name;
+    document.getElementById('invQuickCurrentQty').textContent = `${item.quantity} ${item.unit || 'Pcs'}`;
+    document.getElementById('invQuickSiteTag').textContent = `📍 ${item.site_location || 'Central Godown'}`;
+    document.getElementById('invQuickDeltaInput').value = '';
+    document.getElementById('invQuickReasonInput').value = '';
+
+    modal.style.display = 'flex';
+  }
+
+  function setQuickDelta(delta) {
+    const input = document.getElementById('invQuickDeltaInput');
+    if (input) input.value = delta;
+  }
+
+  async function applyQuickAdjustment() {
+    const id = document.getElementById('invQuickItemId').value;
+    const delta = parseFloat(document.getElementById('invQuickDeltaInput').value) || 0;
+    const reason = document.getElementById('invQuickReasonInput').value.trim() || (delta > 0 ? 'Received new stock' : 'Issued for site work');
+    if (delta === 0) return;
+
+    await quickAdjustQty(id, delta);
+    document.getElementById('inventoryQuickQtyModal').style.display = 'none';
+  }
+
+  function openManualAddItem(id = null) {
+    const modal = document.getElementById('inventoryItemModal');
+    if (!modal) return;
+
+    const titleEl = document.getElementById('invItemModalTitle');
+    const editIdInput = document.getElementById('invItemEditId');
+
+    if (id) {
+      const item = inventoryItems.find(it => it.id === id);
+      if (!item) return;
+      titleEl.textContent = 'Edit Inventory Item';
+      editIdInput.value = item.id;
+      document.getElementById('invItemNameInput').value = item.item_name || '';
+      document.getElementById('invItemBrandInput').value = item.brand || '';
+      document.getElementById('invItemModelInput').value = item.model_number || '';
+      document.getElementById('invItemQtyInput').value = item.quantity || 0;
+      document.getElementById('invItemUnitSelect').value = item.unit || 'Pcs';
+      document.getElementById('invItemThresholdInput').value = item.min_threshold || 5;
+      document.getElementById('invItemCategorySelect').value = item.category || 'Hardware & Fittings';
+      document.getElementById('invItemSiteSelect').value = item.site_location || 'Central Godown';
+
+      const specs = item.specifications || {};
+      document.getElementById('invItemDimensionsInput').value = specs.dimensions || '';
+      document.getElementById('invItemColorInput').value = specs.color_finish || '';
+      document.getElementById('invItemMaterialInput').value = specs.material || '';
+      document.getElementById('invItemGradeInput').value = specs.grade_or_type || '';
+
+      document.getElementById('invItemUnitPriceInput').value = item.unit_price || '';
+      document.getElementById('invItemBarcodeInput').value = item.barcode_or_serial || '';
+      document.getElementById('invItemNotesInput').value = item.notes || '';
+
+      if (item.photo_url) {
+        document.getElementById('invItemPhotoPreviewWrap').style.display = 'block';
+        document.getElementById('invItemPhotoPreview').src = item.photo_url;
+      } else {
+        document.getElementById('invItemPhotoPreviewWrap').style.display = 'none';
+      }
+    } else {
+      titleEl.textContent = 'Add New Inventory Item';
+      editIdInput.value = '';
+      document.getElementById('invItemNameInput').value = '';
+      document.getElementById('invItemBrandInput').value = '';
+      document.getElementById('invItemModelInput').value = '';
+      document.getElementById('invItemQtyInput').value = '1';
+      document.getElementById('invItemUnitSelect').value = 'Pcs';
+      document.getElementById('invItemThresholdInput').value = '5';
+      document.getElementById('invItemCategorySelect').value = 'Hardware & Fittings';
+      document.getElementById('invItemSiteSelect').value = getActiveSite();
+      document.getElementById('invItemDimensionsInput').value = '';
+      document.getElementById('invItemColorInput').value = '';
+      document.getElementById('invItemMaterialInput').value = '';
+      document.getElementById('invItemGradeInput').value = '';
+      document.getElementById('invItemUnitPriceInput').value = '';
+      document.getElementById('invItemBarcodeInput').value = '';
+      document.getElementById('invItemNotesInput').value = '';
+      document.getElementById('invItemPhotoPreviewWrap').style.display = 'none';
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  async function saveManualInventoryItem() {
+    const editId = document.getElementById('invItemEditId').value;
+    const itemName = document.getElementById('invItemNameInput').value.trim();
+    if (!itemName) {
+      alert('Please enter a product name');
+      return;
+    }
+
+    const qty = parseFloat(document.getElementById('invItemQtyInput').value) || 0;
+    const unit = document.getElementById('invItemUnitSelect').value;
+    const brand = document.getElementById('invItemBrandInput').value.trim();
+    const model = document.getElementById('invItemModelInput').value.trim();
+    const cat = document.getElementById('invItemCategorySelect').value;
+    const site = document.getElementById('invItemSiteSelect').value;
+    const thresh = parseFloat(document.getElementById('invItemThresholdInput').value) || 5;
+    const rate = parseFloat(document.getElementById('invItemUnitPriceInput').value) || 0;
+    const barcode = document.getElementById('invItemBarcodeInput').value.trim();
+    const notes = document.getElementById('invItemNotesInput').value.trim();
+
+    const specs = {
+      dimensions: document.getElementById('invItemDimensionsInput').value.trim(),
+      color_finish: document.getElementById('invItemColorInput').value.trim(),
+      material: document.getElementById('invItemMaterialInput').value.trim(),
+      grade_or_type: document.getElementById('invItemGradeInput').value.trim()
+    };
+
+    let photoB64 = null;
+    let photoType = null;
+    const photoFile = document.getElementById('invItemPhotoInput')?.files[0];
+    if (photoFile) {
+      const processed = await compressImageIfNeeded(photoFile);
+      photoB64 = await fileToBase64(processed);
+      photoType = processed.type || 'image/jpeg';
+    }
+
+    const payload = {
+      id: editId || undefined,
+      item_name: itemName,
+      brand,
+      model_number: model,
+      quantity: qty,
+      unit,
+      min_threshold: thresh,
+      category: cat,
+      site_location: site,
+      unit_price: rate,
+      barcode_or_serial: barcode,
+      specifications: specs,
+      notes,
+      photo_base64: photoB64,
+      media_type: photoType,
+      created_by: getActiveUser()
+    };
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/inventory/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.item) {
+          const idx = inventoryItems.findIndex(it => it.id === data.item.id);
+          if (idx >= 0) inventoryItems[idx] = data.item;
+          else inventoryItems.unshift(data.item);
+        }
+      } else {
+        const local = { ...payload, id: payload.id || ('inv_' + Date.now()), updated_at: new Date().toISOString() };
+        const idx = inventoryItems.findIndex(it => it.id === local.id);
+        if (idx >= 0) inventoryItems[idx] = local;
+        else inventoryItems.unshift(local);
+      }
+      saveInventoryToCache();
+      renderInventoryUI();
+      document.getElementById('inventoryItemModal').style.display = 'none';
+    } catch (e) {
+      console.warn('Error saving item:', e);
+      document.getElementById('inventoryItemModal').style.display = 'none';
+    }
+  }
+
+  function openProductDossier(id) {
+    const item = inventoryItems.find(it => it.id === id);
+    if (!item) return;
+    const modal = document.getElementById('inventorySpecsDetailModal');
+    const body = document.getElementById('invDetailModalBody');
+    if (!modal || !body) return;
+
+    document.getElementById('invDetailTitle').textContent = item.item_name;
+    document.getElementById('invDetailSubtitle').textContent = `${item.brand || 'Studio 5 Spec'} · ${item.category || 'General'}`;
+
+    const specs = item.specifications || {};
+    const qty = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.unit_price) || 0;
+    const val = Math.round(qty * price);
+
+    const history = Array.isArray(item.stock_history) ? item.stock_history : [];
+
+    body.innerHTML = `
+      ${item.photo_url ? `
+        <div style="text-align:center; margin-bottom:14px;">
+          <img src="${escapeXml(item.photo_url)}" alt="${escapeXml(item.item_name)}" style="max-height:200px; width:100%; object-fit:contain; border-radius:8px; background:#0f172a; cursor:pointer;" onclick="openPhotoViewer('${escapeXml(item.photo_url)}')" title="Tap to view full resolution" />
+        </div>
+      ` : ''}
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+        <div>
+          <div style="font-size:11px; color:#64748b;">CURRENT STOCK</div>
+          <div style="font-size:22px; font-weight:800; color:#15803d;">${qty} ${item.unit || 'Pcs'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:#64748b;">LOCATION / SITE</div>
+          <div style="font-size:15px; font-weight:700; color:#0369a1; margin-top:4px;">📍 ${escapeXml(item.site_location || 'Central Godown')}</div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:#64748b;">UNIT RATE</div>
+          <div style="font-size:14px; font-weight:600; color:#334155; margin-top:2px;">₹${price.toLocaleString('en-IN')}</div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:#64748b;">TOTAL VALUATION</div>
+          <div style="font-size:14px; font-weight:700; color:#0f172a; margin-top:2px;">₹${val.toLocaleString('en-IN')}</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; color:#475569; letter-spacing:0.06em; margin-bottom:8px;">📐 Full Technical Specifications</div>
+        <table style="width:100%; font-size:12.5px; border-collapse:collapse;">
+          <tbody>
+            <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px; color:#64748b; width:35%;">Brand / Make</td><td style="padding:6px; font-weight:600;">${escapeXml(item.brand || '—')}</td></tr>
+            <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px; color:#64748b;">Model / Part #</td><td style="padding:6px; font-weight:600; font-family:monospace;">${escapeXml(item.model_number || '—')}</td></tr>
+            <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px; color:#64748b;">Dimensions / Size</td><td style="padding:6px; font-weight:600;">${escapeXml(specs.dimensions || '—')}</td></tr>
+            <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px; color:#64748b;">Color / Finish</td><td style="padding:6px; font-weight:600;">${escapeXml(specs.color_finish || '—')}</td></tr>
+            <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px; color:#64748b;">Material</td><td style="padding:6px; font-weight:600;">${escapeXml(specs.material || '—')}</td></tr>
+            <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px; color:#64748b;">Rating / Grade / Type</td><td style="padding:6px; font-weight:600;">${escapeXml(specs.grade_or_type || specs.power_rating || '—')}</td></tr>
+            <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px; color:#64748b;">Barcode / Serial</td><td style="padding:6px; font-weight:600;">${escapeXml(item.barcode_or_serial || '—')}</td></tr>
+            <tr><td style="padding:6px; color:#64748b;">Notes / Location</td><td style="padding:6px;">${escapeXml(item.notes || '—')}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; color:#475569; letter-spacing:0.06em; margin-bottom:8px;">📜 Stock Movement & Audit Trail</div>
+        ${history.length > 0 ? `
+          <div style="max-height:160px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; font-size:12px;">
+            ${history.map(h => `
+              <div style="display:flex; justify-content:space-between; padding:6px 10px; border-bottom:1px solid #f1f5f9;">
+                <div>
+                  <span style="font-weight:700; color:${h.delta >= 0 ? '#15803d' : '#dc2626'};">${h.delta >= 0 ? '+' + h.delta : h.delta}</span>
+                  <span style="color:#475569; margin-left:6px;">${escapeXml(h.reason || 'Adjustment')}</span>
+                </div>
+                <div style="color:#94a3b8; font-size:11px;">
+                  ${new Date(h.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} · ${escapeXml(h.by || 'Admin')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : `<div style="font-size:12px; color:#94a3b8;">No stock adjustments logged yet.</div>`}
+      </div>
+
+      <div style="margin-top:16px; display:flex; gap:10px;">
+        <button type="button" class="btn-primary" onclick="document.getElementById('inventorySpecsDetailModal').style.display='none'; openQuickQtyModal('${item.id}');" style="flex:1; padding:9px;">⚡ Adjust Stock Qty</button>
+        <button type="button" class="btn-ghost" onclick="document.getElementById('inventorySpecsDetailModal').style.display='none'; openManualAddItem('${item.id}');" style="padding:9px 16px;">✏️ Edit</button>
+      </div>
+    `;
+
+    modal.style.display = 'flex';
+  }
+
+  function openPhotoViewer(url) {
+    if (!url) return;
+    const modal = document.getElementById('inventoryPhotoViewModal');
+    const img = document.getElementById('invPhotoViewerImg');
+    if (modal && img) {
+      img.src = url;
+      modal.style.display = 'flex';
+    }
+  }
+
+  async function deleteInventoryItemUI(id) {
+    const item = inventoryItems.find(it => it.id === id);
+    if (!item) return;
+    if (!confirm(`Are you sure you want to delete "${item.item_name}" from inventory?`)) return;
+
+    inventoryItems = inventoryItems.filter(it => it.id !== id);
+    saveInventoryToCache();
+    renderInventoryUI();
+
+    try {
+      await fetch(`${BACKEND_URL}/inventory/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+        body: JSON.stringify({ id })
+      });
+    } catch (e) {
+      console.warn('Backend delete error:', e);
+    }
+  }
+
+  function exportInventoryToCsv() {
+    if (inventoryItems.length === 0) {
+      alert('No inventory items to export.');
+      return;
+    }
+
+    const headers = [
+      'Item Name', 'Brand', 'Model No', 'Category', 'Site / Godown',
+      'Stock Qty', 'Unit', 'Low Threshold', 'Unit Rate (INR)', 'Total Valuation (INR)',
+      'Dimensions', 'Color / Finish', 'Material', 'Grade / Rating', 'Barcode', 'Notes', 'Last Updated'
+    ];
+
+    const rows = inventoryItems.map(it => {
+      const specs = it.specifications || {};
+      const qty = parseFloat(it.quantity) || 0;
+      const rate = parseFloat(it.unit_price) || 0;
+      return [
+        `"${(it.item_name || '').replace(/"/g, '""')}"`,
+        `"${(it.brand || '').replace(/"/g, '""')}"`,
+        `"${(it.model_number || '').replace(/"/g, '""')}"`,
+        `"${(it.category || '').replace(/"/g, '""')}"`,
+        `"${(it.site_location || '').replace(/"/g, '""')}"`,
+        qty,
+        `"${(it.unit || 'Pcs').replace(/"/g, '""')}"`,
+        parseFloat(it.min_threshold) || 5,
+        rate,
+        Math.round(qty * rate),
+        `"${(specs.dimensions || '').replace(/"/g, '""')}"`,
+        `"${(specs.color_finish || '').replace(/"/g, '""')}"`,
+        `"${(specs.material || '').replace(/"/g, '""')}"`,
+        `"${(specs.grade_or_type || '').replace(/"/g, '""')}"`,
+        `"${(it.barcode_or_serial || '').replace(/"/g, '""')}"`,
+        `"${(it.notes || '').replace(/"/g, '""')}"`,
+        `"${it.updated_at || it.created_at || ''}"`
+      ].join(',');
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Studio5_Inventory_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Global window functions for inline onclick handlers
+  window.openProductScanner = openProductScanner;
+  window.openManualAddItem = openManualAddItem;
+  window.openQuickQtyModal = openQuickQtyModal;
+  window.quickAdjustQty = quickAdjustQty;
+  window.setQuickDelta = setQuickDelta;
+  window.openProductDossier = openProductDossier;
+  window.openPhotoViewer = openPhotoViewer;
+  window.deleteInventoryItemUI = deleteInventoryItemUI;
+  window.loadInventory = loadInventory;
+
+  function setupInventorySection() {
+    // Toolbar buttons
+    document.getElementById('openScanProductBtn')?.addEventListener('click', openProductScanner);
+    document.getElementById('openAddManualItemBtn')?.addEventListener('click', () => openManualAddItem());
+    document.getElementById('exportInventoryCsvBtn')?.addEventListener('click', exportInventoryToCsv);
+    document.getElementById('refreshInventoryBtn')?.addEventListener('click', () => loadInventory(true));
+
+    // View mode toggle
+    const gridBtn = document.getElementById('invViewModeGridBtn');
+    const tableBtn = document.getElementById('invViewModeTableBtn');
+    if (gridBtn && tableBtn) {
+      gridBtn.addEventListener('click', () => {
+        inventoryCurrentViewMode = 'grid';
+        gridBtn.classList.add('active');
+        tableBtn.classList.remove('active');
+        renderInventoryUI();
+      });
+      tableBtn.addEventListener('click', () => {
+        inventoryCurrentViewMode = 'table';
+        tableBtn.classList.add('active');
+        gridBtn.classList.remove('active');
+        renderInventoryUI();
+      });
+    }
+
+    // Search and filters
+    document.getElementById('inventorySearchInput')?.addEventListener('input', () => renderInventoryUI());
+    document.getElementById('inventoryCategoryFilter')?.addEventListener('change', () => renderInventoryUI());
+    document.getElementById('inventorySiteFilter')?.addEventListener('change', () => renderInventoryUI());
+    document.getElementById('inventoryStockStatusFilter')?.addEventListener('change', () => renderInventoryUI());
+
+    // Scanner modal listeners
+    const scanFileInput = document.getElementById('invScanFileInput');
+    const scanDropZone = document.getElementById('invScanDropZone');
+    if (scanDropZone && scanFileInput) {
+      scanDropZone.addEventListener('click', () => scanFileInput.click());
+      scanFileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleInventoryScanFile(e.target.files[0]);
+        }
+      });
+    }
+    document.getElementById('closeInvScanModalBtn')?.addEventListener('click', () => {
+      document.getElementById('inventoryScanModal').style.display = 'none';
+    });
+    document.getElementById('invScanSaveBtn')?.addEventListener('click', saveScannedProduct);
+
+    // Manual add/edit modal listeners
+    document.getElementById('closeInvItemModalBtn')?.addEventListener('click', () => {
+      document.getElementById('inventoryItemModal').style.display = 'none';
+    });
+    document.getElementById('invItemSaveBtn')?.addEventListener('click', saveManualInventoryItem);
+
+    // Quick Qty Modal listeners
+    document.getElementById('closeInvQuickQtyBtn')?.addEventListener('click', () => {
+      document.getElementById('inventoryQuickQtyModal').style.display = 'none';
+    });
+    document.getElementById('invQuickSaveBtn')?.addEventListener('click', applyQuickAdjustment);
+
+    // Dossier Modal listeners
+    document.getElementById('closeInvDetailModalBtn')?.addEventListener('click', () => {
+      document.getElementById('inventorySpecsDetailModal').style.display = 'none';
+    });
+
+    // Close overlays on outside click
+    ['inventoryScanModal', 'inventoryItemModal', 'inventoryQuickQtyModal', 'inventorySpecsDetailModal', 'inventoryPhotoViewModal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('click', (e) => {
+          if (e.target === el) el.style.display = 'none';
+        });
+      }
+    });
+
+    // Pre-populate inventory on load
+    loadInventory();
+  }
+
+  // Setup Inventory Section
+  setupInventorySection();
 
   // Initialize Executive Dark/Light Theme Manager
   initThemeManager();
