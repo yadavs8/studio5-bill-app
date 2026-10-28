@@ -4,7 +4,7 @@
 // has been published, open pages are told so they can switch to it without a reinstall.
 // API calls to Render/Supabase are always direct network calls.
 
-const CACHE_NAME = 'studio5-bills-v47';
+const CACHE_NAME = 'studio5-bills-v48';
 const APP_SHELL = [
   './',
   './index.html',
