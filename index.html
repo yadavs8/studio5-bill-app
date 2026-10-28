@@ -11617,10 +11617,13 @@
     const siteFilter = document.getElementById('invIssueSiteFilter')?.value || 'ALL';
 
     const filtered = inventoryIssues.filter(iss => {
-      if (siteFilter !== 'ALL' && (iss.site_destination || '').toLowerCase() !== siteFilter.toLowerCase()) return false;
+      const site = iss.site_destination || iss.site_location || '';
+      const person = iss.issued_to || iss.taken_by || '';
+      const loggedBy = iss.issued_by || iss.recorded_by || '';
+      if (siteFilter !== 'ALL' && site.toLowerCase() !== siteFilter.toLowerCase()) return false;
       if (q) {
         const text = [
-          iss.item_name, iss.issued_to, iss.site_destination, iss.description, iss.issued_by
+          iss.item_name, person, site, iss.description, loggedBy
         ].filter(Boolean).join(' ').toLowerCase();
         if (!text.includes(q)) return false;
       }
@@ -11662,13 +11665,16 @@
           </thead>
           <tbody>
             ${filtered.map(iss => {
-              const qtyTaken = parseFloat(iss.quantity_taken) || 0;
+              const qtyTaken = parseFloat(iss.quantity_taken || iss.pieces_taken) || 0;
               const remaining = (iss.remaining_quantity !== undefined && iss.remaining_quantity !== null) 
                 ? iss.remaining_quantity 
-                : '—';
+                : ((iss.remaining_qty !== undefined && iss.remaining_qty !== null) ? iss.remaining_qty : '—');
               const unit = iss.unit || 'Pcs';
               const remNum = parseFloat(remaining);
               const remColor = isNaN(remNum) ? '#64748b' : (remNum <= 0 ? '#dc2626' : (remNum <= 5 ? '#d97706' : '#15803d'));
+              const person = iss.issued_to || iss.taken_by || 'Electrician';
+              const site = iss.site_destination || iss.site_location || 'Central Godown';
+              const loggedBy = iss.issued_by || iss.recorded_by || 'Admin';
 
               const dateStr = iss.issue_date 
                 ? new Date(iss.issue_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -11691,16 +11697,16 @@
                     </span>
                   </td>
                   <td>
-                    <span style="font-weight:700; color:#1e293b;">👤 ${escapeXml(iss.issued_to || 'Electrician')}</span>
+                    <span style="font-weight:700; color:#1e293b;">👤 ${escapeXml(person)}</span>
                   </td>
                   <td>
-                    <span style="font-weight:600; color:#0369a1;">📍 ${escapeXml(iss.site_destination || 'Site')}</span>
+                    <span style="font-weight:600; color:#0369a1;">📍 ${escapeXml(site)}</span>
                   </td>
                   <td style="max-width:280px; font-size:12.5px; color:#334155;">
                     ${escapeXml(iss.description || '—')}
                   </td>
                   <td style="font-size:11px; color:#94a3b8; white-space:nowrap;">
-                    ${escapeXml(iss.issued_by || 'Admin')}
+                    ${escapeXml(loggedBy)}
                   </td>
                 </tr>
               `;
@@ -11722,18 +11728,26 @@
       'Issued To (Person)', 'Site Destination', 'Description / Purpose', 'Logged By', 'Created Timestamp'
     ];
 
-    const rows = inventoryIssues.map(iss => [
-      `"${iss.issue_date || ''}"`,
-      `"${(iss.item_name || '').replace(/"/g, '""')}"`,
-      parseFloat(iss.quantity_taken) || 0,
-      `"${(iss.unit || 'Pcs').replace(/"/g, '""')}"`,
-      iss.remaining_quantity !== undefined ? iss.remaining_quantity : '',
-      `"${(iss.issued_to || '').replace(/"/g, '""')}"`,
-      `"${(iss.site_destination || '').replace(/"/g, '""')}"`,
-      `"${(iss.description || '').replace(/"/g, '""')}"`,
-      `"${(iss.issued_by || '').replace(/"/g, '""')}"`,
-      `"${iss.created_at || ''}"`
-    ].join(','));
+    const rows = inventoryIssues.map(iss => {
+      const qtyTaken = parseFloat(iss.quantity_taken || iss.pieces_taken) || 0;
+      const remaining = iss.remaining_quantity !== undefined ? iss.remaining_quantity : (iss.remaining_qty !== undefined ? iss.remaining_qty : '');
+      const person = iss.issued_to || iss.taken_by || '';
+      const site = iss.site_destination || iss.site_location || '';
+      const loggedBy = iss.issued_by || iss.recorded_by || '';
+
+      return [
+        `"${iss.issue_date || ''}"`,
+        `"${(iss.item_name || '').replace(/"/g, '""')}"`,
+        qtyTaken,
+        `"${(iss.unit || 'Pcs').replace(/"/g, '""')}"`,
+        remaining,
+        `"${person.replace(/"/g, '""')}"`,
+        `"${site.replace(/"/g, '""')}"`,
+        `"${(iss.description || '').replace(/"/g, '""')}"`,
+        `"${loggedBy.replace(/"/g, '""')}"`,
+        `"${iss.created_at || iss.recorded_at || ''}"`
+      ].join(',');
+    });
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
