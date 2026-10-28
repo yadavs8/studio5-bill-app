@@ -11418,6 +11418,25 @@
     }
   }
 
+  async function deleteIssue(issueId) {
+    if (!confirm('Are you sure you want to remove this checkout entry from the register?')) return;
+    inventoryIssues = inventoryIssues.filter(i => (i.issue_id !== issueId && i.id !== issueId));
+    saveIssuesToCache();
+    renderIssuesUI();
+
+    try {
+      await fetch(`${BACKEND_URL}/inventory/issue/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+        body: JSON.stringify({ issue_id: issueId })
+      });
+    } catch (e) {
+      console.warn('Backend delete issue error:', e);
+    }
+  }
+
+  window.deleteIssue = deleteIssue;
+
     async function loadInventoryIssues(forceRefresh = false) {
     renderIssuesUI();
     try {
