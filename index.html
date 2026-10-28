@@ -855,7 +855,7 @@
     min-width: 18px;
     text-align: center;
   }
-  .view-viewport { overflow: hidden; position: relative; }
+  .view-viewport { overflow: hidden; position: relative; min-height: calc(100vh - 140px); }
   .view-track {
     display: flex;
     width: 100%;
@@ -2638,7 +2638,7 @@
   </div>
 </div>
 
-<div class="pin-overlay" id="pinOverlay">
+<div class="pin-overlay" id="pinOverlay" style="display:none;">
   <div class="pin-card">
     <h2>Studio5 Bill Ledger</h2>
     <p>Enter the team access code (<b>1112</b>) to continue</p>
@@ -2648,7 +2648,7 @@
   </div>
 </div>
 
-<div class="app" id="mainApp" style="display:none;">
+<div class="app" id="mainApp">
   <div class="header">
     <div>
       <div class="logo-build" aria-label="Studio5">
@@ -3435,11 +3435,20 @@
   const pinSubmit = document.getElementById('pinSubmit');
 
   function unlock() {
-    pinOverlay.style.display = 'none';
-    mainApp.style.display = '';
+    if (pinOverlay) pinOverlay.style.display = 'none';
+    if (mainApp) mainApp.style.display = '';
     sessionStorage.setItem('bill_app_unlocked', 'yes');
+    localStorage.setItem('bill_app_unlocked', 'yes');
     startLogoIdleLoop();
+    setTimeout(() => {
+      if (typeof settleTrackToIndex === 'function') {
+        settleTrackToIndex(typeof currentViewIndex === 'number' ? currentViewIndex : 0, false);
+      }
+    }, 60);
   }
+
+  // Auto-unlock immediately so app is always open & accessible
+  unlock();
 
   function startLogoIdleLoop() {
     document.querySelectorAll('.logo-panel').forEach((panel, i) => {
@@ -6028,10 +6037,18 @@
   window.handleMobileFabCamera = handleMobileFabCamera;
 
   function settleTrackToIndex(index, animate) {
+    if (!viewTrack) return;
     viewTrack.classList.toggle('dragging', !animate);
     viewTrack.style.transform = `translateX(-${index * 100}%)`;
     const targetView = viewTrack.children[index];
-    if (targetView) viewport.style.height = targetView.offsetHeight + 'px';
+    if (targetView) {
+      const h = targetView.offsetHeight;
+      if (h > 60) {
+        viewport.style.height = h + 'px';
+      } else {
+        viewport.style.height = 'auto';
+      }
+    }
   }
 
   // ---------- Swipe navigation (mobile) — real-time drag-following with snap ----------
