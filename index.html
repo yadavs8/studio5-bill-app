@@ -2635,8 +2635,9 @@
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
             <div>
-              <label class="scan-label-modern">UNIT RATE / MRP (₹)</label>
-              <input type="number" step="any" id="invScanUnitPrice" class="scan-input-modern" placeholder="0.00" />
+              <label class="scan-label-modern" id="invScanPriceLabel">UNIT RATE / MRP (₹)</label>
+              <input type="number" step="any" id="invScanUnitPrice" class="scan-input-modern" placeholder="0.00" oninput="updateScanPackTotal()" />
+              <div id="invScanPriceHint" style="font-size:11px; font-weight:600; color:#7c3aed; margin-top:3px;"></div>
             </div>
             <div>
               <label class="scan-label-modern">LOW ALERT THRESHOLD</label>
@@ -2821,8 +2822,9 @@
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
         <div>
-          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNIT RATE / COST (₹)</label>
-          <input type="number" step="any" id="invItemUnitPriceInput" placeholder="0.00" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+          <label id="invItemPriceLabel" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNIT RATE / COST (₹)</label>
+          <input type="number" step="any" id="invItemUnitPriceInput" oninput="syncManualPackQty('price')" placeholder="0.00" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+          <div id="invItemPriceHint" style="font-size:11px; font-weight:600; color:#7c3aed; margin-top:3px;"></div>
         </div>
         <div>
           <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">BARCODE / TAG #</label>
@@ -11062,6 +11064,36 @@
     return count === 1 ? name : name + (/(x|s|ch|sh)$/i.test(name) ? 'es' : 's');
   }
 
+  // Boxed items: the rate entered is the price of ONE box (what's printed on it / on the bill).
+  // Stock is counted in pieces, so the stored unit_price is per piece = box price ÷ pieces per box.
+  function invPricing(enteredRate, perPack, packType, unit, totalQty) {
+    const rate = parseFloat(enteredRate) || 0;
+    const isBoxed = !!packType && perPack > 1;
+    const unitPrice = isBoxed ? Math.round((rate / perPack) * 100) / 100 : rate;
+    const value = Math.round(unitPrice * (parseFloat(totalQty) || 0));
+    const inr = n => '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    return {
+      unitPrice,
+      packPrice: isBoxed ? rate : 0,
+      label: isBoxed ? `PRICE OF 1 ${packType.toUpperCase()} (₹)` : `RATE PER ${String(unit || 'Pcs').toUpperCase()} (₹)`,
+      hint: rate > 0 ? (isBoxed ? `= ${inr(unitPrice)} per ${unit} · stock value ${inr(value)}` : `Stock value ${inr(value)}`) : ''
+    };
+  }
+
+  // What the price box shows when editing: the box price if the item comes in boxes
+  function invRateForForm(item) {
+    const perPack = parseFloat(item.units_per_pack) || 1;
+    if (item.pack_type && perPack > 1) return parseFloat(item.pack_price) || Math.round((parseFloat(item.unit_price) || 0) * perPack * 100) / 100 || '';
+    return item.unit_price || '';
+  }
+
+  // " · ₹1,460/Box" next to the per-piece rate for boxed items
+  function invBoxRateText(item) {
+    const perPack = parseFloat(item.units_per_pack) || 1;
+    if (!item.pack_type || perPack <= 1 || !(parseFloat(item.unit_price) > 0)) return '';
+    return ` · ₹${Number(invRateForForm(item)).toLocaleString('en-IN')}/${item.pack_type}`;
+  }
+
   function invFindPhotoBtnHtml(itemId) {
     return `<button type="button" class="inv-find-photo-btn" onclick="event.stopPropagation(); fetchWebPhotoForItem('${itemId}', this)">🔎 Find photo</button>`;
   }
@@ -11140,7 +11172,7 @@
 
                 ${price > 0 ? `
                   <div style="font-size:12px; color:#475569; margin:4px 0 8px; display:flex; justify-content:space-between;">
-                    <span>Rate: <b>₹${price.toLocaleString('en-IN')}</b>/${unit}</span>
+                    <span>Rate: <b>₹${price.toLocaleString('en-IN')}</b>/${unit}${invBoxRateText(it)}</span>
                     <span style="color:#0f172a; font-weight:700;">Val: ₹${totalVal.toLocaleString('en-IN')}</span>
                   </div>
                 ` : ''}
@@ -11221,7 +11253,7 @@
                     <span style="font-weight:800; font-size:13.5px; color:${stockColor};">${qty} ${unit}</span>
                     ${packText ? `<div style="font-size:11px; color:#7c3aed;">${escapeXml(packText)}</div>` : ''}
                   </td>
-                  <td>${price > 0 ? '₹' + price.toLocaleString('en-IN') : '—'}</td>
+                  <td>${price > 0 ? '₹' + price.toLocaleString('en-IN') + '/' + unit + `<div style="font-size:11px; color:#64748b;">${invBoxRateText(it).replace(' · ', '')}</div>` : '—'}</td>
                   <td><b>${totalVal > 0 ? '₹' + totalVal.toLocaleString('en-IN') : '—'}</b></td>
                   <td style="text-align:right; white-space:nowrap;">
                     <div style="display:inline-flex; gap:4px;">
@@ -11466,6 +11498,7 @@
     const site = document.getElementById('invScanSite').value;
     const thresh = parseFloat(document.getElementById('invScanThreshold').value) || 5;
     const rate = parseFloat(document.getElementById('invScanUnitPrice').value) || 0;
+    const scanPricing = invPricing(rate, unitsPerPack, packType, unit, qty);
     const barcode = document.getElementById('invScanBarcode').value.trim();
     const notes = document.getElementById('invScanNotes').value.trim();
 
@@ -11491,7 +11524,8 @@
       min_threshold: thresh,
       category: cat,
       site_location: site,
-      unit_price: rate,
+      unit_price: scanPricing.unitPrice,
+      pack_price: scanPricing.packPrice,
       barcode_or_serial: barcode,
       specifications: specs,
       notes,
@@ -11658,7 +11692,8 @@
       document.getElementById('invItemMaterialInput').value = specs.material || '';
       document.getElementById('invItemGradeInput').value = specs.grade_or_type || '';
 
-      document.getElementById('invItemUnitPriceInput').value = item.unit_price || '';
+      document.getElementById('invItemUnitPriceInput').value = invRateForForm(item);
+      syncManualPackQty('price');
       document.getElementById('invItemBarcodeInput').value = item.barcode_or_serial || '';
       document.getElementById('invItemNotesInput').value = item.notes || '';
 
@@ -11689,6 +11724,7 @@
       document.getElementById('invItemMaterialInput').value = '';
       document.getElementById('invItemGradeInput').value = '';
       document.getElementById('invItemUnitPriceInput').value = '';
+      syncManualPackQty('price');
       document.getElementById('invItemBarcodeInput').value = '';
       document.getElementById('invItemNotesInput').value = '';
       document.getElementById('invItemPhotoPreviewWrap').style.display = 'none';
@@ -11720,6 +11756,7 @@
     const site = document.getElementById('invItemSiteSelect').value;
     const thresh = parseFloat(document.getElementById('invItemThresholdInput').value) || 5;
     const rate = parseFloat(document.getElementById('invItemUnitPriceInput').value) || 0;
+    const manualPricing = invPricing(rate, manualPerPack, manualPackType, unit, qty);
     const barcode = document.getElementById('invItemBarcodeInput').value.trim();
     const notes = document.getElementById('invItemNotesInput').value.trim();
 
@@ -11749,7 +11786,8 @@
       min_threshold: thresh,
       category: cat,
       site_location: site,
-      unit_price: rate,
+      unit_price: manualPricing.unitPrice,
+      pack_price: manualPricing.packPrice,
       barcode_or_serial: barcode,
       specifications: specs,
       notes,
@@ -11830,7 +11868,7 @@
         </div>
         <div>
           <div style="font-size:11px; color:#64748b;">UNIT RATE</div>
-          <div style="font-size:14px; font-weight:600; color:#334155; margin-top:2px;">₹${price.toLocaleString('en-IN')}</div>
+          <div style="font-size:14px; font-weight:600; color:#334155; margin-top:2px;">₹${price.toLocaleString('en-IN')} / ${item.unit || 'Pcs'}<span style="font-size:11.5px; color:#7c3aed;">${invBoxRateText(item)}</span></div>
         </div>
         <div>
           <div style="font-size:11px; color:#64748b;">TOTAL VALUATION</div>
@@ -12423,6 +12461,10 @@
       : `FULL ${invPackName(packType, 2).toUpperCase()} *`;
     document.getElementById('invScanLooseLabel').textContent = `+ LOOSE ${unit.toUpperCase()} (OPEN ${packWord})`;
 
+    const pricing = invPricing(document.getElementById('invScanUnitPrice').value, perPack, packType, unit, total);
+    document.getElementById('invScanPriceLabel').textContent = pricing.label;
+    document.getElementById('invScanPriceHint').textContent = pricing.hint;
+
     const line = document.getElementById('invScanTotalLine');
     if (!line) return;
     const missingPerPack = !isLoose && !(parseFloat(document.getElementById('invScanUnitsPerPack').value) > 0);
@@ -12476,6 +12518,10 @@
       const text = invPackText({ quantity: qtyEl.value, units_per_pack: perPack, pack_type: packType, unit });
       summary.textContent = text ? `= ${qtyEl.value || 0} ${unit} in total (${text})` : '';
     }
+
+    const pricing = invPricing(document.getElementById('invItemUnitPriceInput').value, perPack, packType, unit, qtyEl.value);
+    document.getElementById('invItemPriceLabel').textContent = pricing.label;
+    document.getElementById('invItemPriceHint').textContent = pricing.hint;
   }
   window.syncManualPackQty = syncManualPackQty;
 
