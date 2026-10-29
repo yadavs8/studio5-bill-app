@@ -8210,6 +8210,7 @@
       }
       if (event.data && event.data.action === 'app_updated') {
         appUpdateReady = true;
+        showAppUpdateBanner();
       }
     });
   }
@@ -8218,6 +8219,19 @@
   // next fresh open uses it automatically; for an app left open for days, it is switched in
   // when he comes back after a while — never in the middle of uploading a bill.
   let appUpdateReady = false;
+
+  // Make a downloaded update visible right away instead of silently running the old copy
+  function showAppUpdateBanner() {
+    if (document.getElementById('appUpdateBanner')) return;
+    const bar = document.createElement('button');
+    bar.type = 'button';
+    bar.id = 'appUpdateBanner';
+    bar.textContent = '✨ New version of the app is ready — tap to update';
+    bar.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:10050; border:none; padding:12px 16px; background:#059669; color:#fff; font-size:14px; font-weight:700; box-shadow:0 2px 10px rgba(0,0,0,0.25); cursor:pointer;';
+    bar.addEventListener('click', () => window.location.reload());
+    document.body.appendChild(bar);
+  }
+
   function applyAppUpdateIfSafe() {
     if (!appUpdateReady) return false;
     const activeBtn = document.querySelector('.nav-btn.active');
