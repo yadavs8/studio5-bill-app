@@ -1549,6 +1549,175 @@
   :root[data-theme="dark"] .inv-table td { border-color: #334155; }
   :root[data-theme="dark"] .inv-table tr:hover td { background: #0f172a; }
   }
+
+  /* ═══ MODERN LUXURY SCANNER UI (STUDIO 5) ═══ */
+  .inv-scan-viewfinder {
+    position: relative;
+    background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 16px;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 12px 30px -8px rgba(15, 23, 42, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    margin-bottom: 14px;
+  }
+  .inv-scan-viewfinder:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 36px -8px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    border-color: rgba(56, 189, 248, 0.4);
+  }
+  .inv-scan-viewfinder:active {
+    transform: scale(0.99);
+  }
+  /* Laser Scanning Animation */
+  .inv-laser-beam {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, #38bdf8 30%, #059669 70%, transparent 100%);
+    box-shadow: 0 0 14px #38bdf8, 0 0 24px #059669;
+    top: 15%;
+    animation: sweepLaser 2.2s ease-in-out infinite alternate;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+  @keyframes sweepLaser {
+    0% { top: 12%; opacity: 0.25; }
+    50% { opacity: 0.95; }
+    100% { top: 88%; opacity: 0.25; }
+  }
+  /* Viewfinder Brackets */
+  .vf-bracket {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-color: #38bdf8;
+    border-style: solid;
+    pointer-events: none;
+  }
+  .vf-tl { top: 12px; left: 12px; border-width: 3px 0 0 3px; border-top-left-radius: 6px; }
+  .vf-tr { top: 12px; right: 12px; border-width: 3px 3px 0 0; border-top-right-radius: 6px; }
+  .vf-bl { bottom: 12px; left: 12px; border-width: 0 0 3px 3px; border-bottom-left-radius: 6px; }
+  .vf-br { bottom: 12px; right: 12px; border-width: 0 3px 3px 0; border-bottom-right-radius: 6px; }
+
+  /* Modern Card Groups inside Scan Modal */
+  .scan-section-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    transition: border-color 0.15s ease;
+  }
+  .scan-section-card:focus-within {
+    border-color: #38bdf8;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08);
+  }
+  .scan-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #475569;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+  .scan-input-modern {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+  }
+  .scan-input-modern:focus {
+    outline: none;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    background: #ffffff;
+  }
+  .scan-label-modern {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  /* Stepper control */
+  .scan-stepper {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .scan-stepper-btn {
+    background: #f1f5f9;
+    border: none;
+    width: 44px;
+    height: 42px;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0f172a;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .scan-stepper-btn:hover { background: #e2e8f0; }
+  .scan-stepper-btn:active { background: #cbd5e1; }
+  .scan-stepper-input {
+    flex: 1;
+    border: none !important;
+    text-align: center;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    color: #059669 !important;
+    padding: 6px !important;
+    background: transparent !important;
+  }
+
+  :root[data-theme="dark"] .scan-section-card {
+    background: #111827;
+    border-color: #1f2937;
+  }
+  :root[data-theme="dark"] .scan-section-card:focus-within {
+    border-color: #38bdf8;
+    background: #0b0f19;
+  }
+  :root[data-theme="dark"] .scan-input-modern {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f8fafc;
+  }
+  :root[data-theme="dark"] .scan-label-modern {
+    color: #94a3b8;
+  }
+  :root[data-theme="dark"] .scan-stepper {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  :root[data-theme="dark"] .scan-stepper-btn {
+    background: #111827;
+    color: #f8fafc;
+  }
+
 </style>
 </head>
 <body>
@@ -2125,125 +2294,169 @@
   </div>
 </div>
 
-<!-- ═══ INVENTORY SCAN & AI EXTRACT MODAL ═══════════════════════════════ -->
+<!-- ═══ INVENTORY SCAN & AI EXTRACT MODAL (MODERN EXECUTIVE UI) ════════ -->
 <div class="pin-overlay" id="inventoryScanModal" style="display:none; z-index:10006;">
-  <div class="pin-card" style="max-width:620px; width:95%; text-align:left; max-height:92vh; display:flex; flex-direction:column; background:#ffffff; border-radius:14px; padding:22px; box-shadow:0 25px 35px -5px rgba(0,0,0,0.3);">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
-      <div>
-        <h2 style="margin:0; font-size:18px; color:var(--walnut); display:flex; align-items:center; gap:8px;">
-          <span>📸</span> <span>AI Product & Specs Scanner</span>
-        </h2>
-        <p style="margin:2px 0 0; font-size:12px; color:#64748b;">Snap product label, box, catalog tag or spec sheet to auto-fill inventory</p>
+  <div class="pin-card" style="max-width:640px; width:95%; text-align:left; max-height:92vh; display:flex; flex-direction:column; background:#ffffff; border-radius:18px; padding:20px; box-shadow:0 25px 40px -10px rgba(15,23,42,0.35); border:1px solid rgba(226,232,240,0.8);">
+    
+    <!-- Modal Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg, #0284c7 0%, #059669 100%); display:flex; align-items:center; justify-content:center; color:#fff; font-size:19px; box-shadow:0 4px 10px rgba(2,132,199,0.3);">
+          ⚡
+        </div>
+        <div>
+          <h2 style="margin:0; font-size:17.5px; font-weight:800; color:var(--walnut); letter-spacing:-0.02em;">
+            AI Vision Product Scanner
+          </h2>
+          <p style="margin:1px 0 0; font-size:11.5px; color:#64748b;">
+            Scan box sticker, catalog code, or packaging label to auto-fill inventory
+          </p>
+        </div>
       </div>
-      <button type="button" id="closeInvScanModalBtn" style="background:#f1f5f9; border:none; width:30px; height:30px; border-radius:50%; font-size:16px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+      <button type="button" id="closeInvScanModalBtn" style="background:#f1f5f9; border:none; width:32px; height:32px; border-radius:50%; font-size:14px; font-weight:700; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center; transition:background 0.15s;">✕</button>
     </div>
 
+    <!-- Scrollable Body -->
     <div style="overflow-y:auto; flex:1; padding-right:4px;" id="invScanModalBody">
-      <!-- Upload / Snap Area -->
-      <div id="invScanDropZone" style="border:2px dashed #059669; background:#f0fdf4; border-radius:10px; padding:26px 16px; text-align:center; cursor:pointer; transition:background 0.15s; margin-bottom:14px;">
+      
+      <!-- Modern Futuristic Viewfinder DropZone -->
+      <div id="invScanDropZone" class="inv-scan-viewfinder">
         <input type="file" id="invScanFileInput" accept="image/*" capture="environment" style="display:none;" />
-        <div style="font-size:36px; margin-bottom:6px;">📷</div>
-        <div style="font-size:15px; font-weight:700; color:#065f46; margin-bottom:4px;">Tap here to Snap Photo or Choose File</div>
-        <div style="font-size:12px; color:#047857;">Works on product packaging boxes, spec stickers, barcodes, catalog descriptions, or the item itself</div>
+        
+        <!-- Viewfinder brackets & animated laser -->
+        <div class="vf-bracket vf-tl"></div>
+        <div class="vf-bracket vf-tr"></div>
+        <div class="vf-bracket vf-bl"></div>
+        <div class="vf-bracket vf-br"></div>
+        <div class="inv-laser-beam"></div>
+
+        <!-- Camera Shutter Button & Icon -->
+        <div style="width:68px; height:68px; border-radius:50%; background:linear-gradient(135deg, #059669 0%, #0284c7 100%); margin:0 auto 12px; display:flex; align-items:center; justify-content:center; font-size:28px; color:#ffffff; box-shadow:0 8px 20px rgba(5,150,105,0.4), inset 0 2px 4px rgba(255,255,255,0.3); border:2px solid rgba(255,255,255,0.3);">
+          📷
+        </div>
+        
+        <div style="font-size:16px; font-weight:800; color:#f8fafc; letter-spacing:-0.01em; margin-bottom:4px;">
+          Tap to Open Camera & Snap Sticker
+        </div>
+        <div style="font-size:12px; color:#94a3b8; max-width:420px; margin:0 auto 12px; line-height:1.4;">
+          Point at packaging box description, barcode, spec sheet, or switchboard label
+        </div>
+
+        <!-- Badge -->
+        <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); padding:4px 12px; border-radius:20px; font-size:11px; color:#38bdf8; font-weight:600;">
+          <span>✨</span> <span>Google Gemini Vision • High Accuracy OCR</span>
+        </div>
       </div>
 
-            <!-- Free AI Engine Indicator & Key Config -->
-      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; margin-bottom:14px; font-size:12px; display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <span style="font-weight:700; color:#0f172a;">AI Engine: </span>
-          <span style="color:#15803d; font-weight:700; background:#dcfce7; padding:2px 7px; border-radius:4px;">✨ Google Gemini 2.0 (100% Free)</span>
-        </div>
-        <button type="button" class="btn-ghost btn-sm" onclick="toggleGeminiKeyPrompt()" style="font-size:11px; padding:2px 8px; color:#0369a1;">⚙️ Free API Key</button>
-      </div>
-      <div id="invGeminiKeyRow" style="display:none; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:10px 12px; margin-bottom:14px;">
-        <label style="display:block; font-size:11px; font-weight:700; color:#166534; margin-bottom:4px;">YOUR FREE GOOGLE GEMINI API KEY (OPTIONAL):</label>
-        <div style="display:flex; gap:6px;">
-          <input type="password" id="userGeminiKeyInput" placeholder="AIzaSy... (or leave blank to use server key)" style="flex:1; padding:6px 10px; font-size:12px; border:1px solid #86efac; border-radius:4px;" />
-          <button type="button" class="btn-primary btn-sm" onclick="saveUserGeminiKey()" style="background:#059669; padding:6px 12px; font-size:11.5px; font-weight:700;">Save</button>
-        </div>
-        <div style="font-size:11px; color:#15803d; margin-top:5px;">
-          Generate your 100% free key (no credit card needed) at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#0369a1; text-decoration:underline; font-weight:600;">aistudio.google.com/app/apikey</a>
-        </div>
-      </div>
-      <!-- Scan Progress / Loading State -->
+      <!-- Modern AI Progress / Scanning HUD -->
       <div id="invScanStatusArea" style="display:none; margin-bottom:14px;">
-        <div style="display:flex; align-items:center; gap:12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:14px;">
-          <div class="spinner"></div>
-          <div>
-            <div style="font-size:13.5px; font-weight:700; color:#1e40af;" id="invScanStatusText">Reading image & extracting specifications with AI…</div>
-            <div style="font-size:11.5px; color:#3b82f6;">Capturing product title, brand, dimensions, finish, material, and count…</div>
+        <div style="background:linear-gradient(145deg, #0f172a 0%, #1e293b 100%); border:1px solid rgba(56,189,248,0.3); border-radius:14px; padding:22px; text-align:center; color:#fff; box-shadow:0 10px 25px -5px rgba(15,23,42,0.4);">
+          <div style="display:inline-block; width:44px; height:44px; border:3px solid rgba(56,189,248,0.2); border-top-color:#38bdf8; border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:10px;"></div>
+          <div style="font-size:15px; font-weight:800; color:#f8fafc;" id="invScanStatusText">
+            Analyzing product label with Gemini AI Vision…
+          </div>
+          <div style="font-size:12px; color:#94a3b8; margin-top:4px;">
+            Extracting product name, brand, model code, specs, and package quantity…
           </div>
         </div>
       </div>
 
-      <!-- Scanned Product Verification Form (Hidden until photo processed) -->
+      <!-- Scanned Product Verification Form (Smooth modern layout) -->
       <div id="invScanFormArea" style="display:none;">
-        <div style="display:flex; gap:14px; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:14px;">
-          <img id="invScanPreviewImg" src="" alt="Scanned Product" style="width:74px; height:74px; object-fit:cover; border-radius:6px; border:1px solid #cbd5e1; cursor:pointer;" onclick="openPhotoViewer(this.src)" title="Click to enlarge" />
+        
+        <!-- Scanned Photo Hero & Quick Status -->
+        <div style="display:flex; gap:12px; align-items:center; background:linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border:1px solid #bbf7d0; border-radius:12px; padding:12px; margin-bottom:14px;">
+          <img id="invScanPreviewImg" src="" alt="Scanned Sticker" style="width:84px; height:84px; object-fit:cover; border-radius:10px; border:2px solid #ffffff; box-shadow:0 4px 10px rgba(0,0,0,0.12); cursor:pointer;" onclick="openPhotoViewer(this.src)" title="Tap to enlarge full resolution" />
           <div style="flex:1;">
-            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:#059669; letter-spacing:0.05em;">AI Extraction Complete</div>
-            <div style="font-size:12.5px; color:#334155; margin-top:2px;">Review specifications below. All fields can be adjusted before saving.</div>
-            <button type="button" class="btn-ghost" style="padding:2px 8px; font-size:11px; margin-top:4px;" onclick="document.getElementById('invScanFileInput').click()">📸 Resnap / Change Photo</button>
+            <div style="display:inline-flex; align-items:center; gap:5px; background:#059669; color:#fff; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:800; letter-spacing:0.04em;">
+              ✓ AI VERIFIED
+            </div>
+            <div style="font-size:13px; font-weight:700; color:#0f172a; margin-top:4px;">
+              Specifications Extracted
+            </div>
+            <div style="font-size:11.5px; color:#475569; margin-top:1px;">
+              Verify fields below before confirming into inventory
+            </div>
+            <button type="button" class="btn-ghost btn-sm" style="margin-top:6px; font-size:11px; padding:3px 9px; font-weight:700; border-radius:6px;" onclick="document.getElementById('invScanFileInput').click()">
+              📸 Retake Photo
+            </button>
           </div>
         </div>
 
-        <!-- Duplicate Alert Warning if existing item found -->
-        <div id="invScanDuplicateNotice" style="display:none; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12.5px; color:#92400e;">
-          <strong>⚠️ Existing item found in stock:</strong> <span id="invScanDuplicateMsg"></span>
+        <!-- Duplicate Notice (if item exists) -->
+        <div id="invScanDuplicateNotice" style="display:none; background:#fffbeb; border:1px solid #fcd34d; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:12.5px; color:#92400e;">
+          <strong>⚠️ Existing item detected in stock:</strong> <span id="invScanDuplicateMsg"></span>
         </div>
 
-        <!-- Form fields -->
-        <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:14px;">
-          <div>
-            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">ITEM / PRODUCT NAME *</label>
-            <input type="text" id="invScanItemName" placeholder="e.g. Hafele Metalla 3D Soft-Close Hinge 110°" style="width:100%; padding:9px 12px; font-size:13.5px; font-weight:600; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        <!-- 1. Hero Product Title Card -->
+        <div class="scan-section-card" style="border-left:4px solid #0284c7;">
+          <label class="scan-label-modern" style="color:#0284c7;">📦 PRODUCT / MATERIAL NAME *</label>
+          <input type="text" id="invScanItemName" class="scan-input-modern" placeholder="e.g. Schneider Electric 3M Switch Board Frame" style="font-size:15px; font-weight:700;" />
+        </div>
+
+        <!-- 2. Stock & Destination (Stepper + Unit + Site) -->
+        <div class="scan-section-card">
+          <div class="scan-card-header">
+            <span>🔢</span> <span>Quantity & Godown Destination</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1.3fr 1fr 1.3fr; gap:10px; align-items:end;">
+            <div>
+              <label class="scan-label-modern">PIECES / QUANTITY *</label>
+              <div class="scan-stepper">
+                <button type="button" class="scan-stepper-btn" onclick="stepScanQty(-1)">−</button>
+                <input type="number" step="any" id="invScanQty" class="scan-stepper-input" placeholder="1" />
+                <button type="button" class="scan-stepper-btn" onclick="stepScanQty(1)">+</button>
+              </div>
+            </div>
+            <div>
+              <label class="scan-label-modern">UNIT *</label>
+              <select id="invScanUnit" class="scan-input-modern" style="padding:10px 8px; font-weight:700;">
+                <option value="Pcs">Pcs / Nos</option>
+                <option value="Box">Box</option>
+                <option value="Set">Set</option>
+                <option value="Pack">Pack</option>
+                <option value="Sheets">Sheets</option>
+                <option value="Meters">Meters</option>
+                <option value="Sq Ft">Sq Ft</option>
+                <option value="Kg">Kg</option>
+                <option value="Litre">Litre</option>
+                <option value="Rolls">Rolls</option>
+                <option value="Bundles">Bundles</option>
+              </select>
+            </div>
+            <div>
+              <label class="scan-label-modern">SITE / GODOWN *</label>
+              <select id="invScanSite" class="scan-input-modern" style="padding:10px 8px; font-weight:700;">
+                <option value="Traudan Site">Traudan Site</option>
+                <option value="Dehradun Site">Dehradun Site</option>
+                <option value="Gurgaon Site">Gurgaon Site</option>
+                <option value="Central Godown">Central Godown</option>
+                <option value="Factory / Workshop">Factory / Workshop</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-          <div>
-            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">BRAND / MAKE</label>
-            <input type="text" id="invScanBrand" placeholder="e.g. Hafele, Hettich, Philips" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        <!-- 3. Make & Classification (Brand, Model, Category) -->
+        <div class="scan-section-card">
+          <div class="scan-card-header">
+            <span>🏷️</span> <span>Make & Classification</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div>
+              <label class="scan-label-modern">BRAND / MANUFACTURER</label>
+              <input type="text" id="invScanBrand" class="scan-input-modern" placeholder="e.g. Schneider, Hafele, Philips" />
+            </div>
+            <div>
+              <label class="scan-label-modern">MODEL / ARTICLE / SKU NO</label>
+              <input type="text" id="invScanModelNo" class="scan-input-modern" placeholder="e.g. Livia 3M, 311.90.500" />
+            </div>
           </div>
           <div>
-            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">MODEL / ARTICLE / SKU NO</label>
-            <input type="text" id="invScanModelNo" placeholder="e.g. 311.90.500" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px;">
-          <div>
-            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">QUANTITY *</label>
-            <input type="number" step="any" id="invScanQty" placeholder="1" style="width:100%; padding:8px 10px; font-size:14px; font-weight:700; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#047857;" />
-          </div>
-          <div>
-            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNIT *</label>
-            <select id="invScanUnit" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
-              <option value="Pcs">Pcs / Nos</option>
-              <option value="Box">Box</option>
-              <option value="Set">Set</option>
-              <option value="Pack">Pack</option>
-              <option value="Sheets">Sheets</option>
-              <option value="Meters">Meters / Rmt</option>
-              <option value="Sq Ft">Sq Ft</option>
-              <option value="Kg">Kg</option>
-              <option value="Litre">Litre</option>
-              <option value="Rolls">Rolls</option>
-              <option value="Bundles">Bundles</option>
-            </select>
-          </div>
-          <div>
-            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">LOW THRESHOLD</label>
-            <input type="number" id="invScanThreshold" value="5" placeholder="5" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" title="Alert when stock falls to or below this count" />
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-          <div>
-            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">CATEGORY</label>
-            <select id="invScanCategory" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
-              <option value="Hardware & Fittings">Hardware & Fittings</option>
+            <label class="scan-label-modern">MATERIAL CATEGORY</label>
+            <select id="invScanCategory" class="scan-input-modern">
               <option value="Electrical & Lighting">Electrical & Lighting</option>
+              <option value="Hardware & Fittings">Hardware & Fittings</option>
               <option value="Plywood & Boards">Plywood & Boards</option>
               <option value="Laminates & Veneers">Laminates & Veneers</option>
               <option value="Plumbing & Sanitary">Plumbing & Sanitary</option>
@@ -2255,69 +2468,72 @@
               <option value="General Consumables">General Consumables</option>
             </select>
           </div>
-          <div>
-            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">SITE / GODOWN *</label>
-            <select id="invScanSite" style="width:100%; padding:8px 10px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
-              <option value="Traudan Site">Traudan Site</option>
-              <option value="Dehradun Site">Dehradun Site</option>
-              <option value="Gurgaon Site">Gurgaon Site</option>
-              <option value="Central Godown">Central Godown</option>
-              <option value="Factory / Workshop">Factory / Workshop</option>
-            </select>
-          </div>
         </div>
 
-        <!-- Specifications Group -->
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px;">
-          <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:#475569; letter-spacing:0.06em; margin-bottom:8px;">📐 Technical Specifications</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
+        <!-- 4. Technical Specifications Grid -->
+        <div class="scan-section-card">
+          <div class="scan-card-header">
+            <span>📐</span> <span>Technical Specifications</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
             <div>
-              <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">DIMENSIONS / SIZE</label>
-              <input type="text" id="invScanDimensions" placeholder="e.g. 8ft x 4ft x 18mm, 450mm, 35mm" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+              <label class="scan-label-modern">📏 SIZE / MODULE / DIMENSIONS</label>
+              <input type="text" id="invScanDimensions" class="scan-input-modern" placeholder="e.g. 3 Module (3M), 450mm, 8x4 ft" />
             </div>
             <div>
-              <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">COLOR / FINISH</label>
-              <input type="text" id="invScanColorFinish" placeholder="e.g. Matte Black, Brushed Nickel, Glossy" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+              <label class="scan-label-modern">🎨 COLOR / FINISH</label>
+              <input type="text" id="invScanColorFinish" class="scan-input-modern" placeholder="e.g. White, Matte Grey, Satin" />
             </div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
             <div>
-              <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">MATERIAL</label>
-              <input type="text" id="invScanMaterial" placeholder="e.g. SS 304, Brass, Marine Ply, Aluminum" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+              <label class="scan-label-modern">🔩 MATERIAL</label>
+              <input type="text" id="invScanMaterial" class="scan-input-modern" placeholder="e.g. Polycarbonate, SS 304, Brass" />
             </div>
             <div>
-              <label style="display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px;">RATING / GRADE / TYPE</label>
-              <input type="text" id="invScanGradeType" placeholder="e.g. 12W 220V, Full Overlay, BWP 710" style="width:100%; padding:7px 9px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:5px; box-sizing:border-box;" />
+              <label class="scan-label-modern">⚡ RATING / GRADE / SPEC</label>
+              <input type="text" id="invScanGradeType" class="scan-input-modern" placeholder="e.g. 10A/16A, 240V, Full Overlay" />
             </div>
           </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-          <div>
-            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNIT RATE / MRP (₹)</label>
-            <input type="number" step="any" id="invScanUnitPrice" placeholder="0.00" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        <!-- 5. Rates & Additional Info -->
+        <div class="scan-section-card">
+          <div class="scan-card-header">
+            <span>💰</span> <span>Pricing & Inventory Details</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div>
+              <label class="scan-label-modern">UNIT RATE / MRP (₹)</label>
+              <input type="number" step="any" id="invScanUnitPrice" class="scan-input-modern" placeholder="0.00" />
+            </div>
+            <div>
+              <label class="scan-label-modern">LOW ALERT THRESHOLD</label>
+              <input type="number" id="invScanThreshold" value="5" class="scan-input-modern" />
+            </div>
+            <div>
+              <label class="scan-label-modern">BARCODE / SERIAL #</label>
+              <input type="text" id="invScanBarcode" class="scan-input-modern" placeholder="Optional" />
+            </div>
           </div>
           <div>
-            <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">BARCODE / SERIAL #</label>
-            <input type="text" id="invScanBarcode" placeholder="e.g. 890123456789" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+            <label class="scan-label-modern">NOTES / REMARKS</label>
+            <input type="text" id="invScanNotes" class="scan-input-modern" placeholder="e.g. In original packaging box" />
           </div>
         </div>
 
-        <div style="margin-bottom:14px;">
-          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">NOTES / DESCRIPTION</label>
-          <input type="text" id="invScanNotes" placeholder="e.g. Pack contains mounting screws and plates" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
-        </div>
-
-        <!-- Buttons -->
-        <div style="display:flex; gap:10px; align-items:center;">
-          <button type="button" id="invScanSaveBtn" class="btn-primary" style="flex:1; padding:12px; font-size:14.5px; font-weight:700; background:#059669;">
-            ✅ Confirm & Save to Inventory
+        <!-- Action Bar -->
+        <div style="display:flex; gap:10px; align-items:center; margin-top:16px;">
+          <button type="button" id="invScanSaveBtn" class="btn-primary" style="flex:1; padding:13px 18px; font-size:14.5px; font-weight:800; background:linear-gradient(135deg, #059669 0%, #047857 100%); border-radius:10px; box-shadow:0 6px 18px rgba(5,150,105,0.35); border:none; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <span>✨</span> <span>Confirm & Add to Inventory</span>
           </button>
-          <button type="button" class="btn-ghost" onclick="document.getElementById('inventoryScanModal').style.display='none'" style="padding:12px 18px;">
+          <button type="button" class="btn-ghost" onclick="document.getElementById('inventoryScanModal').style.display='none'" style="padding:13px 18px; border-radius:10px; font-weight:700;">
             Cancel
           </button>
         </div>
+
       </div>
+
     </div>
   </div>
 </div>
@@ -11907,6 +12123,14 @@
   window.openPhotoViewer = openPhotoViewer;
   window.deleteInventoryItemUI = deleteInventoryItemUI;
   window.loadInventory = loadInventory;
+    function stepScanQty(delta) {
+    const el = document.getElementById('invScanQty');
+    if (!el) return;
+    let v = (parseFloat(el.value) || 0) + delta;
+    el.value = Math.max(1, Math.round(v * 10) / 10);
+  }
+  window.stepScanQty = stepScanQty;
+
   window.openIssueMaterialModal = openIssueMaterialModal;
   window.updateIssueModalStockDisplay = updateIssueModalStockDisplay;
   window.setIssueQty = setIssueQty;
