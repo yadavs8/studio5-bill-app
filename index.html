@@ -2451,7 +2451,7 @@
         <div style="display:flex; gap:10px; align-items:center; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:8px 10px; margin-bottom:10px;">
           <img id="invScanPreviewImg" src="" alt="Sticker" style="width:58px; height:58px; object-fit:cover; border-radius:6px; border:1px solid #cbd5e1; cursor:pointer; flex-shrink:0;" onclick="openPhotoViewer(this.src)" title="Tap to view full resolution" />
           <div style="flex:1; min-width:0;">
-            <div style="display:inline-block; background:#059669; color:#fff; padding:1px 6px; border-radius:10px; font-size:9.5px; font-weight:800; letter-spacing:0.04em;">
+            <div id="invScanAiBadge" style="display:inline-block; background:#059669; color:#fff; padding:1px 6px; border-radius:10px; font-size:9.5px; font-weight:800; letter-spacing:0.04em;">
               ✓ AI EXTRACTED
             </div>
             <div style="font-size:11.5px; color:#334155; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -2467,6 +2467,9 @@
             </div>
           </div>
         </div>
+
+        <!-- Shown when the AI label read failed, so a blank name is explained -->
+        <div id="invScanAiNotice" style="display:none; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:12px; font-weight:600; color:#991b1b;"></div>
 
         <!-- Duplicate Notice -->
         <div id="invScanDuplicateNotice" style="display:none; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11.5px; color:#92400e;">
@@ -11279,6 +11282,7 @@
     document.getElementById('invScanStatusArea').style.display = 'none';
     document.getElementById('invScanFormArea').style.display = 'none';
     document.getElementById('invScanDuplicateNotice').style.display = 'none';
+    document.getElementById('invScanAiNotice').style.display = 'none';
     currentScanPhotoBase64 = null;
     currentScanMediaType = null;
     currentScannedItemData = null;
@@ -11313,6 +11317,7 @@
       if (previewImg) previewImg.src = `data:${mediaType};base64,${b64}`;
 
       let extracted = null;
+      let aiFailReason = '';
       try {
         const res = await fetch(`${BACKEND_URL}/inventory/extract`, {
           method: 'POST',
@@ -11320,18 +11325,32 @@
             'Content-Type': 'application/json',
             'x-app-secret': APP_SECRET
           },
-          body: JSON.stringify({ file_base64: b64, media_type: mediaType })
+          body: JSON.stringify({ file_base64: b64, media_type: mediaType }),
+          signal: AbortSignal.timeout(90000)
         });
-        if (res.ok) {
-          extracted = await res.json();
-        }
+        const body = await res.json().catch(() => ({}));
+        if (res.ok && !body.error) extracted = body;
+        else aiFailReason = body.error || `server error ${res.status}`;
       } catch (backendErr) {
-        console.warn('Backend extract failed, using fallback:', backendErr);
+        console.warn('Backend extract failed:', backendErr);
+        aiFailReason = backendErr.name === 'TimeoutError' ? 'the AI took too long to answer' : backendErr.message;
       }
 
-      if (!extracted || extracted.error) {
+      const aiBadge = document.getElementById('invScanAiBadge');
+      if (aiBadge) {
+        aiBadge.textContent = extracted ? '✓ AI EXTRACTED' : '✗ AI COULD NOT READ';
+        aiBadge.style.background = extracted ? '#059669' : '#dc2626';
+      }
+      const aiNotice = document.getElementById('invScanAiNotice');
+      if (aiNotice) {
+        aiNotice.style.display = extracted ? 'none' : 'block';
+        aiNotice.textContent = extracted ? '' : `⚠️ The AI couldn't read this label (${String(aiFailReason).slice(0, 140)}). Please type the product name, or tap Retake for a sharper photo.`;
+      }
+
+      if (!extracted) {
+        // Never guess the name from the photo's file name (e.g. "IMG 20261029 1458") — leave it for the user
         extracted = {
-          item_name: file.name.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' '),
+          item_name: '',
           brand: '',
           model_number: '',
           quantity: 1,
@@ -11355,7 +11374,9 @@
       document.getElementById('invScanUnitsPerPack').value = aiPerPack > 1 ? aiPerPack : '';
       document.getElementById('invScanPackType').value = extracted.pack_type || (aiPerPack > 1 ? 'Box' : '');
       // Box/Pack are pack types, not the counting unit
-      document.getElementById('invScanUnit').value = /^(box|pack|carton)$/i.test(extracted.unit || '') ? 'Pcs' : (extracted.unit || 'Pcs');
+      const unitSelect = document.getElementById('invScanUnit');
+      unitSelect.value = /^(box|pack|carton)$/i.test(extracted.unit || '') ? 'Pcs' : (extracted.unit || 'Pcs');
+      if (!unitSelect.value) unitSelect.value = 'Pcs'; // e.g. "Nos" isn't an option -> blank select
       updateScanPackTotal();
       document.getElementById('invScanThreshold').value = 5;
       document.getElementById('invScanCategory').value = extracted.category || 'Hardware & Fittings';
