@@ -2425,9 +2425,14 @@
             <div style="font-size:11.5px; color:#334155; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
               Check details below before saving:
             </div>
-            <button type="button" class="btn-ghost btn-sm" style="margin-top:3px; font-size:10.5px; padding:2px 7px;" onclick="document.getElementById('invScanFileInput').click()">
-              📸 Retake Photo
-            </button>
+            <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">
+              <button type="button" class="btn-ghost btn-sm" style="font-size:10.5px; padding:2px 7px;" onclick="document.getElementById('invScanFileInput').click()">
+                📸 Retake
+              </button>
+              <button type="button" id="invScanWebPhotoBtn" class="btn-ghost btn-sm" style="font-size:10.5px; padding:2px 8px; color:#0284c7; border-color:#bae6fd; background:#f0f9ff; font-weight:700;" onclick="autoFetchScanWebPhoto()">
+                🌐 Fetch Web Photo
+              </button>
+            </div>
           </div>
         </div>
 
@@ -12198,6 +12203,84 @@
     el.value = val;
   }
   window.setScanQtyDirect = setScanQtyDirect;
+
+  let currentScanPhotoUrl = null;
+
+  async function autoFetchScanWebPhoto() {
+    const itemName = document.getElementById('invScanItemName')?.value.trim();
+    const brand = document.getElementById('invScanBrand')?.value.trim();
+    if (!itemName) {
+      alert('Please enter or scan a product name first.');
+      return;
+    }
+
+    const btn = document.getElementById('invScanWebPhotoBtn');
+    const prevText = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Finding…';
+    }
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/inventory/fetch-web-photo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+        body: JSON.stringify({ query: itemName, brand })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.photo_url) {
+          currentScanPhotoUrl = data.photo_url;
+          currentScanPhotoBase64 = null; // Prioritize clean web photo
+          const img = document.getElementById('invScanPreviewImg');
+          if (img) img.src = data.photo_url;
+          if (btn) btn.textContent = '✓ Web Photo Set';
+          return;
+        }
+      }
+      alert('Could not find a high-quality product photo on web. You can keep your captured sticker photo.');
+    } catch (e) {
+      alert('Error fetching web photo: ' + e.message);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        if (!currentScanPhotoUrl) btn.textContent = prevText;
+      }
+    }
+  }
+
+  async function fetchWebPhotoForItem(itemId) {
+    const item = inventoryItems.find(it => it.id === itemId);
+    if (!item) return;
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/inventory/fetch-web-photo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+        body: JSON.stringify({ query: item.item_name, brand: item.brand, item_id: itemId })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.photo_url) {
+          item.photo_url = data.photo_url;
+          saveInventoryToCache();
+          renderInventoryUI();
+          if (document.getElementById('inventorySpecsDetailModal')?.style.display === 'flex') {
+            openProductDossier(itemId);
+          }
+          alert('✓ Official product photo attached from web!');
+          return;
+        }
+      }
+      alert('Could not find an official photo on web for ' + item.item_name);
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  window.autoFetchScanWebPhoto = autoFetchScanWebPhoto;
+  window.fetchWebPhotoForItem = fetchWebPhotoForItem;
+
 
   window.stepScanQty = stepScanQty;
 
