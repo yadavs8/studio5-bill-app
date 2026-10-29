@@ -2485,9 +2485,29 @@
             <span>🔢</span> <span>Quantity & Godown Destination</span>
           </div>
           
+          <!-- 1) what it comes in  2) pieces written on that box  3) how many boxes you have -->
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
             <div>
-              <label class="scan-label-modern" style="color:#059669;">HOW MANY PACKS? *</label>
+              <label class="scan-label-modern">PACKED IN</label>
+              <select id="invScanPackType" class="scan-input-modern" style="font-weight:600;" onchange="updateScanPackTotal()">
+                <option value="">Loose (no box)</option>
+                <option value="Box">Box</option>
+                <option value="Pack">Pack</option>
+                <option value="Carton">Carton</option>
+                <option value="Set">Set</option>
+                <option value="Bundle">Bundle</option>
+                <option value="Roll">Roll</option>
+              </select>
+            </div>
+            <div id="invScanPerPackWrap">
+              <label class="scan-label-modern" id="invScanPerPackLabel">PCS IN 1 BOX *</label>
+              <input type="number" step="any" min="1" inputmode="decimal" id="invScanUnitsPerPack" class="scan-input-modern" placeholder="as written on box" style="font-weight:700;" oninput="updateScanPackTotal()" />
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+            <div>
+              <label class="scan-label-modern" style="color:#059669;" id="invScanPacksLabel">HOW MANY BOXES? *</label>
               <div class="scan-stepper">
                 <button type="button" class="scan-stepper-btn" onclick="stepScanQty(-1)">−</button>
                 <input type="number" step="1" min="1" inputmode="numeric" id="invScanPacks" class="scan-stepper-input" placeholder="1" oninput="updateScanPackTotal()" />
@@ -2495,32 +2515,10 @@
               </div>
             </div>
             <div>
-              <label class="scan-label-modern">UNITS IN 1 PACK</label>
-              <input type="number" step="any" min="1" inputmode="decimal" id="invScanUnitsPerPack" class="scan-input-modern" placeholder="1" style="font-weight:700;" oninput="updateScanPackTotal()" />
-            </div>
-          </div>
-          <input type="hidden" id="invScanQty" />
-
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
-            <div>
-              <label class="scan-label-modern">PACK TYPE</label>
-              <select id="invScanPackType" class="scan-input-modern" style="font-weight:600;" onchange="updateScanPackTotal()">
-                <option value="">Loose piece</option>
-                <option value="Pack">Pack</option>
-                <option value="Box">Box</option>
-                <option value="Carton">Carton</option>
-                <option value="Set">Set</option>
-                <option value="Bundle">Bundle</option>
-                <option value="Roll">Roll</option>
-              </select>
-            </div>
-            <div>
-              <label class="scan-label-modern">UNIT OF 1 PIECE *</label>
+              <label class="scan-label-modern">COUNTED IN</label>
               <select id="invScanUnit" class="scan-input-modern" style="font-weight:600;" onchange="updateScanPackTotal()">
                 <option value="Pcs">Pcs / Nos</option>
-                <option value="Box">Box</option>
                 <option value="Set">Set</option>
-                <option value="Pack">Pack</option>
                 <option value="Sheets">Sheets</option>
                 <option value="Meters">Meters</option>
                 <option value="Sq Ft">Sq Ft</option>
@@ -2532,11 +2530,12 @@
             </div>
           </div>
 
+          <input type="hidden" id="invScanQty" />
           <div id="invScanTotalLine" style="font-size:13px; font-weight:700; color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:6px; padding:7px 10px; margin-bottom:8px;"></div>
 
           <!-- Quick Quantity Preset Chips (1-tap set) -->
           <div style="display:flex; align-items:center; gap:5px; margin-bottom:8px; flex-wrap:wrap;">
-            <span style="font-size:10px; color:#64748b; font-weight:600;">Packs:</span>
+            <span style="font-size:10px; color:#64748b; font-weight:600;">Quick:</span>
             <button type="button" class="scan-pill-btn" onclick="setScanQtyDirect(1)">1</button>
             <button type="button" class="scan-pill-btn" onclick="setScanQtyDirect(2)">2</button>
             <button type="button" class="scan-pill-btn" onclick="setScanQtyDirect(5)">5</button>
@@ -2705,40 +2704,38 @@
 
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:6px;">
         <div>
-          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">NO. OF PACKS</label>
-          <input type="number" step="1" min="0" inputmode="numeric" id="invItemPacksInput" placeholder="—" oninput="syncManualPackQty('packs')" style="width:100%; padding:8px 10px; font-size:13px; font-weight:700; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
-        </div>
-        <div>
-          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNITS IN 1 PACK</label>
-          <input type="number" step="any" min="1" inputmode="decimal" id="invItemUnitsPerPackInput" placeholder="1" oninput="syncManualPackQty('packs')" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
-        </div>
-        <div>
-          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">PACK TYPE</label>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">PACKED IN</label>
           <select id="invItemPackTypeSelect" onchange="syncManualPackQty('packs')" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
-            <option value="">Loose piece</option>
-            <option value="Pack">Pack</option>
+            <option value="">Loose (no box)</option>
             <option value="Box">Box</option>
+            <option value="Pack">Pack</option>
             <option value="Carton">Carton</option>
             <option value="Set">Set</option>
             <option value="Bundle">Bundle</option>
             <option value="Roll">Roll</option>
           </select>
         </div>
+        <div class="inv-pack-only">
+          <label id="invItemPerPackLabel" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">PCS IN 1 BOX *</label>
+          <input type="number" step="any" min="1" inputmode="decimal" id="invItemUnitsPerPackInput" placeholder="on box" oninput="syncManualPackQty('packs')" style="width:100%; padding:8px 10px; font-size:13px; font-weight:700; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        </div>
+        <div class="inv-pack-only">
+          <label id="invItemPacksLabel" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">NO. OF BOXES</label>
+          <input type="number" step="1" min="0" inputmode="numeric" id="invItemPacksInput" placeholder="—" oninput="syncManualPackQty('packs')" style="width:100%; padding:8px 10px; font-size:13px; font-weight:700; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        </div>
       </div>
       <div id="invItemPackSummary" style="font-size:12px; font-weight:600; color:#7c3aed; margin-bottom:10px; min-height:16px;"></div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px;">
         <div>
-          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">TOTAL UNITS *</label>
+          <label id="invItemQtyLabel" style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">TOTAL PCS *</label>
           <input type="number" step="any" id="invItemQtyInput" placeholder="0" oninput="syncManualPackQty('qty')" style="width:100%; padding:8px 10px; font-size:14px; font-weight:700; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#047857;" />
         </div>
         <div>
-          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNIT *</label>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">COUNTED IN *</label>
           <select id="invItemUnitSelect" onchange="syncManualPackQty('qty')" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
             <option value="Pcs">Pcs / Nos</option>
-            <option value="Box">Box</option>
             <option value="Set">Set</option>
-            <option value="Pack">Pack</option>
             <option value="Sheets">Sheets</option>
             <option value="Meters">Meters / Rmt</option>
             <option value="Sq Ft">Sq Ft</option>
@@ -11030,8 +11027,14 @@
   }
 
   // Stock is always stored as loose units; this describes it in packs, e.g. "5 Boxes × 10 Pcs + 3 loose"
+  function invIsPackUnit(unit) {
+    return /^(box|pack|carton)$/i.test(unit || '');
+  }
+
   function invPackText(it) {
     const perPack = parseFloat(it.units_per_pack) || 1;
+    // Saved before pack tracking: counted in boxes with no pieces-per-box, so pieces can't be worked out
+    if (perPack <= 1 && invIsPackUnit(it.unit)) return `⚠️ Pcs per ${it.unit} not set — tap ✏️ to add`;
     if (perPack <= 1) return '';
     const qty = parseFloat(it.quantity) || 0;
     const fullPacks = Math.floor(qty / perPack);
@@ -11335,9 +11338,11 @@
       document.getElementById('invScanBrand').value = extracted.brand || '';
       document.getElementById('invScanModelNo').value = extracted.model_number || '';
       document.getElementById('invScanPacks').value = 1;
-      document.getElementById('invScanUnitsPerPack').value = extracted.units_per_pack || extracted.quantity || 1;
-      document.getElementById('invScanPackType').value = extracted.pack_type || ((extracted.units_per_pack || 1) > 1 ? 'Pack' : '');
-      document.getElementById('invScanUnit').value = extracted.unit || 'Pcs';
+      const aiPerPack = parseFloat(extracted.units_per_pack) || 0;
+      document.getElementById('invScanUnitsPerPack').value = aiPerPack > 1 ? aiPerPack : '';
+      document.getElementById('invScanPackType').value = extracted.pack_type || (aiPerPack > 1 ? 'Box' : '');
+      // Box/Pack are pack types, not the counting unit
+      document.getElementById('invScanUnit').value = /^(box|pack|carton)$/i.test(extracted.unit || '') ? 'Pcs' : (extracted.unit || 'Pcs');
       updateScanPackTotal();
       document.getElementById('invScanThreshold').value = 5;
       document.getElementById('invScanCategory').value = extracted.category || 'Hardware & Fittings';
@@ -11410,8 +11415,13 @@
     updateScanPackTotal();
     const qty = parseFloat(document.getElementById('invScanQty').value) || 1;
     const unit = document.getElementById('invScanUnit').value;
-    const unitsPerPack = parseFloat(document.getElementById('invScanUnitsPerPack').value) || 1;
     const packType = document.getElementById('invScanPackType').value;
+    const unitsPerPack = packType ? (parseFloat(document.getElementById('invScanUnitsPerPack').value) || 0) : 1;
+    if (!unitsPerPack) {
+      alert(`How many ${unit} are in 1 ${packType}? Please enter the number written on the ${packType.toLowerCase()}.`);
+      document.getElementById('invScanUnitsPerPack').focus();
+      return;
+    }
     const brand = document.getElementById('invScanBrand').value.trim();
     const model = document.getElementById('invScanModelNo').value.trim();
     const cat = document.getElementById('invScanCategory').value;
@@ -11481,6 +11491,8 @@
           else inventoryItems.unshift(result.item);
           saveInventoryToCache();
           renderInventoryUI();
+          // Saved with the camera snap (web photo not ready yet): keep looking for the official photo in the background
+          if (!currentScanPhotoUrl && result.item.brand) fetchWebPhotoForItem(result.item.id, null, true);
         }
       } else {
         const localItem = {
@@ -11582,12 +11594,22 @@
       document.getElementById('invItemNameInput').value = item.item_name || '';
       document.getElementById('invItemBrandInput').value = item.brand || '';
       document.getElementById('invItemModelInput').value = item.model_number || '';
-      document.getElementById('invItemQtyInput').value = item.quantity || 0;
-      document.getElementById('invItemUnitSelect').value = item.unit || 'Pcs';
-      document.getElementById('invItemUnitsPerPackInput').value = item.units_per_pack > 1 ? item.units_per_pack : '';
-      document.getElementById('invItemPackTypeSelect').value = item.pack_type || '';
-      document.getElementById('invItemPacksInput').value = '';
-      syncManualPackQty('qty');
+      if (invIsPackUnit(item.unit) && !(item.units_per_pack > 1)) {
+        // Older items counted in "Box": the quantity is a box count, so ask for pieces per box
+        document.getElementById('invItemUnitSelect').value = 'Pcs';
+        document.getElementById('invItemPackTypeSelect').value = item.unit.charAt(0).toUpperCase() + item.unit.slice(1).toLowerCase();
+        document.getElementById('invItemUnitsPerPackInput').value = '';
+        document.getElementById('invItemPacksInput').value = item.quantity || 0;
+        document.getElementById('invItemQtyInput').value = '';
+        syncManualPackQty('packs');
+      } else {
+        document.getElementById('invItemQtyInput').value = item.quantity || 0;
+        document.getElementById('invItemUnitSelect').value = item.unit || 'Pcs';
+        document.getElementById('invItemUnitsPerPackInput').value = item.units_per_pack > 1 ? item.units_per_pack : '';
+        document.getElementById('invItemPackTypeSelect').value = item.pack_type || '';
+        document.getElementById('invItemPacksInput').value = '';
+        syncManualPackQty('qty');
+      }
       document.getElementById('invItemThresholdInput').value = item.min_threshold || 5;
       document.getElementById('invItemCategorySelect').value = item.category || 'Hardware & Fittings';
       document.getElementById('invItemSiteSelect').value = item.site_location || 'Central Godown';
@@ -11644,6 +11666,13 @@
       return;
     }
 
+    const manualPackType = document.getElementById('invItemPackTypeSelect').value;
+    const manualPerPack = parseFloat(document.getElementById('invItemUnitsPerPackInput').value) || 0;
+    if (manualPackType && !manualPerPack) {
+      alert(`How many pieces are in 1 ${manualPackType}? Please enter the number written on the ${manualPackType.toLowerCase()}.`);
+      document.getElementById('invItemUnitsPerPackInput').focus();
+      return;
+    }
     const qty = parseFloat(document.getElementById('invItemQtyInput').value) || 0;
     const unit = document.getElementById('invItemUnitSelect').value;
     const brand = document.getElementById('invItemBrandInput').value.trim();
@@ -11685,8 +11714,8 @@
       barcode_or_serial: barcode,
       specifications: specs,
       notes,
-      units_per_pack: parseFloat(document.getElementById('invItemUnitsPerPackInput').value) || 1,
-      pack_type: document.getElementById('invItemPackTypeSelect').value,
+      units_per_pack: manualPackType ? manualPerPack : 1,
+      pack_type: manualPackType,
       photo_base64: photoB64,
       media_type: photoType,
       created_by: getActiveUser()
@@ -11742,6 +11771,7 @@
       ${item.photo_url ? `
         <div style="text-align:center; margin-bottom:14px;">
           <img src="${escapeXml(item.photo_url)}" alt="${escapeXml(item.item_name)}" style="max-height:200px; width:100%; object-fit:contain; border-radius:8px; background:#ffffff; border:1px solid #e2e8f0; cursor:pointer;" onclick="openPhotoViewer(this.src)" onerror="this.parentElement.style.display='none'" title="Tap to view full resolution" />
+          <button type="button" class="btn-ghost btn-sm" onclick="fetchWebPhotoForItem('${item.id}', this)" style="margin-top:6px; color:#0284c7; font-weight:700; font-size:11.5px;">🔎 Replace with official product photo</button>
         </div>
       ` : `
         <div style="text-align:center; margin-bottom:14px;">
@@ -12338,13 +12368,30 @@
     const perPack = parseFloat(document.getElementById('invScanUnitsPerPack')?.value) || 1;
     const unit = document.getElementById('invScanUnit')?.value || 'Pcs';
     const packType = document.getElementById('invScanPackType')?.value || '';
-    const total = Math.round(packs * perPack * 100) / 100;
+    const isLoose = !packType;
+    const total = Math.round(packs * (isLoose ? 1 : perPack) * 100) / 100;
     document.getElementById('invScanQty').value = total;
+
+    // Labels follow the chosen pack, e.g. "PCS IN 1 BOX" / "HOW MANY BOXES?"
+    const packWord = (packType || 'Pack').toUpperCase();
+    document.getElementById('invScanPerPackWrap').style.display = isLoose ? 'none' : '';
+    document.getElementById('invScanPerPackLabel').textContent = `${unit.toUpperCase()} IN 1 ${packWord} *`;
+    document.getElementById('invScanPacksLabel').textContent = isLoose
+      ? `HOW MANY ${unit.toUpperCase()}? *`
+      : `HOW MANY ${invPackName(packType, 2).toUpperCase()}? *`;
+
     const line = document.getElementById('invScanTotalLine');
-    if (line) {
-      line.textContent = perPack > 1 || packType
-        ? `Total stock: ${packs} ${invPackName(packType, packs)} × ${perPack} ${unit} = ${total} ${unit}`
-        : `Total stock: ${total} ${unit}`;
+    if (!line) return;
+    const missingPerPack = !isLoose && !(parseFloat(document.getElementById('invScanUnitsPerPack').value) > 0);
+    line.style.color = missingPerPack ? '#b45309' : '#047857';
+    line.style.background = missingPerPack ? '#fffbeb' : '#ecfdf5';
+    line.style.borderColor = missingPerPack ? '#fde68a' : '#a7f3d0';
+    if (missingPerPack) {
+      line.textContent = `⚠️ Enter how many ${unit} are in 1 ${packType} (it's written on the ${packType.toLowerCase()})`;
+    } else if (isLoose) {
+      line.textContent = `Total: ${total} ${unit}`;
+    } else {
+      line.textContent = `Total: ${total} ${unit}  (${packs} ${invPackName(packType, packs)} × ${perPack} ${unit} each)`;
     }
   }
   window.updateScanPackTotal = updateScanPackTotal;
@@ -12353,18 +12400,31 @@
   function syncManualPackQty(source) {
     const packsEl = document.getElementById('invItemPacksInput');
     const qtyEl = document.getElementById('invItemQtyInput');
-    const perPack = parseFloat(document.getElementById('invItemUnitsPerPackInput').value) || 1;
     const packType = document.getElementById('invItemPackTypeSelect').value;
-    if (source === 'packs' && packsEl.value !== '') {
+    const unit = document.getElementById('invItemUnitSelect').value;
+    const perPackRaw = parseFloat(document.getElementById('invItemUnitsPerPackInput').value) || 0;
+    const perPack = packType ? perPackRaw : 1;
+
+    document.querySelectorAll('#inventoryItemModal .inv-pack-only').forEach(el => { el.style.visibility = packType ? 'visible' : 'hidden'; });
+    document.getElementById('invItemPerPackLabel').textContent = `${unit.toUpperCase()} IN 1 ${(packType || 'Pack').toUpperCase()} *`;
+    document.getElementById('invItemPacksLabel').textContent = `NO. OF ${invPackName(packType, 2).toUpperCase()}`;
+    document.getElementById('invItemQtyLabel').textContent = `TOTAL ${unit.toUpperCase()} *`;
+
+    if (source === 'packs' && packType && perPack > 0 && packsEl.value !== '') {
       qtyEl.value = Math.round((parseFloat(packsEl.value) || 0) * perPack * 100) / 100;
     } else if (source === 'qty' && perPack > 1) {
       packsEl.value = Math.floor((parseFloat(qtyEl.value) || 0) / perPack);
     }
-    const text = invPackText({
-      quantity: qtyEl.value, units_per_pack: perPack, pack_type: packType,
-      unit: document.getElementById('invItemUnitSelect').value
-    });
-    document.getElementById('invItemPackSummary').textContent = text ? `= ${text}` : '';
+
+    const summary = document.getElementById('invItemPackSummary');
+    if (packType && !perPackRaw) {
+      summary.style.color = '#b45309';
+      summary.textContent = `⚠️ Enter how many ${unit} are in 1 ${packType} (written on the ${packType.toLowerCase()})`;
+    } else {
+      summary.style.color = '#7c3aed';
+      const text = invPackText({ quantity: qtyEl.value, units_per_pack: perPack, pack_type: packType, unit });
+      summary.textContent = text ? `= ${qtyEl.value || 0} ${unit} in total (${text})` : '';
+    }
   }
   window.syncManualPackQty = syncManualPackQty;
 
@@ -12419,13 +12479,17 @@
           return;
         }
       }
-      if (!silent) alert('Could not find a high-quality product photo on web. You can keep your captured sticker photo.');
+      if (!silent) alert('Could not find a matching product photo on the web. Your own photo will be used.');
+      if (btn) btn.dataset.failed = '1';
     } catch (e) {
       if (!silent) alert('Error fetching web photo: ' + e.message);
+      if (btn) btn.dataset.failed = '1';
     } finally {
       if (btn) {
         btn.disabled = false;
-        if (!currentScanPhotoUrl) btn.textContent = prevText;
+        // Tell the user it didn't find one instead of silently keeping their snap
+        if (!currentScanPhotoUrl) btn.textContent = btn.dataset.failed ? '✗ No web photo · retry' : prevText;
+        delete btn.dataset.failed;
       }
     }
   }
@@ -12437,9 +12501,10 @@
     return headers;
   }
 
-  async function fetchWebPhotoForItem(itemId, btn = null) {
+  async function fetchWebPhotoForItem(itemId, btn = null, silent = false) {
     const item = inventoryItems.find(it => it.id === itemId);
     if (!item) return;
+    const btnLabel = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Searching…'; }
 
     try {
@@ -12460,11 +12525,11 @@
           return;
         }
       }
-      alert('Could not find an official photo on the web for ' + item.item_name + '. You can add one with ✏️ Edit.');
+      if (!silent) alert('Could not find a matching official photo on the web for ' + item.item_name + '. You can add one with ✏️ Edit.');
     } catch (e) {
-      alert('Error: ' + e.message);
+      if (!silent) alert('Error: ' + e.message);
     } finally {
-      if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = '🔎 Find photo'; }
+      if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = btnLabel; }
     }
   }
 
