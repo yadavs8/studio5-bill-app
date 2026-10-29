@@ -816,6 +816,8 @@
     margin-bottom: 12px;
     font-family: inherit;
   }
+  /* Many modals reuse .pin-card; only real PIN/password boxes should get the spaced-out digits */
+  .pin-card input:not([type="password"]) { letter-spacing: normal; }
   .pin-card input:focus { outline: none; border-color: var(--brass); }
   .pin-error {
     color: var(--danger);
@@ -1385,8 +1387,10 @@
   .inv-img-wrap {
     position: relative;
     width: 100%;
-    height: 180px;
-    background: #f1f5f9;
+    height: 170px;
+    flex-shrink: 0;
+    background: #ffffff;
+    border-bottom: 1px solid #f1f5f9;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1396,15 +1400,40 @@
   .inv-img-wrap img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain; /* product shots: show the whole item, never crop it */
+    padding: 10px;
+    box-sizing: border-box;
     transition: transform 0.2s ease;
   }
   .inv-img-wrap:hover img {
     transform: scale(1.03);
   }
+  .inv-img-wrap.no-photo {
+    height: 84px;
+    background: #f8fafc;
+  }
   .inv-no-img {
-    font-size: 38px;
+    font-size: 30px;
     color: #94a3b8;
+  }
+  .inv-find-photo-btn {
+    position: absolute;
+    left: 10px;
+    bottom: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 12px;
+    border: 1px solid #bae6fd;
+    background: #f0f9ff;
+    color: #0284c7;
+    cursor: pointer;
+  }
+  .inv-pack-line {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #7c3aed;
+    margin-bottom: 4px;
   }
   .inv-stock-tag {
     position: absolute;
@@ -1462,6 +1491,8 @@
   .inv-spec-line span:last-child { font-weight: 600; text-align: right; }
   .inv-footer {
     display: flex;
+    flex-wrap: wrap; /* on phones the action buttons drop to a 2nd row instead of being clipped */
+    gap: 8px;
     align-items: center;
     justify-content: space-between;
     border-top: 1px solid #f1f5f9;
@@ -1719,10 +1750,11 @@
     width: 100%;
     border: none !important;
     text-align: center;
-    font-size: 14.5px !important;
+    font-size: 16px !important; /* below 16px iOS zooms the page on focus */
     font-weight: 700 !important;
     color: #0f172a !important;
     padding: 0 4px !important;
+    margin: 0 !important; /* .pin-card input adds a bottom margin that pushes the digits up */
     height: 36px !important;
     background: transparent !important;
   }
@@ -2455,16 +2487,36 @@
           
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
             <div>
-              <label class="scan-label-modern" style="color:#059669;">PIECES / QUANTITY *</label>
+              <label class="scan-label-modern" style="color:#059669;">HOW MANY PACKS? *</label>
               <div class="scan-stepper">
                 <button type="button" class="scan-stepper-btn" onclick="stepScanQty(-1)">−</button>
-                <input type="number" step="any" id="invScanQty" class="scan-stepper-input" placeholder="1" />
+                <input type="number" step="1" min="1" inputmode="numeric" id="invScanPacks" class="scan-stepper-input" placeholder="1" oninput="updateScanPackTotal()" />
                 <button type="button" class="scan-stepper-btn" onclick="stepScanQty(1)">+</button>
               </div>
             </div>
             <div>
-              <label class="scan-label-modern">UNIT *</label>
-              <select id="invScanUnit" class="scan-input-modern" style="font-weight:600;">
+              <label class="scan-label-modern">UNITS IN 1 PACK</label>
+              <input type="number" step="any" min="1" inputmode="decimal" id="invScanUnitsPerPack" class="scan-input-modern" placeholder="1" style="font-weight:700;" oninput="updateScanPackTotal()" />
+            </div>
+          </div>
+          <input type="hidden" id="invScanQty" />
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+            <div>
+              <label class="scan-label-modern">PACK TYPE</label>
+              <select id="invScanPackType" class="scan-input-modern" style="font-weight:600;" onchange="updateScanPackTotal()">
+                <option value="">Loose piece</option>
+                <option value="Pack">Pack</option>
+                <option value="Box">Box</option>
+                <option value="Carton">Carton</option>
+                <option value="Set">Set</option>
+                <option value="Bundle">Bundle</option>
+                <option value="Roll">Roll</option>
+              </select>
+            </div>
+            <div>
+              <label class="scan-label-modern">UNIT OF 1 PIECE *</label>
+              <select id="invScanUnit" class="scan-input-modern" style="font-weight:600;" onchange="updateScanPackTotal()">
                 <option value="Pcs">Pcs / Nos</option>
                 <option value="Box">Box</option>
                 <option value="Set">Set</option>
@@ -2480,9 +2532,11 @@
             </div>
           </div>
 
+          <div id="invScanTotalLine" style="font-size:13px; font-weight:700; color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:6px; padding:7px 10px; margin-bottom:8px;"></div>
+
           <!-- Quick Quantity Preset Chips (1-tap set) -->
           <div style="display:flex; align-items:center; gap:5px; margin-bottom:8px; flex-wrap:wrap;">
-            <span style="font-size:10px; color:#64748b; font-weight:600;">Quick:</span>
+            <span style="font-size:10px; color:#64748b; font-weight:600;">Packs:</span>
             <button type="button" class="scan-pill-btn" onclick="setScanQtyDirect(1)">1</button>
             <button type="button" class="scan-pill-btn" onclick="setScanQtyDirect(2)">2</button>
             <button type="button" class="scan-pill-btn" onclick="setScanQtyDirect(5)">5</button>
@@ -2649,14 +2703,38 @@
         </div>
       </div>
 
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:6px;">
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">NO. OF PACKS</label>
+          <input type="number" step="1" min="0" inputmode="numeric" id="invItemPacksInput" placeholder="—" oninput="syncManualPackQty('packs')" style="width:100%; padding:8px 10px; font-size:13px; font-weight:700; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        </div>
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNITS IN 1 PACK</label>
+          <input type="number" step="any" min="1" inputmode="decimal" id="invItemUnitsPerPackInput" placeholder="1" oninput="syncManualPackQty('packs')" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;" />
+        </div>
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">PACK TYPE</label>
+          <select id="invItemPackTypeSelect" onchange="syncManualPackQty('packs')" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
+            <option value="">Loose piece</option>
+            <option value="Pack">Pack</option>
+            <option value="Box">Box</option>
+            <option value="Carton">Carton</option>
+            <option value="Set">Set</option>
+            <option value="Bundle">Bundle</option>
+            <option value="Roll">Roll</option>
+          </select>
+        </div>
+      </div>
+      <div id="invItemPackSummary" style="font-size:12px; font-weight:600; color:#7c3aed; margin-bottom:10px; min-height:16px;"></div>
+
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px;">
         <div>
-          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">QUANTITY *</label>
-          <input type="number" step="any" id="invItemQtyInput" placeholder="0" style="width:100%; padding:8px 10px; font-size:14px; font-weight:700; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#047857;" />
+          <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">TOTAL UNITS *</label>
+          <input type="number" step="any" id="invItemQtyInput" placeholder="0" oninput="syncManualPackQty('qty')" style="width:100%; padding:8px 10px; font-size:14px; font-weight:700; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#047857;" />
         </div>
         <div>
           <label style="display:block; font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">UNIT *</label>
-          <select id="invItemUnitSelect" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
+          <select id="invItemUnitSelect" onchange="syncManualPackQty('qty')" style="width:100%; padding:8px 10px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; background:#fff;">
             <option value="Pcs">Pcs / Nos</option>
             <option value="Box">Box</option>
             <option value="Set">Set</option>
@@ -10951,6 +11029,34 @@
     }
   }
 
+  // Stock is always stored as loose units; this describes it in packs, e.g. "5 Boxes × 10 Pcs + 3 loose"
+  function invPackText(it) {
+    const perPack = parseFloat(it.units_per_pack) || 1;
+    if (perPack <= 1) return '';
+    const qty = parseFloat(it.quantity) || 0;
+    const fullPacks = Math.floor(qty / perPack);
+    const loose = Math.round((qty - fullPacks * perPack) * 100) / 100;
+    return `${fullPacks} ${invPackName(it.pack_type, fullPacks)} × ${perPack} ${it.unit || 'Pcs'}${loose > 0 ? ` + ${loose} loose` : ''}`;
+  }
+
+  function invPackName(packType, count) {
+    const name = packType || 'Pack';
+    return count === 1 ? name : name + (/(x|s|ch|sh)$/i.test(name) ? 'es' : 's');
+  }
+
+  function invFindPhotoBtnHtml(itemId) {
+    return `<button type="button" class="inv-find-photo-btn" onclick="event.stopPropagation(); fetchWebPhotoForItem('${itemId}', this)">🔎 Find photo</button>`;
+  }
+
+  // A saved photo link that no longer loads: show the placeholder + "Find photo" instead of a blank box
+  function invPhotoFailed(img, itemId) {
+    const wrap = img.closest('.inv-img-wrap');
+    if (!wrap) return;
+    wrap.classList.add('no-photo');
+    img.outerHTML = `<div class="inv-no-img">📦</div>${invFindPhotoBtnHtml(itemId)}`;
+  }
+  window.invPhotoFailed = invPhotoFailed;
+
   function renderGridView(container, items) {
     const html = `
       <div class="inv-grid">
@@ -10979,13 +11085,14 @@
           if (specs.grade_or_type) specEntries.push({ label: 'Type', val: specs.grade_or_type });
           if (specs.power_rating) specEntries.push({ label: 'Rating', val: specs.power_rating });
 
-          const photoHtml = it.photo_url 
-            ? `<img src="${escapeXml(it.photo_url)}" alt="${escapeXml(it.item_name)}" onclick="openPhotoViewer('${escapeXml(it.photo_url)}')" loading="lazy" />`
-            : `<div class="inv-no-img">📦</div>`;
+          const photoHtml = it.photo_url
+            ? `<img src="${escapeXml(it.photo_url)}" alt="${escapeXml(it.item_name)}" onclick="openPhotoViewer(this.src)" onerror="invPhotoFailed(this, '${it.id}')" loading="lazy" />`
+            : `<div class="inv-no-img">📦</div>${invFindPhotoBtnHtml(it.id)}`;
+          const packText = invPackText(it);
 
           return `
             <div class="inv-card">
-              <div class="inv-img-wrap">
+              <div class="inv-img-wrap${it.photo_url ? '' : ' no-photo'}">
                 ${photoHtml}
                 <div class="inv-stock-tag ${stockStatusClass}">${stockStatusText}</div>
               </div>
@@ -10996,6 +11103,7 @@
                 </div>
                 <h3 class="inv-title" title="${escapeXml(it.item_name)}">${escapeXml(it.item_name)}</h3>
                 ${it.model_number ? `<div style="font-size:11.5px; color:#64748b; font-family:monospace; margin-bottom:4px;">Part #: ${escapeXml(it.model_number)}</div>` : ''}
+                ${packText ? `<div class="inv-pack-line">📦 ${escapeXml(packText)}</div>` : ''}
 
                 <div style="font-size:11.5px; font-weight:600; color:#0369a1; margin-bottom:4px;">
                   📍 ${escapeXml(it.site_location || 'Central Godown')}
@@ -11067,9 +11175,10 @@
               const price = parseFloat(it.unit_price) || 0;
               const totalVal = Math.round(qty * price);
 
-              const photoHtml = it.photo_url 
-                ? `<img src="${escapeXml(it.photo_url)}" alt="${escapeXml(it.item_name)}" style="width:40px; height:40px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="openPhotoViewer('${escapeXml(it.photo_url)}')" />`
+              const photoHtml = it.photo_url
+                ? `<img src="${escapeXml(it.photo_url)}" alt="${escapeXml(it.item_name)}" style="width:40px; height:40px; object-fit:contain; background:#fff; border-radius:4px; cursor:pointer;" onclick="openPhotoViewer(this.src)" onerror="this.replaceWith(Object.assign(document.createElement('span'), { textContent: '📦', style: 'font-size:22px;' }))" />`
                 : `<span style="font-size:22px;">📦</span>`;
+              const packText = invPackText(it);
 
               const specs = it.specifications || {};
               const specsBrief = [specs.dimensions, specs.color_finish, specs.material].filter(Boolean).join(' · ');
@@ -11092,6 +11201,7 @@
                   <td style="max-width:180px; font-size:11.5px; color:#475569;">${escapeXml(specsBrief || '—')}</td>
                   <td>
                     <span style="font-weight:800; font-size:13.5px; color:${stockColor};">${qty} ${unit}</span>
+                    ${packText ? `<div style="font-size:11px; color:#7c3aed;">${escapeXml(packText)}</div>` : ''}
                   </td>
                   <td>${price > 0 ? '₹' + price.toLocaleString('en-IN') : '—'}</td>
                   <td><b>${totalVal > 0 ? '₹' + totalVal.toLocaleString('en-IN') : '—'}</b></td>
@@ -11157,6 +11267,9 @@
     currentScanPhotoBase64 = null;
     currentScanMediaType = null;
     currentScannedItemData = null;
+    currentScanPhotoUrl = null;
+    const webPhotoBtn = document.getElementById('invScanWebPhotoBtn');
+    if (webPhotoBtn) webPhotoBtn.textContent = webPhotoBtn.dataset.label || webPhotoBtn.textContent;
 
     const fileInput = document.getElementById('invScanFileInput');
     if (fileInput) fileInput.value = '';
@@ -11221,8 +11334,11 @@
       document.getElementById('invScanItemName').value = extracted.item_name || '';
       document.getElementById('invScanBrand').value = extracted.brand || '';
       document.getElementById('invScanModelNo').value = extracted.model_number || '';
-      document.getElementById('invScanQty').value = extracted.quantity || 1;
+      document.getElementById('invScanPacks').value = 1;
+      document.getElementById('invScanUnitsPerPack').value = extracted.units_per_pack || extracted.quantity || 1;
+      document.getElementById('invScanPackType').value = extracted.pack_type || ((extracted.units_per_pack || 1) > 1 ? 'Pack' : '');
       document.getElementById('invScanUnit').value = extracted.unit || 'Pcs';
+      updateScanPackTotal();
       document.getElementById('invScanThreshold').value = 5;
       document.getElementById('invScanCategory').value = extracted.category || 'Hardware & Fittings';
       document.getElementById('invScanSite').value = getActiveSite();
@@ -11241,6 +11357,9 @@
 
       statusArea.style.display = 'none';
       formArea.style.display = 'block';
+
+      // Swap the box/sticker snap for the official product photo when the AI recognised a branded product
+      if (extracted.item_name && extracted.brand) autoFetchScanWebPhoto(true);
 
     } catch (err) {
       console.error('Scan processing error:', err);
@@ -11288,8 +11407,11 @@
       return;
     }
 
+    updateScanPackTotal();
     const qty = parseFloat(document.getElementById('invScanQty').value) || 1;
     const unit = document.getElementById('invScanUnit').value;
+    const unitsPerPack = parseFloat(document.getElementById('invScanUnitsPerPack').value) || 1;
+    const packType = document.getElementById('invScanPackType').value;
     const brand = document.getElementById('invScanBrand').value.trim();
     const model = document.getElementById('invScanModelNo').value.trim();
     const cat = document.getElementById('invScanCategory').value;
@@ -11325,7 +11447,10 @@
       barcode_or_serial: barcode,
       specifications: specs,
       notes,
-      photo_base64: currentScanPhotoBase64,
+      units_per_pack: unitsPerPack,
+      pack_type: packType,
+      photo_url: currentScanPhotoUrl || undefined,
+      photo_base64: currentScanPhotoUrl ? null : currentScanPhotoBase64,
       media_type: currentScanMediaType,
       created_by: getActiveUser()
     };
@@ -11361,7 +11486,7 @@
         const localItem = {
           ...payload,
           id: payload.id || ('inv_' + Date.now()),
-          photo_url: currentScanPhotoBase64 ? `data:${currentScanMediaType};base64,${currentScanPhotoBase64}` : '',
+          photo_url: currentScanPhotoUrl || (currentScanPhotoBase64 ? `data:${currentScanMediaType};base64,${currentScanPhotoBase64}` : ''),
           updated_at: new Date().toISOString()
         };
         const idx = inventoryItems.findIndex(it => it.id === localItem.id);
@@ -11459,6 +11584,10 @@
       document.getElementById('invItemModelInput').value = item.model_number || '';
       document.getElementById('invItemQtyInput').value = item.quantity || 0;
       document.getElementById('invItemUnitSelect').value = item.unit || 'Pcs';
+      document.getElementById('invItemUnitsPerPackInput').value = item.units_per_pack > 1 ? item.units_per_pack : '';
+      document.getElementById('invItemPackTypeSelect').value = item.pack_type || '';
+      document.getElementById('invItemPacksInput').value = '';
+      syncManualPackQty('qty');
       document.getElementById('invItemThresholdInput').value = item.min_threshold || 5;
       document.getElementById('invItemCategorySelect').value = item.category || 'Hardware & Fittings';
       document.getElementById('invItemSiteSelect').value = item.site_location || 'Central Godown';
@@ -11487,6 +11616,10 @@
       document.getElementById('invItemModelInput').value = '';
       document.getElementById('invItemQtyInput').value = '1';
       document.getElementById('invItemUnitSelect').value = 'Pcs';
+      document.getElementById('invItemUnitsPerPackInput').value = '';
+      document.getElementById('invItemPackTypeSelect').value = '';
+      document.getElementById('invItemPacksInput').value = '';
+      document.getElementById('invItemPackSummary').textContent = '';
       document.getElementById('invItemThresholdInput').value = '5';
       document.getElementById('invItemCategorySelect').value = 'Hardware & Fittings';
       document.getElementById('invItemSiteSelect').value = getActiveSite();
@@ -11552,6 +11685,8 @@
       barcode_or_serial: barcode,
       specifications: specs,
       notes,
+      units_per_pack: parseFloat(document.getElementById('invItemUnitsPerPackInput').value) || 1,
+      pack_type: document.getElementById('invItemPackTypeSelect').value,
       photo_base64: photoB64,
       media_type: photoType,
       created_by: getActiveUser()
@@ -11571,7 +11706,8 @@
           else inventoryItems.unshift(data.item);
         }
       } else {
-        const local = { ...payload, id: payload.id || ('inv_' + Date.now()), updated_at: new Date().toISOString() };
+        const prev = inventoryItems.find(it => it.id === payload.id) || {};
+        const local = { ...prev, ...payload, photo_url: prev.photo_url || '', id: payload.id || ('inv_' + Date.now()), updated_at: new Date().toISOString() };
         const idx = inventoryItems.findIndex(it => it.id === local.id);
         if (idx >= 0) inventoryItems[idx] = local;
         else inventoryItems.unshift(local);
@@ -11605,14 +11741,19 @@
     body.innerHTML = `
       ${item.photo_url ? `
         <div style="text-align:center; margin-bottom:14px;">
-          <img src="${escapeXml(item.photo_url)}" alt="${escapeXml(item.item_name)}" style="max-height:200px; width:100%; object-fit:contain; border-radius:8px; background:#0f172a; cursor:pointer;" onclick="openPhotoViewer('${escapeXml(item.photo_url)}')" title="Tap to view full resolution" />
+          <img src="${escapeXml(item.photo_url)}" alt="${escapeXml(item.item_name)}" style="max-height:200px; width:100%; object-fit:contain; border-radius:8px; background:#ffffff; border:1px solid #e2e8f0; cursor:pointer;" onclick="openPhotoViewer(this.src)" onerror="this.parentElement.style.display='none'" title="Tap to view full resolution" />
         </div>
-      ` : ''}
+      ` : `
+        <div style="text-align:center; margin-bottom:14px;">
+          <button type="button" class="btn-ghost btn-sm" onclick="fetchWebPhotoForItem('${item.id}', this)" style="color:#0284c7; font-weight:700;">🔎 Find official product photo</button>
+        </div>
+      `}
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
         <div>
           <div style="font-size:11px; color:#64748b;">CURRENT STOCK</div>
           <div style="font-size:22px; font-weight:800; color:#15803d;">${qty} ${item.unit || 'Pcs'}</div>
+          ${invPackText(item) ? `<div style="font-size:11.5px; font-weight:600; color:#7c3aed;">${escapeXml(invPackText(item))}</div>` : ''}
         </div>
         <div>
           <div style="font-size:11px; color:#64748b;">LOCATION / SITE</div>
@@ -12191,41 +12332,81 @@
   window.openPhotoViewer = openPhotoViewer;
   window.deleteInventoryItemUI = deleteInventoryItemUI;
   window.loadInventory = loadInventory;
+  // Scan form: packs × units-per-pack -> total loose units stored in the hidden #invScanQty
+  function updateScanPackTotal() {
+    const packs = parseFloat(document.getElementById('invScanPacks')?.value) || 1;
+    const perPack = parseFloat(document.getElementById('invScanUnitsPerPack')?.value) || 1;
+    const unit = document.getElementById('invScanUnit')?.value || 'Pcs';
+    const packType = document.getElementById('invScanPackType')?.value || '';
+    const total = Math.round(packs * perPack * 100) / 100;
+    document.getElementById('invScanQty').value = total;
+    const line = document.getElementById('invScanTotalLine');
+    if (line) {
+      line.textContent = perPack > 1 || packType
+        ? `Total stock: ${packs} ${invPackName(packType, packs)} × ${perPack} ${unit} = ${total} ${unit}`
+        : `Total stock: ${total} ${unit}`;
+    }
+  }
+  window.updateScanPackTotal = updateScanPackTotal;
+
+  // Manual form: typing packs recalculates total units; typing total units recalculates the pack breakdown
+  function syncManualPackQty(source) {
+    const packsEl = document.getElementById('invItemPacksInput');
+    const qtyEl = document.getElementById('invItemQtyInput');
+    const perPack = parseFloat(document.getElementById('invItemUnitsPerPackInput').value) || 1;
+    const packType = document.getElementById('invItemPackTypeSelect').value;
+    if (source === 'packs' && packsEl.value !== '') {
+      qtyEl.value = Math.round((parseFloat(packsEl.value) || 0) * perPack * 100) / 100;
+    } else if (source === 'qty' && perPack > 1) {
+      packsEl.value = Math.floor((parseFloat(qtyEl.value) || 0) / perPack);
+    }
+    const text = invPackText({
+      quantity: qtyEl.value, units_per_pack: perPack, pack_type: packType,
+      unit: document.getElementById('invItemUnitSelect').value
+    });
+    document.getElementById('invItemPackSummary').textContent = text ? `= ${text}` : '';
+  }
+  window.syncManualPackQty = syncManualPackQty;
+
     function stepScanQty(delta) {
-    const el = document.getElementById('invScanQty');
+    const el = document.getElementById('invScanPacks');
     if (!el) return;
     let v = (parseFloat(el.value) || 0) + delta;
-    el.value = Math.max(1, Math.round(v * 10) / 10);
+    el.value = Math.max(1, Math.round(v));
+    updateScanPackTotal();
   }
     function setScanQtyDirect(val) {
-    const el = document.getElementById('invScanQty');
+    const el = document.getElementById('invScanPacks');
     if (!el) return;
     el.value = val;
+    updateScanPackTotal();
   }
   window.setScanQtyDirect = setScanQtyDirect;
 
   let currentScanPhotoUrl = null;
 
-  async function autoFetchScanWebPhoto() {
+  async function autoFetchScanWebPhoto(silent = false) {
     const itemName = document.getElementById('invScanItemName')?.value.trim();
     const brand = document.getElementById('invScanBrand')?.value.trim();
     if (!itemName) {
-      alert('Please enter or scan a product name first.');
+      if (!silent) alert('Please enter or scan a product name first.');
       return;
     }
 
     const btn = document.getElementById('invScanWebPhotoBtn');
     const prevText = btn ? btn.textContent : '';
+    if (btn && !btn.dataset.label) btn.dataset.label = prevText;
     if (btn) {
       btn.disabled = true;
       btn.textContent = '⏳ Finding…';
     }
 
     try {
+      const modelNo = document.getElementById('invScanModelNo')?.value.trim();
       const res = await fetch(`${BACKEND_URL}/inventory/fetch-web-photo`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
-        body: JSON.stringify({ query: itemName, brand })
+        headers: webPhotoHeaders(),
+        body: JSON.stringify({ query: [itemName, modelNo].filter(Boolean).join(' '), brand })
       });
       if (res.ok) {
         const data = await res.json();
@@ -12238,9 +12419,9 @@
           return;
         }
       }
-      alert('Could not find a high-quality product photo on web. You can keep your captured sticker photo.');
+      if (!silent) alert('Could not find a high-quality product photo on web. You can keep your captured sticker photo.');
     } catch (e) {
-      alert('Error fetching web photo: ' + e.message);
+      if (!silent) alert('Error fetching web photo: ' + e.message);
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -12249,15 +12430,23 @@
     }
   }
 
-  async function fetchWebPhotoForItem(itemId) {
+  function webPhotoHeaders() {
+    const headers = { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET };
+    const userKey = localStorage.getItem('studio5_gemini_api_key');
+    if (userKey) headers['x-gemini-key'] = userKey;
+    return headers;
+  }
+
+  async function fetchWebPhotoForItem(itemId, btn = null) {
     const item = inventoryItems.find(it => it.id === itemId);
     if (!item) return;
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Searching…'; }
 
     try {
       const res = await fetch(`${BACKEND_URL}/inventory/fetch-web-photo`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
-        body: JSON.stringify({ query: item.item_name, brand: item.brand, item_id: itemId })
+        headers: webPhotoHeaders(),
+        body: JSON.stringify({ query: [item.item_name, item.model_number].filter(Boolean).join(' '), brand: item.brand, item_id: itemId })
       });
       if (res.ok) {
         const data = await res.json();
@@ -12268,13 +12457,14 @@
           if (document.getElementById('inventorySpecsDetailModal')?.style.display === 'flex') {
             openProductDossier(itemId);
           }
-          alert('✓ Official product photo attached from web!');
           return;
         }
       }
-      alert('Could not find an official photo on web for ' + item.item_name);
+      alert('Could not find an official photo on the web for ' + item.item_name + '. You can add one with ✏️ Edit.');
     } catch (e) {
       alert('Error: ' + e.message);
+    } finally {
+      if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = '🔎 Find photo'; }
     }
   }
 
