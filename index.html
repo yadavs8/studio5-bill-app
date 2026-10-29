@@ -9,7 +9,7 @@
       window.location.replace('/studio5-bill-app/' + window.location.search + window.location.hash);
     }
   </script>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0c4a6e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1550,6 +1550,34 @@
   :root[data-theme="dark"] .inv-table tr:hover td { background: #0f172a; }
   }
 
+  
+  /* Stop mobile browsers from magnifying / auto-zooming modal */
+  html, body {
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+  }
+  #inventoryScanModal .pin-card {
+    width: 95% !important;
+    max-width: 580px !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+  #invScanModalBody {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  @media (max-width: 600px) {
+    #inventoryScanModal .pin-card {
+      width: 100% !important;
+      border-radius: 20px 20px 0 0 !important;
+      padding: 16px 14px calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    .scan-input-modern, select.scan-input-modern, input.scan-input-modern {
+      font-size: 16px !important; /* Critical: iOS ignores zoom if font >= 16px */
+    }
+  }
+
   /* ═══ MODERN LUXURY SCANNER UI (STUDIO 5) ═══ */
   .inv-scan-viewfinder {
     position: relative;
@@ -2394,23 +2422,25 @@
           <input type="text" id="invScanItemName" class="scan-input-modern" placeholder="e.g. Schneider Electric 3M Switch Board Frame" style="font-size:15px; font-weight:700;" />
         </div>
 
-        <!-- 2. Stock & Destination (Stepper + Unit + Site) -->
+        <!-- 2. Stock & Destination (Spacious 2-Row Touch Layout) -->
         <div class="scan-section-card">
           <div class="scan-card-header">
             <span>🔢</span> <span>Quantity & Godown Destination</span>
           </div>
-          <div style="display:grid; grid-template-columns:1.3fr 1fr 1.3fr; gap:10px; align-items:end;">
+          
+          <!-- Row 1: Quantity Stepper (Wide) + Unit (Wide) -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
             <div>
-              <label class="scan-label-modern">PIECES / QUANTITY *</label>
-              <div class="scan-stepper">
-                <button type="button" class="scan-stepper-btn" onclick="stepScanQty(-1)">−</button>
-                <input type="number" step="any" id="invScanQty" class="scan-stepper-input" placeholder="1" />
-                <button type="button" class="scan-stepper-btn" onclick="stepScanQty(1)">+</button>
+              <label class="scan-label-modern" style="color:#059669;">PIECES / QUANTITY *</label>
+              <div class="scan-stepper" style="border:2px solid #059669; border-radius:10px; height:46px;">
+                <button type="button" class="scan-stepper-btn" onclick="stepScanQty(-1)" style="font-size:24px; width:48px; height:46px; background:#f0fdf4; color:#059669; border-right:1px solid #bbf7d0;">−</button>
+                <input type="number" step="any" id="invScanQty" class="scan-stepper-input" placeholder="1" style="font-size:20px !important; font-weight:800; min-width:40px; text-align:center;" />
+                <button type="button" class="scan-stepper-btn" onclick="stepScanQty(1)" style="font-size:24px; width:48px; height:46px; background:#f0fdf4; color:#059669; border-left:1px solid #bbf7d0;">+</button>
               </div>
             </div>
             <div>
               <label class="scan-label-modern">UNIT *</label>
-              <select id="invScanUnit" class="scan-input-modern" style="padding:10px 8px; font-weight:700;">
+              <select id="invScanUnit" class="scan-input-modern" style="height:46px; font-weight:700; border-radius:10px; padding:0 10px;">
                 <option value="Pcs">Pcs / Nos</option>
                 <option value="Box">Box</option>
                 <option value="Set">Set</option>
@@ -2424,16 +2454,18 @@
                 <option value="Bundles">Bundles</option>
               </select>
             </div>
-            <div>
-              <label class="scan-label-modern">SITE / GODOWN *</label>
-              <select id="invScanSite" class="scan-input-modern" style="padding:10px 8px; font-weight:700;">
-                <option value="Traudan Site">Traudan Site</option>
-                <option value="Dehradun Site">Dehradun Site</option>
-                <option value="Gurgaon Site">Gurgaon Site</option>
-                <option value="Central Godown">Central Godown</option>
-                <option value="Factory / Workshop">Factory / Workshop</option>
-              </select>
-            </div>
+          </div>
+
+          <!-- Row 2: Destination Godown / Site (Full Width) -->
+          <div>
+            <label class="scan-label-modern">📍 STORED IN SITE / GODOWN *</label>
+            <select id="invScanSite" class="scan-input-modern" style="height:46px; font-weight:700; border-radius:10px; padding:0 12px; width:100%;">
+              <option value="Traudan Site">Traudan Site</option>
+              <option value="Dehradun Site">Dehradun Site</option>
+              <option value="Gurgaon Site">Gurgaon Site</option>
+              <option value="Central Godown">Central Godown</option>
+              <option value="Factory / Workshop">Factory / Workshop</option>
+            </select>
           </div>
         </div>
 
@@ -2497,12 +2529,12 @@
           </div>
         </div>
 
-        <!-- 5. Rates & Additional Info -->
+        <!-- 5. Rates & Additional Info (Spacious 2-column) -->
         <div class="scan-section-card">
           <div class="scan-card-header">
             <span>💰</span> <span>Pricing & Inventory Details</span>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
             <div>
               <label class="scan-label-modern">UNIT RATE / MRP (₹)</label>
               <input type="number" step="any" id="invScanUnitPrice" class="scan-input-modern" placeholder="0.00" />
@@ -2511,10 +2543,10 @@
               <label class="scan-label-modern">LOW ALERT THRESHOLD</label>
               <input type="number" id="invScanThreshold" value="5" class="scan-input-modern" />
             </div>
-            <div>
-              <label class="scan-label-modern">BARCODE / SERIAL #</label>
-              <input type="text" id="invScanBarcode" class="scan-input-modern" placeholder="Optional" />
-            </div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <label class="scan-label-modern">BARCODE / SERIAL #</label>
+            <input type="text" id="invScanBarcode" class="scan-input-modern" placeholder="Optional barcode / SKU code" />
           </div>
           <div>
             <label class="scan-label-modern">NOTES / REMARKS</label>
