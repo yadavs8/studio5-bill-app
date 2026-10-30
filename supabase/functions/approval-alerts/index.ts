@@ -7,6 +7,8 @@
 //
 // Requests:
 //   GET  ?action=public-key                                 -> { publicKey }  (VAPID key for pushManager.subscribe)
+//   GET  ?action=pending                                    -> { pending }    header x-app-secret
+//        (the Approvals screen's list, one database query instead of the Render backend's ~50 s scan)
 //   POST { action: "subscribe", subscription, user_name, wants_approval_alerts }   header x-app-secret
 //   POST { mode: "new" | "reminder" }                        header x-cron-token  (from pg_cron only)
 
@@ -169,8 +171,15 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   try {
     if (req.method === 'GET') {
-      if (new URL(req.url).searchParams.get('action') !== 'public-key') return json({ error: 'unknown action' }, 400);
-      return json({ publicKey: (await vapidKeys(await loadConfig())).publicKey });
+      const action = new URL(req.url).searchParams.get('action');
+      if (action === 'public-key') return json({ publicKey: (await vapidKeys(await loadConfig())).publicKey });
+      if (action === 'pending') {
+        if (req.headers.get('x-app-secret') !== APP_SHARED_SECRET) return json({ error: 'unauthorized' }, 401);
+        const { data, error } = await db.rpc('pending_approvals_for_app');
+        if (error) throw error;
+        return json({ pending: data || [] });
+      }
+      return json({ error: 'unknown action' }, 400);
     }
     if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
 

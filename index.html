@@ -7891,6 +7891,7 @@
 
   function renderTrendChart(allRecords) {
     const canvas = document.getElementById('trendChart');
+    if (!canvas) return; // already replaced by the "couldn't load the chart" note
     if (typeof Chart === 'undefined') {
       canvas.replaceWith(Object.assign(document.createElement('div'), {
         className: 'empty-state',
@@ -8241,13 +8242,82 @@
     return true;
   }
 
-  let pendingCountInFlight = null;
   function refreshPendingCount() {
     if (document.visibilityState === 'hidden') return Promise.resolve(); // phone locked / app in background
-    if (!pendingCountInFlight) {
-      pendingCountInFlight = fetchPendingCount().finally(() => { pendingCountInFlight = null; });
+    return fetchPendingCount();
+  }
+
+  async function fetchJsonWithTimeout(url, options, timeoutMs) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...options, signal: ctrl.signal });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.error || `server answered ${res.status}`);
+      return data;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('the server took too long to answer');
+      throw e;
+    } finally {
+      clearTimeout(timer);
     }
-    return pendingCountInFlight;
+  }
+
+  // Bills approved/rejected from this phone in the last few minutes. A list that was already
+  // on its way when the approval finished must not bring the card back.
+  const recentlyHandled = new Map(); // submission_id -> when it was handled
+  const HANDLED_MEMORY_MS = 5 * 60000;
+  function wasRecentlyHandled(id) {
+    const at = recentlyHandled.get(id);
+    if (at && Date.now() - at < HANDLED_MEMORY_MS) return true;
+    recentlyHandled.delete(id);
+    return false;
+  }
+
+  // Ledger rows already carry the GSTIN status checked earlier — show it on pending bills
+  // from the same GSTIN, as the backend's list used to.
+  function fillGstinStatusFromLedger(list) {
+    const known = {};
+    (recordsCache.gst || []).forEach(r => {
+      const g = String(r.gstin || '').trim().toUpperCase();
+      if (g && r.gstin_status && !known[g]) known[g] = r;
+    });
+    list.forEach(item => {
+      const r = known[String(item.gstin || '').trim().toUpperCase()];
+      if (r && !item.gstin_status) {
+        item.gstin_status = r.gstin_status;
+        if (!item.gstin_status_detail) item.gstin_status_detail = r.gstin_status_detail || '';
+      }
+    });
+  }
+
+  // The Approvals list comes straight from the database through the approval-alerts function
+  // (one query, well under a second). The Render backend's /pending-approvals ran ~3 queries
+  // per bill one after another (~50 s for 57 bills), and overlapping refreshes piled up on it.
+  async function fetchPendingListFromServer() {
+    try {
+      return await fetchJsonWithTimeout(`${ALERTS_URL}?action=pending&_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } }, 20000);
+    } catch (e) {
+      console.warn('Fast pending list unavailable, using the backend:', e.message);
+      return await fetchJsonWithTimeout(`${BACKEND_URL}/pending-approvals?_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } }, 120000);
+    }
+  }
+
+  // Everything that needs the pending list shares one request at a time.
+  let pendingListInFlight = null;
+  function loadPendingList() {
+    if (!pendingListInFlight) {
+      pendingListInFlight = fetchPendingListFromServer().then(data => {
+        const list = (data.pending || []).filter(item => !wasRecentlyHandled(item.submission_id));
+        fillGstinStatusFromLedger(list);
+        approvalsCache = list;
+        approvalsLoaded = true;
+        showPendingCount(list.length);
+        saveDataForNextOpen();
+        return list;
+      }).finally(() => { pendingListInFlight = null; });
+    }
+    return pendingListInFlight;
   }
 
   function showPendingCount(count) {
@@ -8262,12 +8332,7 @@
 
   async function fetchPendingCount() {
     try {
-      const res = await fetch(`${BACKEND_URL}/pending-approvals?_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } });
-      const data = await res.json();
-      approvalsCache = data.pending || [];
-      approvalsLoaded = true;
-      showPendingCount(approvalsCache.length);
-      saveDataForNextOpen();
+      await loadPendingList();
       checkAndShowPushNotification();
     } catch (e) {
       document.getElementById('dashPendingCount').textContent = '?';
@@ -8335,7 +8400,7 @@
 
     // Show what we already have instantly — no blank "Loading..." wipe on repeat visits.
     if (approvalsLoaded) {
-      renderApprovalCards();
+      redrawApprovalsIfChanged();
     } else {
       area.innerHTML = `<div class="empty-state">Loading pending bills…</div>`;
     }
@@ -8343,12 +8408,7 @@
     // Refresh quietly in the background either way, so WhatsApp-side approvals/rejections
     // (which happen outside this browser) still show up without a jarring reload.
     try {
-      const res = await fetch(`${BACKEND_URL}/pending-approvals?_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } });
-      const data = await res.json();
-      approvalsCache = data.pending || [];
-      approvalsLoaded = true;
-      showPendingCount(approvalsCache.length);
-      saveDataForNextOpen();
+      await loadPendingList();
     } catch (e) {
       if (!approvalsLoaded) {
         area.innerHTML = `<div class="empty-state">Couldn't load pending approvals. Check your connection.</div>`;
@@ -8356,11 +8416,21 @@
       return; // keep showing whatever we already had rather than erroring over good cached data
     }
 
+    redrawApprovalsIfChanged();
+  }
+
+  // Redraws only when the list really changed, and never over a rejection reason being typed.
+  let approvalsOnScreen = null; // the list the cards were last drawn from
+  function redrawApprovalsIfChanged() {
+    const area = document.getElementById('approvalsArea');
+    if (area.querySelector('.reject-box.open')) return;
+    if (JSON.stringify(approvalsCache) === approvalsOnScreen) return;
     renderApprovalCards();
   }
 
   function renderApprovalCards() {
     const area = document.getElementById('approvalsArea');
+    approvalsOnScreen = JSON.stringify(approvalsCache);
 
     if (approvalsCache.length === 0) {
       area.innerHTML = `<div class="empty-state">Nothing waiting for approval right now.</div>`;
@@ -8553,6 +8623,7 @@
 
     area.querySelectorAll('.approval-card').forEach(card => {
       const id = card.dataset.id;
+      if (cardsInProgress.has(id)) setCardBusy(card, cardsInProgress.get(id));
       const btnPaid = card.querySelector('[data-action="approve-paid"]');
       if (btnPaid) btnPaid.onclick = () => approveBill(id, card, 'paid');
       const btnDue = card.querySelector('[data-action="approve-due"]');
@@ -8580,50 +8651,102 @@
     });
   }
 
-  async function approveBill(submissionId, cardEl, paymentStatus = 'paid') {
-    cardEl.style.opacity = '0.5';
-    cardEl.style.pointerEvents = 'none';
+  // Approving can take a while when the Render backend has to wake up first (up to ~1 min).
+  const DECISION_TIMEOUT_MS = 90000;
+  const cardsInProgress = new Map(); // submission_id -> "Approving as PAID…" etc.
+
+  function approvalCardFor(submissionId) {
+    return document.querySelector(`.approval-card[data-id="${CSS.escape(submissionId)}"]`);
+  }
+
+  function setCardBusy(card, label) {
+    card.style.opacity = '0.6';
+    card.style.pointerEvents = 'none';
+    let note = card.querySelector('.approval-busy');
+    if (!note) {
+      note = document.createElement('div');
+      note.className = 'approval-busy';
+      note.style.cssText = 'font-weight:700; font-size:12.5px; color:#1e3a8a; margin-bottom:8px;';
+      card.prepend(note);
+    }
+    note.textContent = '⏳ ' + label;
+  }
+
+  function clearCardBusy(card) {
+    card.style.opacity = '1';
+    card.style.pointerEvents = 'auto';
+    const note = card.querySelector('.approval-busy');
+    if (note) note.remove();
+  }
+
+  // Did the decision go through even though its answer never reached the phone?
+  // true = still waiting, false = no longer pending (it went through), null = couldn't tell.
+  async function isStillPending(submissionId) {
     try {
-      const res = await fetch(`${BACKEND_URL}/approve-bill`, {
+      const data = await fetchJsonWithTimeout(`${ALERTS_URL}?action=pending&_t=${Date.now()}`, { headers: { 'x-app-secret': APP_SECRET } }, 15000);
+      return (data.pending || []).some(item => item.submission_id === submissionId);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Sends approve/reject once per bill, shows progress on the card the whole time (even if the
+  // list is redrawn meanwhile), and checks the real outcome if the answer is slow or lost.
+  async function decideOnBill(submissionId, cardEl, busyLabel, endpoint, payload) {
+    if (cardsInProgress.has(submissionId)) return false; // already on its way — ignore repeat taps
+    cardsInProgress.set(submissionId, busyLabel);
+    setCardBusy(approvalCardFor(submissionId) || cardEl, busyLabel);
+
+    let done = false;
+    let problem = '';
+    try {
+      await fetchJsonWithTimeout(`${BACKEND_URL}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
-        body: JSON.stringify({ submission_id: submissionId, payment_status: paymentStatus })
-      });
-      const result = await res.json();
-      if (!res.ok || result.error) throw new Error(result.error || 'Approve failed');
-      
-      const label = paymentStatus === 'paid' ? 'PAID ✅' : 'DUE (Payment Pending) ⏳';
-      showCelebrationToast(`Bill Approved as ${label}!`);
+        body: JSON.stringify(payload)
+      }, DECISION_TIMEOUT_MS);
+      done = true;
+    } catch (e) {
+      problem = e.message || 'please try again.';
+      done = (await isStillPending(submissionId)) === false;
+    }
+    cardsInProgress.delete(submissionId);
 
-      cardEl.remove();
+    const card = approvalCardFor(submissionId);
+    if (done) {
+      recentlyHandled.set(submissionId, Date.now());
+      approvalsCache = approvalsCache.filter(item => item.submission_id !== submissionId);
+      showPendingCount(approvalsCache.length);
+      saveDataForNextOpen();
+      if (card) card.remove();
       const area = document.getElementById('approvalsArea');
       if (area && !area.querySelector('.approval-card')) {
         area.innerHTML = `<div class="empty-state">Nothing waiting for approval right now.</div>`;
       }
-      await refreshPendingCount();
+      refreshPendingCount();
+    } else {
+      if (card) clearCardBusy(card);
+      problem = problem.replace(/\.?$/, '.') + ' If the bill disappears from this list in a minute, it went through.';
+    }
+    return done ? true : problem;
+  }
+
+  async function approveBill(submissionId, cardEl, paymentStatus = 'paid') {
+    const busyLabel = paymentStatus === 'paid' ? 'Approving as PAID…' : 'Approving as DUE…';
+    const outcome = await decideOnBill(submissionId, cardEl, busyLabel, 'approve-bill', { submission_id: submissionId, payment_status: paymentStatus });
+    if (outcome === true) {
+      const label = paymentStatus === 'paid' ? 'PAID ✅' : 'DUE (Payment Pending) ⏳';
+      showCelebrationToast(`Bill Approved as ${label}!`);
       recordsCache.gst = []; recordsCache.non_gst = []; // force refresh next time ledger is viewed
-    } catch (e) {
-      cardEl.style.opacity = '1';
-      cardEl.style.pointerEvents = 'auto';
-      alert('Could not approve this bill — ' + (e.message || 'please try again.'));
+    } else if (outcome) {
+      alert('Could not approve this bill — ' + outcome);
     }
   }
 
   async function rejectBill(submissionId, reason, cardEl) {
-    cardEl.style.opacity = '0.5';
-    try {
-      const res = await fetch(`${BACKEND_URL}/reject-bill`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
-        body: JSON.stringify({ submission_id: submissionId, reason })
-      });
-      const result = await res.json();
-      if (!res.ok || result.error) throw new Error(result.error || 'Reject failed');
-      cardEl.remove();
-      await refreshPendingCount();
-    } catch (e) {
-      cardEl.style.opacity = '1';
-      alert('Could not reject this bill — please try again.');
+    const outcome = await decideOnBill(submissionId, cardEl, 'Rejecting…', 'reject-bill', { submission_id: submissionId, reason });
+    if (outcome !== true && outcome) {
+      alert('Could not reject this bill — ' + outcome);
     }
   }
 
