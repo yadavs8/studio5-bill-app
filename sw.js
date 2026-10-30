@@ -1,10 +1,13 @@
 // Service Worker for Studio5 Bill App
-// Strategy: Stale-While-Revalidate for the app shell — the app opens instantly from the
-// phone's stored copy while a fresh copy is fetched in the background. When a new version
-// has been published, open pages are told so they can switch to it without a reinstall.
+// Strategy: opening the app waits briefly for the newest version (a quick check when nothing
+// changed); on a slow or missing connection it opens from the phone's stored copy at once and
+// the newer copy is fetched in the background. When a new version arrives that way, open
+// pages are told so they can switch to it without a reinstall.
 // API calls to Render/Supabase are always direct network calls.
 
-const CACHE_NAME = 'studio5-bills-v62';
+const CACHE_NAME = 'studio5-bills-v63';
+// How long opening the app waits for the newest version before using the stored copy.
+const NAVIGATION_WAIT_MS = 3000;
 const APP_SHELL = [
   './',
   './index.html',
@@ -72,6 +75,30 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith((async () => {
     const cached = await caches.match(cacheKey);
+
+    // Opening the app: use the newest version if it arrives quickly, so a phone never keeps
+    // running an old copy just because the update bar wasn't tapped.
+    if (cached && isNavigation) {
+      const network = fetch(event.request, { cache: 'no-cache' });
+      const quick = await Promise.race([
+        network.then((r) => r, () => null),
+        new Promise((resolve) => setTimeout(() => resolve(null), NAVIGATION_WAIT_MS))
+      ]);
+      if (quick && quick.status === 200 && quick.type === 'basic') {
+        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(cacheKey, quick.clone())).catch(() => {}));
+        return quick;
+      }
+      // Slow or offline: open the stored copy now, and store the new one when it arrives.
+      const cachedCopy = cached.clone();
+      event.waitUntil(network.then(async (r) => {
+        if (!r || r.status !== 200 || r.type !== 'basic') return;
+        const [oldText, newText] = await Promise.all([cachedCopy.text(), r.clone().text()]);
+        await (await caches.open(CACHE_NAME)).put(cacheKey, r);
+        if (oldText !== newText) await notifyClientsOfUpdate();
+      }).catch(() => {}));
+      return cached;
+    }
+
     const networkUpdate = refreshFromNetwork(event.request, cacheKey, cached && cached.clone());
 
     if (cached) {
