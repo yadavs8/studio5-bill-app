@@ -8595,6 +8595,31 @@
           </div>`;
         })()}
 
+        ${(() => {
+          // The same bill waiting more than once (e.g. sent on WhatsApp, then uploaded again in the app)
+          const copies = Array.isArray(item.same_bill_pending) ? item.same_bill_pending : [];
+          if (copies.length === 0) return '';
+          const older = copies.find(c => c.is_older);
+          const describe = c => `${escapeHtml(c.submitted_by || 'someone')} on ${escapeHtml(c.submitted_on || '-')}`;
+          return `
+          <div style="margin-top:10px; padding:10px 14px; background:#fff7ed; border:1.5px solid #f97316; border-radius:8px; color:#9a3412;">
+            <div style="font-weight:800; font-size:13px; display:flex; align-items:center; gap:6px;">
+              <span style="font-size:16px;">🔁</span> <span>SAME BILL SENT ${copies.length + 1} TIMES</span>
+            </div>
+            <div style="font-size:12px; margin-top:4px; line-height:1.4;">
+              ${older
+                ? `This is a later copy. The same bill from ${describe(older)} is also waiting — approve only one copy.`
+                : `This bill was sent again by ${copies.map(describe).join(', ')}. Approve this copy and reject the later one.`}
+            </div>
+            ${older ? `
+            <div style="margin-top:8px;">
+              <button type="button" class="btn-danger" data-action="reject-copy" data-from="${escapeHtml(older.submitted_by || '')}" data-on="${escapeHtml(older.submitted_on || '')}" style="padding:6px 12px; font-size:11.5px; border-radius:6px; font-weight:700; cursor:pointer; background:#c2410c; color:#fff; border:none; display:inline-flex; align-items:center; gap:4px;">
+                <span>🚫</span> <span>Reject this copy</span>
+              </button>
+            </div>` : ''}
+          </div>`;
+        })()}
+
         <div class="approval-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
           <button type="button" class="btn-primary" data-action="approve-paid" style="flex:1.2; min-width:145px; background:#15803d; border:1px solid #166534; color:#fff; font-weight:700; font-size:12.5px; padding:9px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer; box-shadow:0 1px 2px rgba(21,128,61,0.25);">
             <span>✅</span> <span>Approve as PAID</span>
@@ -8628,6 +8653,15 @@
       if (btnPaid) btnPaid.onclick = () => approveBill(id, card, 'paid');
       const btnDue = card.querySelector('[data-action="approve-due"]');
       if (btnDue) btnDue.onclick = () => approveBill(id, card, 'unpaid');
+      const btnRejectCopy = card.querySelector('[data-action="reject-copy"]');
+      if (btnRejectCopy) {
+        btnRejectCopy.onclick = () => {
+          const reason = `Duplicate submission: same bill already sent by ${btnRejectCopy.dataset.from || 'someone'} on ${btnRejectCopy.dataset.on || 'an earlier date'}`;
+          if (confirm(`Reject this copy?\n\nReason: ${reason}`)) {
+            rejectBill(id, reason, card);
+          }
+        };
+      }
       const btnRejectDup = card.querySelector('[data-action="reject-dup"]');
       if (btnRejectDup) {
         btnRejectDup.onclick = () => {
@@ -8723,7 +8757,8 @@
       if (area && !area.querySelector('.approval-card')) {
         area.innerHTML = `<div class="empty-state">Nothing waiting for approval right now.</div>`;
       }
-      refreshPendingCount();
+      // Other copies of the same bill change their warning once this one is decided.
+      loadPendingList().then(redrawApprovalsIfChanged).catch(() => {});
     } else {
       if (card) clearCardBusy(card);
       problem = problem.replace(/\.?$/, '.') + ' If the bill disappears from this list in a minute, it went through.';
