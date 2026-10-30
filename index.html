@@ -8253,7 +8253,11 @@
     try {
       const res = await fetch(url, { ...options, signal: ctrl.signal });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.error) throw new Error(data.error || `server answered ${res.status}`);
+      if (!res.ok || data.error) {
+        const err = new Error(data.error || `server answered ${res.status}`);
+        err.serverAnswered = true;
+        throw err;
+      }
       return data;
     } catch (e) {
       if (e.name === 'AbortError') throw new Error('the server took too long to answer');
@@ -8649,6 +8653,7 @@
     area.querySelectorAll('.approval-card').forEach(card => {
       const id = card.dataset.id;
       if (cardsInProgress.has(id)) setCardBusy(card, cardsInProgress.get(id));
+      else if (cardFailures.has(id)) showCardFailure(card, cardFailures.get(id));
       const btnPaid = card.querySelector('[data-action="approve-paid"]');
       if (btnPaid) btnPaid.onclick = () => approveBill(id, card, 'paid');
       const btnDue = card.querySelector('[data-action="approve-due"]');
@@ -8688,22 +8693,30 @@
   // Approving can take a while when the Render backend has to wake up first (up to ~1 min).
   const DECISION_TIMEOUT_MS = 90000;
   const cardsInProgress = new Map(); // submission_id -> "Approving as PAID…" etc.
+  const cardFailures = new Map(); // submission_id -> why the last try didn't go through
 
   function approvalCardFor(submissionId) {
     return document.querySelector(`.approval-card[data-id="${CSS.escape(submissionId)}"]`);
   }
 
+  function cardNote(card, className, color) {
+    let note = card.querySelector('.' + className);
+    if (!note) {
+      note = document.createElement('div');
+      note.className = className;
+      note.style.cssText = `font-weight:700; font-size:12.5px; color:${color}; margin-bottom:8px;`;
+      card.prepend(note);
+    }
+    return note;
+  }
+
   function setCardBusy(card, label) {
     card.style.opacity = '0.6';
     card.style.pointerEvents = 'none';
-    let note = card.querySelector('.approval-busy');
-    if (!note) {
-      note = document.createElement('div');
-      note.className = 'approval-busy';
-      note.style.cssText = 'font-weight:700; font-size:12.5px; color:#1e3a8a; margin-bottom:8px;';
-      card.prepend(note);
-    }
-    note.textContent = '⏳ ' + label;
+    const failed = card.querySelector('.approval-failed');
+    if (failed) failed.remove();
+    cardFailures.delete(card.dataset.id);
+    cardNote(card, 'approval-busy', '#1e3a8a').textContent = '⏳ ' + label;
   }
 
   function clearCardBusy(card) {
@@ -8711,6 +8724,13 @@
     card.style.pointerEvents = 'auto';
     const note = card.querySelector('.approval-busy');
     if (note) note.remove();
+  }
+
+  // A failure is shown on the card itself, so going through many bills isn't
+  // interrupted by a pop-up for each one.
+  function showCardFailure(card, message) {
+    cardFailures.set(card.dataset.id, message);
+    cardNote(card, 'approval-failed', '#b91c1c').textContent = '⚠️ ' + message;
   }
 
   // Did the decision go through even though its answer never reached the phone?
@@ -8724,46 +8744,81 @@
     }
   }
 
+  // After a slow, lost or failed answer the server may still be finishing the job (on 30 Oct
+  // approvals that reported database errors had gone through), so look again before calling it
+  // a failure: about a minute when no answer came, about 20 s when the server answered an error.
+  async function wentThroughAfterAll(submissionId, checks) {
+    for (let attempt = 0; attempt < checks; attempt++) {
+      if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 10000));
+      if ((await isStillPending(submissionId)) === false) return true;
+    }
+    return false;
+  }
+
+  // Decisions go to the server one at a time. For every approval the Render backend reads the
+  // whole pending list with photos; tapping through ~50 bills at once on 30 Oct fired dozens of
+  // those reads together, the database started timing out and approvals failed or half-finished.
+  let decisionQueue = Promise.resolve();
+  function inDecisionQueue(task) {
+    const run = decisionQueue.then(task, task);
+    decisionQueue = run.catch(() => {});
+    return run;
+  }
+
   // Sends approve/reject once per bill, shows progress on the card the whole time (even if the
   // list is redrawn meanwhile), and checks the real outcome if the answer is slow or lost.
   async function decideOnBill(submissionId, cardEl, busyLabel, endpoint, payload) {
     if (cardsInProgress.has(submissionId)) return false; // already on its way — ignore repeat taps
-    cardsInProgress.set(submissionId, busyLabel);
-    setCardBusy(approvalCardFor(submissionId) || cardEl, busyLabel);
+    const waitingLabel = 'Waiting — the bill before this one is still being saved…';
+    cardsInProgress.set(submissionId, waitingLabel);
+    setCardBusy(approvalCardFor(submissionId) || cardEl, waitingLabel);
 
-    let done = false;
-    let problem = '';
-    try {
-      await fetchJsonWithTimeout(`${BACKEND_URL}/${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
-        body: JSON.stringify(payload)
-      }, DECISION_TIMEOUT_MS);
-      done = true;
-    } catch (e) {
-      problem = e.message || 'please try again.';
-      done = (await isStillPending(submissionId)) === false;
-    }
-    cardsInProgress.delete(submissionId);
+    return inDecisionQueue(async () => {
+      cardsInProgress.set(submissionId, busyLabel);
+      const busyCard = approvalCardFor(submissionId);
+      if (busyCard) setCardBusy(busyCard, busyLabel);
 
-    const card = approvalCardFor(submissionId);
-    if (done) {
-      recentlyHandled.set(submissionId, Date.now());
-      approvalsCache = approvalsCache.filter(item => item.submission_id !== submissionId);
-      showPendingCount(approvalsCache.length);
-      saveDataForNextOpen();
-      if (card) card.remove();
-      const area = document.getElementById('approvalsArea');
-      if (area && !area.querySelector('.approval-card')) {
-        area.innerHTML = `<div class="empty-state">Nothing waiting for approval right now.</div>`;
+      let done = false;
+      let problem = '';
+      try {
+        await fetchJsonWithTimeout(`${BACKEND_URL}/${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+          body: JSON.stringify(payload)
+        }, DECISION_TIMEOUT_MS);
+        done = true;
+      } catch (e) {
+        problem = e.message || 'please try again';
+        cardsInProgress.set(submissionId, 'Checking whether it went through…');
+        const checkingCard = approvalCardFor(submissionId);
+        if (checkingCard) setCardBusy(checkingCard, 'Checking whether it went through…');
+        done = await wentThroughAfterAll(submissionId, e.serverAnswered ? 3 : 7);
       }
-      // Other copies of the same bill change their warning once this one is decided.
-      loadPendingList().then(redrawApprovalsIfChanged).catch(() => {});
-    } else {
-      if (card) clearCardBusy(card);
-      problem = problem.replace(/\.?$/, '.') + ' If the bill disappears from this list in a minute, it went through.';
-    }
-    return done ? true : problem;
+      cardsInProgress.delete(submissionId);
+
+      const card = approvalCardFor(submissionId);
+      if (done) {
+        recentlyHandled.set(submissionId, Date.now());
+        approvalsCache = approvalsCache.filter(item => item.submission_id !== submissionId);
+        showPendingCount(approvalsCache.length);
+        saveDataForNextOpen();
+        if (card) card.remove();
+        const area = document.getElementById('approvalsArea');
+        if (area && !area.querySelector('.approval-card')) {
+          area.innerHTML = `<div class="empty-state">Nothing waiting for approval right now.</div>`;
+        }
+        // Other copies of the same bill change their warning once this one is decided.
+        loadPendingList().then(redrawApprovalsIfChanged).catch(() => {});
+        return true;
+      }
+      const reason = problem.replace(/\.?$/, '');
+      const message = reason.charAt(0).toUpperCase() + reason.slice(1) + '. It is still waiting — tap again to retry.';
+      if (card) {
+        clearCardBusy(card);
+        showCardFailure(card, message);
+      }
+      return message;
+    });
   }
 
   async function approveBill(submissionId, cardEl, paymentStatus = 'paid') {
@@ -8773,16 +8828,11 @@
       const label = paymentStatus === 'paid' ? 'PAID ✅' : 'DUE (Payment Pending) ⏳';
       showCelebrationToast(`Bill Approved as ${label}!`);
       recordsCache.gst = []; recordsCache.non_gst = []; // force refresh next time ledger is viewed
-    } else if (outcome) {
-      alert('Could not approve this bill — ' + outcome);
     }
   }
 
   async function rejectBill(submissionId, reason, cardEl) {
-    const outcome = await decideOnBill(submissionId, cardEl, 'Rejecting…', 'reject-bill', { submission_id: submissionId, reason });
-    if (outcome !== true && outcome) {
-      alert('Could not reject this bill — ' + outcome);
-    }
+    await decideOnBill(submissionId, cardEl, 'Rejecting…', 'reject-bill', { submission_id: submissionId, reason });
   }
 
   function setupQuickCashVoucher() {
