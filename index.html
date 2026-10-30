@@ -1363,7 +1363,9 @@
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.06); }
     }
-  /* --- Inventory Section Styles --- */
+  }
+
+  /* --- Inventory Section Styles (all screen sizes) --- */
   .inv-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
@@ -1559,6 +1561,12 @@
     vertical-align: middle;
   }
   .inv-table tr:hover td { background: #f8fafc; }
+  .inv-table .inv-num { text-align: right; white-space: nowrap; }
+  .inv-table .inv-rate-main { font-weight: 700; color: var(--walnut, #0f172a); }
+  .inv-table .inv-rate-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .inv-table td.inv-specs { min-width: 140px; max-width: 190px; white-space: normal; overflow-wrap: break-word; font-size: 11.5px; color: #475569; }
+  .inv-table td.inv-name { min-width: 180px; max-width: 260px; white-space: normal; }
+  .inv-table td.inv-actions .btn-sm { padding: 4px 7px; font-size: 12px; min-width: 0; }
   .inv-scan-preview {
     max-height: 240px;
     width: 100%;
@@ -1579,7 +1587,6 @@
   :root[data-theme="dark"] .inv-table th { background: #0f172a; color: #94a3b8; border-color: #334155; }
   :root[data-theme="dark"] .inv-table td { border-color: #334155; }
   :root[data-theme="dark"] .inv-table tr:hover td { background: #0f172a; }
-  }
 
   
   /* Stop mobile browsers from magnifying / auto-zooming modal */
@@ -11309,11 +11316,27 @@
     return item.unit_price || '';
   }
 
-  // " · ₹1,460/Box" next to the per-piece rate for boxed items
+  function invMoney(n) {
+    return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  }
+
+  // "pc" for Pcs, "set" for Set… so a rate reads "₹310 / pc"
+  function invUnitSingular(unit) {
+    const u = String(unit || 'Pcs').trim();
+    const known = { pcs: 'pc', pc: 'pc', nos: 'no', no: 'no', sets: 'set', set: 'set', boxes: 'box', box: 'box', pairs: 'pair', pair: 'pair', mtr: 'm', mtrs: 'm', m: 'm', kg: 'kg', ltr: 'L' };
+    return known[u.toLowerCase()] || u.toLowerCase();
+  }
+
+  // "₹310 / pc"
+  function invUnitRateText(item) {
+    return `${invMoney(parseFloat(item.unit_price) || 0)} / ${invUnitSingular(item.unit)}`;
+  }
+
+  // "₹1,550 / box of 5" for boxed items, '' otherwise
   function invBoxRateText(item) {
     const perPack = parseFloat(item.units_per_pack) || 1;
     if (!item.pack_type || perPack <= 1 || !(parseFloat(item.unit_price) > 0)) return '';
-    return ` · ₹${Number(invRateForForm(item)).toLocaleString('en-IN')}/${item.pack_type}`;
+    return `${invMoney(invRateForForm(item))} / ${String(item.pack_type).toLowerCase()} of ${perPack}`;
   }
 
   function invFindPhotoBtnHtml(itemId) {
@@ -11393,9 +11416,9 @@
                 ` : ''}
 
                 ${price > 0 ? `
-                  <div style="font-size:12px; color:#475569; margin:4px 0 8px; display:flex; justify-content:space-between;">
-                    <span>Rate: <b>₹${price.toLocaleString('en-IN')}</b>/${unit}${invBoxRateText(it)}</span>
-                    <span style="color:#0f172a; font-weight:700;">Val: ₹${totalVal.toLocaleString('en-IN')}</span>
+                  <div style="font-size:12px; color:#475569; margin:4px 0 8px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                    <span>Rate: <b style="white-space:nowrap;">${invUnitRateText(it)}</b>${invBoxRateText(it) ? `<span style="display:block; font-size:11px; color:#64748b; white-space:nowrap;">${invBoxRateText(it)}</span>` : ''}</span>
+                    <span style="color:#0f172a; font-weight:700; white-space:nowrap;">Val: ${invMoney(totalVal)}</span>
                   </div>
                 ` : ''}
 
@@ -11434,8 +11457,8 @@
               <th>Location</th>
               <th>Specifications</th>
               <th>Stock</th>
-              <th>Rate (₹)</th>
-              <th>Valuation (₹)</th>
+              <th class="inv-num">Rate</th>
+              <th class="inv-num">Stock Value</th>
               <th style="text-align:right;">Actions</th>
             </tr>
           </thead>
@@ -11460,7 +11483,7 @@
               return `
                 <tr>
                   <td>${photoHtml}</td>
-                  <td>
+                  <td class="inv-name">
                     <div style="font-weight:700; color:var(--walnut); cursor:pointer;" onclick="openProductDossier('${it.id}')">${escapeXml(it.item_name)}</div>
                     ${it.barcode_or_serial ? `<div style="font-size:11px; color:#64748b;">Tag: ${escapeXml(it.barcode_or_serial)}</div>` : ''}
                   </td>
@@ -11470,14 +11493,14 @@
                   </td>
                   <td><span class="inv-cat-pill">${escapeXml(it.category || '—')}</span></td>
                   <td><span style="font-weight:600; color:#0284c7;">${escapeXml(it.site_location || 'Central Godown')}</span></td>
-                  <td style="max-width:180px; font-size:11.5px; color:#475569;">${escapeXml(specsBrief || '—')}</td>
+                  <td class="inv-specs">${escapeXml(specsBrief || '—')}</td>
                   <td>
                     <span style="font-weight:800; font-size:13.5px; color:${stockColor};">${qty} ${unit}</span>
                     ${packText ? `<div style="font-size:11px; color:#7c3aed;">${escapeXml(packText)}</div>` : ''}
                   </td>
-                  <td>${price > 0 ? '₹' + price.toLocaleString('en-IN') + '/' + unit + `<div style="font-size:11px; color:#64748b;">${invBoxRateText(it).replace(' · ', '')}</div>` : '—'}</td>
-                  <td><b>${totalVal > 0 ? '₹' + totalVal.toLocaleString('en-IN') : '—'}</b></td>
-                  <td style="text-align:right; white-space:nowrap;">
+                  <td class="inv-num">${price > 0 ? `<div class="inv-rate-main">${invUnitRateText(it)}</div>${invBoxRateText(it) ? `<div class="inv-rate-sub">${invBoxRateText(it)}</div>` : ''}` : '—'}</td>
+                  <td class="inv-num"><b>${totalVal > 0 ? invMoney(totalVal) : '—'}</b></td>
+                  <td class="inv-actions" style="text-align:right; white-space:nowrap;">
                     <div style="display:inline-flex; gap:4px;">
                       <button type="button" class="btn-ghost btn-sm" onclick="openIssueMaterialModal('${it.id}')" style="color:#d97706; font-weight:700;" title="Issue Item / Take Out">📤 Issue</button>
                       <button type="button" class="btn-ghost btn-sm" onclick="quickAdjustQty('${it.id}', -1)" title="Minus 1">−</button>
@@ -12090,7 +12113,7 @@
         </div>
         <div>
           <div style="font-size:11px; color:#64748b;">UNIT RATE</div>
-          <div style="font-size:14px; font-weight:600; color:#334155; margin-top:2px;">₹${price.toLocaleString('en-IN')} / ${item.unit || 'Pcs'}<span style="font-size:11.5px; color:#7c3aed;">${invBoxRateText(item)}</span></div>
+          <div style="font-size:14px; font-weight:600; color:#334155; margin-top:2px;">${invUnitRateText(item)}<span style="font-size:11.5px; color:#7c3aed;">${invBoxRateText(item) ? ' · ' + invBoxRateText(item) : ''}</span></div>
         </div>
         <div>
           <div style="font-size:11px; color:#64748b;">TOTAL VALUATION</div>
