@@ -2472,6 +2472,7 @@
                 🌐 Fetch Web Photo
               </button>
             </div>
+            <div id="invScanPhotoNote" style="display:none; font-size:11px; color:#047857; margin-top:4px;"></div>
           </div>
         </div>
 
@@ -2702,6 +2703,9 @@
             <img id="invItemPhotoPreview" src="" alt="Item Photo" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid #cbd5e1;" />
           </div>
         </div>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#334155; margin-top:6px; cursor:pointer;">
+          <input type="checkbox" id="invItemPhotoBlur" checked /> ✨ Keep just the product sharp — blur the background
+        </label>
       </div>
 
       <div style="margin-bottom:12px;">
@@ -11339,6 +11343,114 @@
     return `${invMoney(invRateForForm(item))} / ${String(item.pack_type).toLowerCase()} of ${perPack}`;
   }
 
+  // ---------- Product photos: keep the main product sharp, blur everything around it ----------
+  // Runs on the phone (Google MediaPipe "magic touch" segmenter, Apache-2.0). The ~9 MB of model
+  // files download the first time it is used and are cached by the browser after that.
+  const PHOTO_CLEANUP_LIB = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+  const PHOTO_CLEANUP_MODEL = 'https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite';
+  let productSegmenterPromise = null;
+
+  function loadProductSegmenter() {
+    if (!productSegmenterPromise) {
+      productSegmenterPromise = (async () => {
+        const vision = await import(`${PHOTO_CLEANUP_LIB}/vision_bundle.mjs`);
+        const files = await vision.FilesetResolver.forVisionTasks(`${PHOTO_CLEANUP_LIB}/wasm`);
+        return vision.InteractiveSegmenter.createFromOptions(files, {
+          baseOptions: { modelAssetPath: PHOTO_CLEANUP_MODEL, delegate: 'CPU' },
+          outputCategoryMask: false,
+          outputConfidenceMasks: true
+        });
+      })().catch(err => { productSegmenterPromise = null; throw err; });
+    }
+    return productSegmenterPromise;
+  }
+
+  function loadPhoto(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous'; // stored photos come from Supabase storage
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('could not open the photo'));
+      img.src = src;
+    });
+  }
+
+  function blankCanvas(w, h) {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    return c;
+  }
+
+  // Draws `source` blurred onto `ctx` (size w×h). Uses the canvas blur filter where the browser
+  // has it, otherwise shrinks and re-enlarges the photo, which blurs the same way on older iPhones.
+  function drawBlurred(ctx, source, w, h) {
+    const radius = Math.max(6, Math.round(Math.max(w, h) / 45));
+    if (typeof ctx.filter === 'string') {
+      ctx.filter = `blur(${radius}px)`;
+      ctx.drawImage(source, -radius * 2, -radius * 2, w + radius * 4, h + radius * 4);
+      ctx.filter = 'none';
+      return;
+    }
+    const small = blankCanvas(Math.max(1, Math.round(w / radius)), Math.max(1, Math.round(h / radius)));
+    const sctx = small.getContext('2d');
+    sctx.imageSmoothingQuality = 'high';
+    sctx.drawImage(source, 0, 0, small.width, small.height);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(small, 0, 0, w, h);
+  }
+
+  // Returns a JPEG (base64, no data: prefix) with the product at `point` (0–1 across/down the photo,
+  // the centre by default) kept sharp and the rest blurred and softly lightened, or null when no clear
+  // product could be picked out (the original photo should then be kept as it is).
+  async function blurProductBackground(src, point = { x: 0.5, y: 0.5 }) {
+    const img = await loadPhoto(src);
+    const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const photo = blankCanvas(w, h);
+    photo.getContext('2d').drawImage(img, 0, 0, w, h);
+
+    const segmenter = await loadProductSegmenter();
+    let mask = null;
+    segmenter.segment(photo, { keypoint: { x: point.x, y: point.y } }, result => {
+      const m = result.confidenceMasks && result.confidenceMasks[0];
+      if (m) mask = { values: m.getAsFloat32Array().slice(), width: m.width, height: m.height };
+    });
+    if (!mask) return null;
+
+    // A selection covering almost nothing or almost everything means no product was found
+    let picked = 0;
+    for (let i = 0; i < mask.values.length; i++) if (mask.values[i] > 0.5) picked++;
+    const share = picked / mask.values.length;
+    if (share < 0.03 || share > 0.95) return null;
+
+    // Soft-edged cut-out of the product
+    const cut = blankCanvas(mask.width, mask.height);
+    const cctx = cut.getContext('2d');
+    const pixels = cctx.createImageData(mask.width, mask.height);
+    for (let i = 0; i < mask.values.length; i++) {
+      const a = Math.min(1, Math.max(0, (mask.values[i] - 0.3) / 0.4));
+      pixels.data[i * 4 + 3] = Math.round(a * 255);
+    }
+    cctx.putImageData(pixels, 0, 0);
+    const product = blankCanvas(w, h);
+    const pctx = product.getContext('2d');
+    pctx.drawImage(photo, 0, 0);
+    pctx.globalCompositeOperation = 'destination-in';
+    pctx.imageSmoothingQuality = 'high';
+    pctx.drawImage(cut, 0, 0, w, h);
+
+    // Blurred, lightened surroundings with the sharp product on top
+    const out = blankCanvas(w, h);
+    const octx = out.getContext('2d');
+    drawBlurred(octx, photo, w, h);
+    octx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    octx.fillRect(0, 0, w, h);
+    octx.drawImage(product, 0, 0);
+    return out.toDataURL('image/jpeg', 0.86).split(',')[1];
+  }
+
   function invFindPhotoBtnHtml(itemId) {
     return `<button type="button" class="inv-find-photo-btn" onclick="event.stopPropagation(); fetchWebPhotoForItem('${itemId}', this)">🔎 Find photo</button>`;
   }
@@ -11564,12 +11676,59 @@
     currentScanMediaType = null;
     currentScannedItemData = null;
     currentScanPhotoUrl = null;
+    scanPhotoRun++; // drop any background-blur still running for a previous photo
+    scanPhotoOriginal = null;
+    scanPhotoCleaned = null;
+    setScanPhotoNote('');
     const webPhotoBtn = document.getElementById('invScanWebPhotoBtn');
     if (webPhotoBtn) webPhotoBtn.textContent = webPhotoBtn.dataset.label || webPhotoBtn.textContent;
 
     const fileInput = document.getElementById('invScanFileInput');
     if (fileInput) fileInput.value = '';
   }
+
+  // The scanned photo as taken, and with the background blurred (null until ready / if it failed)
+  let scanPhotoOriginal = null;
+  let scanPhotoCleaned = null;
+  let scanPhotoRun = 0;
+
+  function setScanPhotoNote(html) {
+    const note = document.getElementById('invScanPhotoNote');
+    if (!note) return;
+    note.innerHTML = html;
+    note.style.display = html ? 'block' : 'none';
+  }
+
+  async function blurScanPhoto(b64, mediaType) {
+    const run = ++scanPhotoRun;
+    scanPhotoOriginal = { b64, type: mediaType };
+    scanPhotoCleaned = null;
+    setScanPhotoNote('✨ Blurring the background…');
+    try {
+      const cleaned = await blurProductBackground(`data:${mediaType};base64,${b64}`);
+      if (run !== scanPhotoRun || currentScanPhotoUrl) return; // a newer photo or a web photo took over
+      if (!cleaned) { setScanPhotoNote(''); return; }
+      scanPhotoCleaned = cleaned;
+      useScanPhoto('blurred');
+    } catch (e) {
+      console.warn('Background blur failed, keeping the original photo:', e.message);
+      if (run === scanPhotoRun) setScanPhotoNote('');
+    }
+  }
+
+  // Switch the photo that will be saved between the blurred one and the original
+  function useScanPhoto(which) {
+    if (!scanPhotoOriginal) return;
+    const blurred = which === 'blurred' && scanPhotoCleaned;
+    currentScanPhotoBase64 = blurred ? scanPhotoCleaned : scanPhotoOriginal.b64;
+    currentScanMediaType = blurred ? 'image/jpeg' : scanPhotoOriginal.type;
+    const previewImg = document.getElementById('invScanPreviewImg');
+    if (previewImg) previewImg.src = `data:${currentScanMediaType};base64,${currentScanPhotoBase64}`;
+    setScanPhotoNote(blurred
+      ? '✨ Background blurred · <a href="#" onclick="useScanPhoto(\'original\'); return false;">Use original photo</a>'
+      : 'Original photo · <a href="#" onclick="useScanPhoto(\'blurred\'); return false;">Blur background</a>');
+  }
+  window.useScanPhoto = useScanPhoto;
 
   async function handleInventoryScanFile(file) {
     if (!file) return;
@@ -11592,6 +11751,7 @@
 
       const previewImg = document.getElementById('invScanPreviewImg');
       if (previewImg) previewImg.src = `data:${mediaType};base64,${b64}`;
+      blurScanPhoto(b64, mediaType); // not awaited — runs while the label is being read
 
       let extracted = null;
       let aiFailReason = '';
@@ -12019,6 +12179,14 @@
       const processed = await compressImageIfNeeded(photoFile);
       photoB64 = await fileToBase64(processed);
       photoType = processed.type || 'image/jpeg';
+      if (document.getElementById('invItemPhotoBlur')?.checked) {
+        try {
+          const cleaned = await blurProductBackground(`data:${photoType};base64,${photoB64}`);
+          if (cleaned) { photoB64 = cleaned; photoType = 'image/jpeg'; }
+        } catch (e) {
+          console.warn('Background blur failed, saving the original photo:', e.message);
+        }
+      }
     }
 
     const payload = {
@@ -12093,7 +12261,10 @@
       ${item.photo_url ? `
         <div style="text-align:center; margin-bottom:14px;">
           <img src="${escapeXml(item.photo_url)}" alt="${escapeXml(item.item_name)}" style="max-height:200px; width:100%; object-fit:contain; border-radius:8px; background:#ffffff; border:1px solid #e2e8f0; cursor:pointer;" onclick="openPhotoViewer(this.src)" onerror="this.parentElement.style.display='none'" title="Tap to view full resolution" />
-          <button type="button" class="btn-ghost btn-sm" onclick="fetchWebPhotoForItem('${item.id}', this)" style="margin-top:6px; color:#0284c7; font-weight:700; font-size:11.5px;">🔎 Replace with official product photo</button>
+          <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:6px;">
+            <button type="button" class="btn-ghost btn-sm" onclick="blurItemPhoto('${item.id}', this)" style="color:#047857; font-weight:700; font-size:11.5px;">✨ Blur background</button>
+            <button type="button" class="btn-ghost btn-sm" onclick="fetchWebPhotoForItem('${item.id}', this)" style="color:#0284c7; font-weight:700; font-size:11.5px;">🔎 Replace with official product photo</button>
+          </div>
         </div>
       ` : `
         <div style="text-align:center; margin-bottom:14px;">
@@ -12816,6 +12987,7 @@
         if (data.photo_url) {
           currentScanPhotoUrl = data.photo_url;
           currentScanPhotoBase64 = null; // Prioritize clean web photo
+          setScanPhotoNote('');
           const img = document.getElementById('invScanPreviewImg');
           if (img) img.src = data.photo_url;
           if (btn) btn.textContent = '✓ Web Photo Set';
@@ -12876,8 +13048,62 @@
     }
   }
 
+  // Re-saves an item's existing photo with the product kept sharp and the background blurred
+  async function blurItemPhoto(itemId, btn = null) {
+    const item = inventoryItems.find(it => it.id === itemId);
+    if (!item || !item.photo_url) return;
+    const btnLabel = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Blurring…'; }
+    try {
+      const cleaned = await blurProductBackground(item.photo_url);
+      if (!cleaned) {
+        alert("Couldn't pick out the product in this photo. Retake it with the product in the middle of the frame.");
+        return;
+      }
+      const payload = {
+        id: item.id,
+        item_name: item.item_name,
+        brand: item.brand,
+        model_number: item.model_number,
+        quantity: item.quantity,
+        unit: item.unit,
+        min_threshold: item.min_threshold,
+        category: item.category,
+        site_location: item.site_location,
+        unit_price: item.unit_price,
+        pack_price: item.pack_price,
+        barcode_or_serial: item.barcode_or_serial,
+        specifications: item.specifications,
+        notes: item.notes,
+        units_per_pack: item.units_per_pack,
+        pack_type: item.pack_type,
+        photo_base64: cleaned,
+        media_type: 'image/jpeg',
+        created_by: getActiveUser()
+      };
+      const res = await fetch(`${BACKEND_URL}/inventory/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-app-secret': APP_SECRET },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.item) throw new Error(data.error || `server answered ${res.status}`);
+      const idx = inventoryItems.findIndex(it => it.id === data.item.id);
+      if (idx >= 0) inventoryItems[idx] = data.item;
+      saveInventoryToCache();
+      renderInventoryUI();
+      if (document.getElementById('inventorySpecsDetailModal')?.style.display === 'flex') openProductDossier(itemId);
+    } catch (e) {
+      alert('Could not blur this photo — ' + e.message);
+    } finally {
+      if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = btnLabel; }
+    }
+  }
+
   window.autoFetchScanWebPhoto = autoFetchScanWebPhoto;
   window.fetchWebPhotoForItem = fetchWebPhotoForItem;
+  window.blurProductBackground = blurProductBackground;
+  window.blurItemPhoto = blurItemPhoto;
 
 
   window.stepScanQty = stepScanQty;
