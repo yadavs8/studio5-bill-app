@@ -6460,6 +6460,23 @@
     Array.from(viewTrack.children).forEach(view => viewportResizeObserver.observe(view));
   }
 
+  // A sideways drag inside something that scrolls sideways (the inventory list, tables, chip rows…)
+  // is meant to scroll it, not to switch to the next tab.
+  function startsInSideScroller(el) {
+    for (; el && el !== mainApp && el !== document.body; el = el.parentElement) {
+      if (el.scrollWidth > el.clientWidth + 1) {
+        const overflowX = getComputedStyle(el).overflowX;
+        if (overflowX === 'auto' || overflowX === 'scroll') return true;
+      }
+    }
+    return false;
+  }
+
+  // PIN screens and pop-up windows (scan, item details, issue…) sit on top of the tabs
+  function anyPopupOpen() {
+    return Array.from(document.querySelectorAll('.pin-overlay')).some(o => getComputedStyle(o).display !== 'none');
+  }
+
   mainApp.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
     swipeStartX = touch.clientX;
@@ -6468,9 +6485,9 @@
     viewportWidth = viewport.getBoundingClientRect().width;
 
     const target = e.target;
-    if (target.closest('input, textarea, .table-scroll') ||
-        pinOverlay.style.display !== 'none' ||
-        bossPinOverlay.style.display !== 'none') {
+    if (target.closest('input, textarea, select, .table-scroll') ||
+        startsInSideScroller(target) ||
+        anyPopupOpen()) {
       swipeIgnored = true;
       return;
     }
