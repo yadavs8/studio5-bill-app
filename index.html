@@ -3042,7 +3042,7 @@
       <div class="logo-build" aria-label="Studio5">
         <span class="logo-panel">S</span><span class="logo-panel">T</span><span class="logo-panel">U</span><span class="logo-panel">D</span><span class="logo-panel">I</span><span class="logo-panel">O</span><span class="logo-panel accent">5</span>
       </div>
-      <div class="brand-eyebrow">Studio5 Interiors · Internal Tool</div>
+      <div class="brand-eyebrow">Studio5 Interiors · Internal Tool · <span id="appVersionLabel">App v67</span></div>
       <h1>Purchase Bill Ledger</h1>
     </div>
     <div style="display:flex; align-items:center; gap:8px;">
@@ -6477,11 +6477,20 @@
     return Array.from(document.querySelectorAll('.pin-overlay')).some(o => getComputedStyle(o).display !== 'none');
   }
 
+  // Switching tabs by swiping is off: on real phones even a slight sideways movement while scrolling
+  // a list (e.g. the Inventory table) flipped to the next tab. Tabs change with the bottom bar only.
+  // Set to true to bring swiping back.
+  const SWIPE_BETWEEN_TABS = false;
+
   mainApp.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
     swipeStartX = touch.clientX;
     swipeStartY = touch.clientY;
     swipeIgnored = false;
+    if (!SWIPE_BETWEEN_TABS) {
+      swipeIgnored = true;
+      return;
+    }
     viewportWidth = viewport.getBoundingClientRect().width;
 
     const target = e.target;
