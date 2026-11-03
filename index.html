@@ -4680,7 +4680,7 @@
         } else if (gstinChecksumBad || gstinIsOwn) {
           initialStatus = 'Unverified';
         } else {
-          initialStatus = 'Active';
+          initialStatus = 'Unverified';
         }
       }
 
@@ -4895,15 +4895,13 @@
         const isCancelled = isCancelledGSTIN(val, currentKnownStatus);
         gstinWrap.classList.toggle('gstin-invalid', !!(isOwn || checksumBad));
 
-        let autoStatus = 'Active';
+        let autoStatus = 'Unverified';
         if (isCancelled) {
           autoStatus = 'Cancelled';
         } else if (isOwn || checksumBad) {
           autoStatus = 'Unverified';
         } else if (currentKnownStatus && currentKnownStatus !== 'Unverified') {
           autoStatus = currentKnownStatus;
-        } else {
-          autoStatus = 'Active';
         }
         if (gstinStatusInput) gstinStatusInput.value = autoStatus;
 
@@ -4929,9 +4927,9 @@
               </div>`;
           } else {
             gstinMetaBadge.innerHTML = `
-              <div style="background:#f0fdf4; border:1.5px solid #86efac; color:#166534; padding:7px 10px; border-radius:5px; font-size:12px; line-height:1.4;">
-                🟢 <b>Auto-Verified: Active Taxpayer</b><br>
-                <span style="font-size:11px; font-weight:normal; color:#15803d;">State: ${decoded.stateName} · PAN: ${decoded.pan} · Format & Checksum Valid</span>
+              <div style="${autoStatus === 'Active' ? 'background:#f0fdf4; border:1.5px solid #86efac; color:#166534;' : 'background:#eff6ff; border:1.5px solid #93c5fd; color:#1e40af;'} padding:7px 10px; border-radius:5px; font-size:12px; line-height:1.4;">
+                ${autoStatus === 'Active' ? '🟢 <b>Active Taxpayer</b>' : '🔵 <b>Format valid, not checked on GST portal</b>'}<br>
+                <span style="font-size:11px; font-weight:normal; color:${autoStatus === 'Active' ? '#15803d' : '#1e40af'};">State: ${decoded.stateName} · PAN: ${decoded.pan} · Format & checksum OK</span>
               </div>`;
           }
         }
