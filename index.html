@@ -1340,7 +1340,7 @@
     /* Mobile Quick Floating Action Camera Button (FAB) */
     .mobile-fab-cam {
       position: fixed;
-      bottom: 74px;
+      bottom: calc(74px + env(safe-area-inset-bottom, 0px));
       right: 14px;
       z-index: 9990;
       background: linear-gradient(135deg, #f59e0b, #d97706);
@@ -1356,6 +1356,11 @@
       font-size: 24px;
       cursor: pointer;
       animation: fabPulse 3s infinite;
+      touch-action: manipulation;
+      transition: transform 0.15s ease;
+    }
+    .mobile-fab-cam:active {
+      transform: scale(0.92) !important;
     }
     @keyframes fabPulse {
       0%, 100% { transform: scale(1); }
@@ -1729,16 +1734,24 @@
   .scan-pill-btn {
     background: #f1f5f9;
     border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    padding: 2px 7px;
-    font-size: 11px;
+    border-radius: 6px;
+    padding: 5px 10px;
+    min-height: 32px;
+    min-width: 36px;
+    font-size: 12px;
     font-weight: 700;
     color: #334155;
     cursor: pointer;
     line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    font-variant-numeric: tabular-nums;
+    transition: all 0.15s ease;
   }
-  .scan-pill-btn:hover { background: #e2e8f0; }
-  .scan-pill-btn:active { background: #cbd5e1; }
+  .scan-pill-btn:hover { background: #e2e8f0; border-color: #94a3b8; }
+  .scan-pill-btn:active { background: #cbd5e1; transform: scale(0.95); }
 
   :root[data-theme="dark"] .scan-section-card {
     background: #111827;
@@ -1771,6 +1784,115 @@
     background: #1e293b;
     border-color: #334155;
     color: #cbd5e1;
+  }
+
+  /* =====================================================================
+     STUDIO 5 ENTERPRISE CRAFT UPGRADES (impeccable + ui-ux-pro-max standards)
+     ===================================================================== */
+
+  /* 1. Universal Financial Alignment & Tabular Digits */
+  .dash-value,
+  .dash-number,
+  .vendor-amount,
+  .smart-ledger-table td,
+  .smart-ledger-table th,
+  table thead th,
+  table tbody td,
+  #monthlyBreakdownArea td,
+  #monthlyBreakdownArea th,
+  .scan-stepper-input,
+  .scan-pill-btn,
+  .ca-metric-box,
+  .pill-count {
+    font-variant-numeric: tabular-nums lining-nums;
+    -webkit-font-feature-settings: "tnum" 1, "lnum" 1;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  /* 2. Thumb-Friendly Touch Targets for All Modal Close Buttons (impeccable standard: >= 44px on mobile) */
+  .pin-card button[id^="close"],
+  .pin-card button[id*="Close"],
+  .pin-card button[id*="close"] {
+    min-width: 38px !important;
+    min-height: 38px !important;
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 16px !important;
+    touch-action: manipulation;
+    transition: transform 0.15s ease, background-color 0.15s ease !important;
+  }
+  .pin-card button[id^="close"]:active,
+  .pin-card button[id*="Close"]:active,
+  .pin-card button[id*="close"]:active {
+    transform: scale(0.90) !important;
+  }
+  @media (max-width: 768px) {
+    .pin-card button[id^="close"],
+    .pin-card button[id*="Close"],
+    .pin-card button[id*="close"] {
+      min-width: 44px !important;
+      min-height: 44px !important;
+      width: 44px !important;
+      height: 44px !important;
+      font-size: 18px !important;
+    }
+  }
+
+  /* 3. Modal Backdrop Blur & Native-feeling Bottom Sheet Transitions */
+  .pin-overlay {
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+  }
+  @media (max-width: 768px) {
+    .pin-overlay[style*="display: flex"],
+    .pin-overlay[style*="display:flex"] {
+      animation: overlayFadeIn 0.2s ease-out;
+    }
+    .pin-overlay[style*="display: flex"] .pin-card,
+    .pin-overlay[style*="display:flex"] .pin-card {
+      animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .review-actions,
+    .scan-actions-modern {
+      padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)) !important;
+    }
+  }
+  @keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes sheetSlideUp {
+    from { transform: translateY(28px); opacity: 0.9; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  /* 4. Tactile Feedback for Material Stepper Buttons */
+  .scan-stepper-btn {
+    touch-action: manipulation;
+    transition: transform 0.12s ease, background 0.12s ease;
+  }
+  .scan-stepper-btn:active {
+    background: #dcfce7 !important;
+    transform: scale(0.94);
+  }
+  :root[data-theme="dark"] .scan-stepper-btn:active {
+    background: #047857 !important;
+    transform: scale(0.94);
+  }
+
+  /* 5. Safe Touch Target for Small Action Buttons */
+  .btn-sm {
+    min-height: 32px;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    touch-action: manipulation;
+  }
+  @media (max-width: 768px) {
+    .btn-sm {
+      min-height: 36px;
+      font-size: 13px;
+    }
   }
 </style>
 </head>
