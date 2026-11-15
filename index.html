@@ -3974,7 +3974,8 @@ function esc(v) {
   window.fetch = async (input, init) => {
     const res = await origFetch(input, init);
     const url = typeof input === 'string' ? input : (input && input.url) || '';
-    if (res.status === 401 && (url.startsWith(BACKEND) || url.includes('/functions/v1/approval-alerts')) && !asked) {
+    // Only the backend decides (an edge function without its secret set must not sign everyone out in a loop).
+    if (res.status === 401 && url.startsWith(BACKEND) && !asked) {
       asked = true;
       try { localStorage.removeItem(ACCESS_CODE_KEY); } catch (e) {}
       lock('The access code was not accepted (it may have been changed). Please enter the current code.');
@@ -4025,6 +4026,9 @@ function esc(v) {
   const BACKEND_URL = 'https://studio5-bill-backened.onrender.com';
   // The access code typed on this device (see the access-code gate above) — never written in this page.
   const APP_SECRET = accessCode();
+  // No code on this device yet: the access-code screen is showing — do not start loading or polling
+  // (dozens of refused requests from a shared office connection would look like guessing).
+  if (!APP_SECRET) return;
   // Downloads a file that needs the access code (it used to travel in the URL, ending up in logs/history).
   async function downloadWithCode(url, fallbackName) {
     try {
@@ -9402,7 +9406,7 @@ function esc(v) {
           <li style="margin-bottom:8px;"><b>Smart View vs Full View:</b> Toggle between compact mobile layout or complete accounting table.</li>
           <li style="margin-bottom:8px;"><b>📦 Line Items Breakdown:</b> Click the <code>📦 X Materials</code> badge on any row to expand a sub-table showing exact items, quantities, and rates purchased!</li>
           <li style="margin-bottom:8px;"><b>🔍 1-Click GST Verification:</b> Click the 🔍 icon next to any GSTIN to instantly copy the 15-digit GSTIN to your clipboard and launch the Govt GST Portal for verification.</li>
-          <li style="margin-bottom:8px;"><b>✏️ Edit Record (PIN 5198):</b> Full permission to edit all fields (date, vendor, invoice no, price, payment details) or delete duplicates.</li>
+          <li style="margin-bottom:8px;"><b>✏️ Edit Record (edit password):</b> Full permission to edit all fields (date, vendor, invoice no, price, payment details) or delete duplicates.</li>
         </ul>
       `
     },
@@ -9792,7 +9796,7 @@ function esc(v) {
         </div>
         <div style="display:flex; flex-direction:column; gap:8px;">
           ${items.map(it => `
-            <div class="material-card" data-name="${esc(it.name.replace(/"/g, '&quot;'))}" style="border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; background:#f8fafc; cursor:pointer; transition:all 0.15s ease;">
+            <div class="material-card" data-name="${esc(it.name)}" style="border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; background:#f8fafc; cursor:pointer; transition:all 0.15s ease;">
               <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                 <div>
                   <div style="font-weight:700; font-size:13px; color:#1e293b;">${esc(it.name)}</div>
@@ -10175,7 +10179,7 @@ function esc(v) {
 
   setupReturnModal();
 
-  // ─── Change Bill Date Modal (Password Protected: 5198) ────────────────────
+  // ─── Change Bill Date Modal (password checked by the server) ────────────────────
   let activeEditDateRecord = null;
 
   function parseDateToIsoInput(dateStr) {
@@ -10419,10 +10423,11 @@ function esc(v) {
       if (!activeEditDateRecord) return;
       const rec = activeEditDateRecord;
 
+      // The server checks the password (ADMIN_PIN); it is no longer written in this public page.
       const enteredPin = (pinInput ? pinInput.value : '').trim();
-      if (enteredPin !== '5198') {
+      if (!enteredPin) {
         if (errMsg) {
-          errMsg.textContent = '❌ Incorrect password. Access denied.';
+          errMsg.textContent = '❌ Enter the edit password.';
           errMsg.style.display = 'block';
         }
         if (pinInput) {
@@ -10597,7 +10602,7 @@ function esc(v) {
 
   setupEditDateModal();
 
-  // ─── Delete Bill Modal (Password Protected: 5198) ─────────────────────────
+  // ─── Delete Bill Modal (password checked by the server) ─────────────────────────
   let activeDeleteBillRecord = null;
 
   function openDeleteBillModal(rec) {
@@ -10683,10 +10688,11 @@ function esc(v) {
       if (!activeDeleteBillRecord) return;
       const rec = activeDeleteBillRecord;
 
+      // The server checks the password (ADMIN_PIN); it is no longer written in this public page.
       const enteredPin = (pinInput ? pinInput.value : '').trim();
-      if (enteredPin !== '5198') {
+      if (!enteredPin) {
         if (errMsg) {
-          errMsg.textContent = '❌ Incorrect password. Access denied.';
+          errMsg.textContent = '❌ Enter the edit password.';
           errMsg.style.display = 'block';
         }
         if (pinInput) {
