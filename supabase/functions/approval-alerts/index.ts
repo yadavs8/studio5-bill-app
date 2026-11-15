@@ -15,8 +15,25 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { generateVapidKeys, sendWebPush, type VapidKeys } from './webpush.ts';
 
-// Same shared code the app page already sends to the Render backend (it is visible in the page).
-const APP_SHARED_SECRET = 'studio5-field-2026';
+// The team access code the app sends (x-app-secret) — the same value as APP_SHARED_SECRET on Render.
+// Set it as a function secret: supabase secrets set APP_SHARED_SECRET=...  (it used to be written here
+// and in the public page). Without it, the protected actions refuse.
+const APP_SHARED_SECRET = Deno.env.get('APP_SHARED_SECRET') ?? '';
+
+/** Constant-time comparison of the sent code with the configured one. */
+async function codeOk(req: Request): Promise<boolean> {
+  const given = req.headers.get('x-app-secret') ?? '';
+  if (!APP_SHARED_SECRET || !given) return false;
+  const enc = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', enc.encode(given)),
+    crypto.subtle.digest('SHA-256', enc.encode(APP_SHARED_SECRET)),
+  ]);
+  const x = new Uint8Array(a), y = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  return diff === 0;
+}
 const APP_URL = 'https://yadavs8.github.io/studio5-bill-app/';
 const ALLOWED_ORIGIN = 'https://yadavs8.github.io';
 
@@ -174,7 +191,7 @@ Deno.serve(async (req) => {
       const action = new URL(req.url).searchParams.get('action');
       if (action === 'public-key') return json({ publicKey: (await vapidKeys(await loadConfig())).publicKey });
       if (action === 'pending') {
-        if (req.headers.get('x-app-secret') !== APP_SHARED_SECRET) return json({ error: 'unauthorized' }, 401);
+        if (!(await codeOk(req))) return json({ error: 'unauthorized' }, 401);
         const { data, error } = await db.rpc('pending_approvals_for_app');
         if (error) throw error;
         return json({ pending: data || [] });
@@ -185,7 +202,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     if (body.action === 'subscribe') {
-      if (req.headers.get('x-app-secret') !== APP_SHARED_SECRET) return json({ error: 'unauthorized' }, 401);
+      if (!(await codeOk(req))) return json({ error: 'unauthorized' }, 401);
       return await subscribe(body);
     }
 

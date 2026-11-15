@@ -3151,8 +3151,8 @@
 <div class="pin-overlay" id="pinOverlay" style="display:none;">
   <div class="pin-card">
     <h2>Studio5 Bill Ledger</h2>
-    <p>Enter the team access code (<b>1112</b>) to continue</p>
-    <input type="password" inputmode="numeric" id="pinInput" maxlength="8" placeholder="••••" autofocus />
+    <p>Enter the team access code to continue. Ask the office if you don't have it — it is asked once on this device.</p>
+    <input type="password" id="pinInput" maxlength="80" autocomplete="current-password" placeholder="Access code" autofocus />
     <div class="pin-error" id="pinError"></div>
     <button class="btn-primary" id="pinSubmit" style="width:100%;">Unlock</button>
   </div>
@@ -3164,7 +3164,7 @@
       <div class="logo-build" aria-label="Studio5">
         <span class="logo-panel">S</span><span class="logo-panel">T</span><span class="logo-panel">U</span><span class="logo-panel">D</span><span class="logo-panel">I</span><span class="logo-panel">O</span><span class="logo-panel accent">5</span>
       </div>
-      <div class="brand-eyebrow">Studio5 Interiors · Internal Tool · <span id="appVersionLabel">App v68</span></div>
+      <div class="brand-eyebrow">Studio5 Interiors · Internal Tool · <span id="appVersionLabel">App v69</span></div>
       <h1>Purchase Bill Ledger</h1>
     </div>
     <div style="display:flex; align-items:center; gap:8px;">
@@ -3931,13 +3931,19 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
+// ── Access code ──────────────────────────────────────────────────────────────
+// The backend refuses every request without the team's access code (x-app-secret). The code is typed
+// once per device and kept in this browser — it is no longer written in this public page.
+// Audit C2 / decision 0001 (studio5-bill-backened/.rea).
+const ACCESS_CODE_KEY = 'studio5_access_code';
+function accessCode() {
+  try { return localStorage.getItem(ACCESS_CODE_KEY) || ''; } catch (e) { return ''; }
+}
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
 (function() {
-  // Simple shared access code — keeps casual/uninvited visitors out of the ledger.
-  // Note: this is a deterrent, not real security — anyone who views this page's
-  // source code can see the PIN. Good enough to stop a random person with the link
-  // from browsing your bills; not a substitute for proper per-employee login.
-  const ACCESS_PIN = '1112'; // change this to whatever code you want your team to use
-
+  const BACKEND = 'https://studio5-bill-backened.onrender.com';
   const pinOverlay = document.getElementById('pinOverlay');
   const mainApp = document.getElementById('mainApp');
   const pinInput = document.getElementById('pinInput');
@@ -3947,8 +3953,6 @@
   function unlock() {
     if (pinOverlay) pinOverlay.style.display = 'none';
     if (mainApp) mainApp.style.display = '';
-    sessionStorage.setItem('bill_app_unlocked', 'yes');
-    localStorage.setItem('bill_app_unlocked', 'yes');
     startLogoIdleLoop();
     setTimeout(() => {
       if (typeof settleTrackToIndex === 'function') {
@@ -3956,9 +3960,27 @@
       }
     }, 60);
   }
+  function lock(message) {
+    if (mainApp) mainApp.style.display = 'none';
+    if (pinOverlay) pinOverlay.style.display = '';
+    if (pinError) pinError.textContent = message || '';
+    if (pinInput) { pinInput.value = ''; pinInput.focus(); }
+  }
+  window.showAccessCodeGate = lock;
 
-  // Auto-unlock immediately so app is always open & accessible
-  unlock();
+  // A wrong or changed code anywhere → ask again (once), instead of every screen failing quietly.
+  const origFetch = window.fetch.bind(window);
+  let asked = false;
+  window.fetch = async (input, init) => {
+    const res = await origFetch(input, init);
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (res.status === 401 && (url.startsWith(BACKEND) || url.includes('/functions/v1/approval-alerts')) && !asked) {
+      asked = true;
+      try { localStorage.removeItem(ACCESS_CODE_KEY); } catch (e) {}
+      lock('The access code was not accepted (it may have been changed). Please enter the current code.');
+    }
+    return res;
+  };
 
   function startLogoIdleLoop() {
     document.querySelectorAll('.logo-panel').forEach((panel, i) => {
@@ -3971,32 +3993,54 @@
     });
   }
 
-  function tryUnlock() {
+  async function tryUnlock() {
     const val = (pinInput.value || '').trim();
-    if (val === ACCESS_PIN || val.includes(ACCESS_PIN)) {
-      unlock();
-    } else {
-      pinError.textContent = 'Incorrect code — check with your admin.';
+    if (!val) return;
+    pinSubmit.disabled = true;
+    pinError.textContent = 'Checking…';
+    try {
+      const r = await origFetch(`${BACKEND}/auth/check`, { headers: { 'x-app-secret': val } });
+      if (r.ok) {
+        try { localStorage.setItem(ACCESS_CODE_KEY, val); } catch (e) {}
+        location.reload(); // start every screen again with the code
+        return;
+      }
+      pinError.textContent = r.status === 429 ? 'Too many wrong codes. Wait 15 minutes and try again.' : 'Incorrect code — check with the office.';
+    } catch (e) {
+      pinError.textContent = 'Could not reach the server (it may be waking up — try again in 30 seconds).';
+    } finally {
+      pinSubmit.disabled = false;
       pinInput.value = '';
       pinInput.focus();
     }
   }
 
-  if (sessionStorage.getItem('bill_app_unlocked') === 'yes') {
-    unlock();
-  }
-
   pinSubmit.addEventListener('click', tryUnlock);
   pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
-  pinInput.addEventListener('input', () => {
-    const val = (pinInput.value || '').trim();
-    if (val.length >= ACCESS_PIN.length) tryUnlock();
-  });
+
+  if (accessCode()) unlock(); else lock('');
 })();
 
 (function(){
   const BACKEND_URL = 'https://studio5-bill-backened.onrender.com';
-  const APP_SECRET = 'studio5-field-2026'; // must exactly match APP_SHARED_SECRET on Render
+  // The access code typed on this device (see the access-code gate above) — never written in this page.
+  const APP_SECRET = accessCode();
+  // Downloads a file that needs the access code (it used to travel in the URL, ending up in logs/history).
+  async function downloadWithCode(url, fallbackName) {
+    try {
+      const r = await fetch(url, { headers: { 'x-app-secret': APP_SECRET } });
+      if (!r.ok) { alert('Download failed: ' + ((await r.json().catch(() => ({}))).error || r.statusText)); return; }
+      const blob = await r.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const cd = r.headers.get('Content-Disposition') || '';
+      a.download = (cd.match(/filename="([^"]+)"/) || [])[1] || fallbackName;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    } catch (e) {
+      alert('Download failed: ' + e.message);
+    }
+  }
   // The Excel library is large (~900 KB), so it's only fetched the first time an export or a
   // bank-statement import actually needs it, instead of slowing down every app start.
   let xlsxLoadPromise = null;
@@ -4218,8 +4262,8 @@
       };
       const lines = batchOutcomes.map(o => {
         const [icon, defaultDetail] = statusMeta[o.status] || ['⚠️', 'Unknown'];
-        const detail = o.reason ? `${defaultDetail} — ${o.reason}` : defaultDetail;
-        return `${icon} ${o.name}: ${detail}`;
+        const detail = o.reason ? `${defaultDetail} — ${esc(o.reason)}` : defaultDetail;
+        return `${icon} ${esc(o.name)}: ${detail}`;
       }).join('<br>');
       statusArea.innerHTML = `<div class="banner info"><strong>Batch complete (${fileQueue.length} files):</strong><br>${lines}</div>`;
     }
@@ -4452,13 +4496,15 @@
         // User directive: All historical bills prior to today (2026-09-10) are already paid.
         // Start tracking PAID vs DUE details strictly from today onwards.
         const d = parseUploadedOnDate(rec.date) || parseUploadedOnDate(rec.uploaded_on);
-        const isHistorical = !d || (d.year < 2026) || (d.year === 2026 && d.month < 9) || (d.year === 2026 && d.month === 9 && d.day < 10);
+        // A bill whose date cannot be read keeps its own status (it used to be forced to PAID and vanish from dues).
+        const isHistorical = !!d && ((d.year < 2026) || (d.year === 2026 && d.month < 9) || (d.year === 2026 && d.month === 9 && d.day < 10));
 
         if (isHistorical) {
           rec.payment_status = 'paid';
         } else {
+          // Same rule as the backend: only a clear "paid" is paid ("due", "pending", "partial" are unpaid).
           const rawPay = String(rec.payment_status || '').toLowerCase().trim();
-          rec.payment_status = rawPay.includes('unpaid') ? 'unpaid' : 'paid';
+          rec.payment_status = /\b(unpaid|not paid|due|pending|partial|credit)\b/.test(rawPay) ? 'unpaid' : (/\bpaid\b/.test(rawPay) || !rawPay ? 'paid' : 'unpaid');
         }
 
         return rec;
@@ -4746,10 +4792,10 @@
             ${extracted.price_alerts.map(al => {
               let h = '';
               if (al.is_increase) {
-                h += `<div>• <b>${al.item_name}</b>: Rate is ₹${al.current_price} <span style="color:#b91c1c; font-weight:700;">(+${al.percent_change}% hike</span> vs ₹${al.previous_price} on ${al.previous_date})</div>`;
+                h += `<div>• <b>${esc(al.item_name)}</b>: Rate is ₹${al.current_price} <span style="color:#b91c1c; font-weight:700;">(+${al.percent_change}% hike</span> vs ₹${al.previous_price} on ${al.previous_date})</div>`;
               }
               if (al.cheaper_vendor) {
-                h += `<div style="color:#047857; margin-top:2px;">  💡 <i>Alternative: ${al.cheaper_vendor.vendor_name} sells this at ₹${al.cheaper_vendor.unit_price} (-${al.cheaper_vendor.percent_cheaper}% cheaper)</i></div>`;
+                h += `<div style="color:#047857; margin-top:2px;">  💡 <i>Alternative: ${esc(al.cheaper_vendor.vendor_name)} sells this at ₹${al.cheaper_vendor.unit_price} (-${al.cheaper_vendor.percent_cheaper}% cheaper)</i></div>`;
               }
               return h;
             }).join('')}
@@ -4778,8 +4824,8 @@
                 ${extracted.items.map(it => `
                   <tr style="border-top: 1px solid #f1f5f9;">
                     <td style="padding: 6px 10px; font-weight: 600; color: #1e293b;">
-                      ${it.item_name}
-                      ${it.description ? `<div style="font-size: 10.5px; color: #64748b; font-weight: normal;">${it.description}</div>` : ''}
+                      ${esc(it.item_name)}
+                      ${it.description ? `<div style="font-size: 10.5px; color: #64748b; font-weight: normal;">${esc(it.description)}</div>` : ''}
                     </td>
                     <td style="padding: 6px 8px; text-align: right; color: #475569; white-space: nowrap;">
                       ${it.quantity} ${it.unit || ''}
@@ -5664,7 +5710,7 @@
           <span>🚨</span> <span>DUPLICATE RECORD DETECTED</span>
         </div>
         <div style="font-size:12px; margin-top:3px; color:#7f1d1d; line-height:1.4;">
-          This entry conflicts with another bill in the ledger (${dupConflict.reason}).<br>
+          This entry conflicts with another bill in the ledger (${esc(dupConflict.reason)}).<br>
           <b>Conflicting Bill:</b> ${escapeHtml(dupConflict.conflictWith.vendor_name || 'Vendor')} · Invoice #${escapeHtml(dupConflict.conflictWith.bill_no || '—')} · ₹${parseFloat(dupConflict.conflictWith.invoice_value || 0).toLocaleString('en-IN')} (Dated ${dupConflict.conflictWith.date || '—'}).
         </div>
       </div>
@@ -5691,7 +5737,7 @@
         }
         return `
         <tr style="border-bottom:1px solid #e2e8f0; font-size:12px;">
-          <td style="padding:6px 8px; font-weight:600; color:#1e293b;">${it.item_name || it.name || '—'}${alertBadge}</td>
+          <td style="padding:6px 8px; font-weight:600; color:#1e293b;">${esc(it.item_name || it.name || '—')}${alertBadge}</td>
           <td style="padding:6px 8px; text-align:center; color:#475569;">${it.quantity || 1} ${it.unit || 'Pcs'}</td>
           <td style="padding:6px 8px; text-align:right; color:#475569;">₹${parseFloat(it.unit_price || it.rate || 0).toLocaleString('en-IN')}</td>
           <td style="padding:6px 8px; text-align:right; font-weight:700; color:#0f172a;">₹${parseFloat(it.total_amount || it.amount || 0).toLocaleString('en-IN')}</td>
@@ -5726,7 +5772,7 @@
       itemsHtml = `
         <div style="margin-top:12px; padding:10px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0;">
           <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:4px;">Description / Items</div>
-          <div style="font-size:13px; color:#1e293b; line-height:1.5;">${r.description}</div>
+          <div style="font-size:13px; color:#1e293b; line-height:1.5;">${esc(r.description)}</div>
         </div>
       `;
     }
@@ -5765,11 +5811,11 @@
         </div>
       </div>
 
-      ${row('Vendor Name', `<div style="display:inline-flex; align-items:center; gap:6px;"><span>${r.vendor_name || '—'}</span> <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:2px 7px; border-radius:4px; border:1px solid #0284c7; background:#f0f9ff; cursor:pointer; color:#0284c7; font-weight:700;" title="Edit Vendor (Admin Protected)">✏️ Edit</button></div>`)}
+      ${row('Vendor Name', `<div style="display:inline-flex; align-items:center; gap:6px;"><span>${esc(r.vendor_name || '—')}</span> <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:2px 7px; border-radius:4px; border:1px solid #0284c7; background:#f0f9ff; cursor:pointer; color:#0284c7; font-weight:700;" title="Edit Vendor (Admin Protected)">✏️ Edit</button></div>`)}
       ${row('GSTIN', r.gstin ? `${r.gstin} (${r.gstin_status || 'Unverified'})` : 'Non-GST')}
       ${row('Invoice Number', r.bill_no)}
       ${row('Invoice Date', `<div style="display:inline-flex; align-items:center; gap:6px;"><span>${r.date || '—'}</span> <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:2px 7px; border-radius:4px; border:1px solid #0284c7; background:#f0f9ff; cursor:pointer; color:#0284c7; font-weight:700;" title="Change Date (Admin Protected)">✏️ Change Date</button></div>`)}
-      ${row('Incurred By', `<div style="display:inline-flex; align-items:center; gap:6px;"><span>${r.purchased_by || '—'}</span> <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:2px 7px; border-radius:4px; border:1px solid #0284c7; background:#f0f9ff; cursor:pointer; color:#0284c7; font-weight:700;" title="Edit Incurred Person (Admin Protected)">✏️ Edit</button></div>`)}
+      ${row('Incurred By', `<div style="display:inline-flex; align-items:center; gap:6px;"><span>${esc(r.purchased_by || '—')}</span> <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${r.bill_type || activeTab}" style="font-size:11px; padding:2px 7px; border-radius:4px; border:1px solid #0284c7; background:#f0f9ff; cursor:pointer; color:#0284c7; font-weight:700;" title="Edit Incurred Person (Admin Protected)">✏️ Edit</button></div>`)}
       ${row('Submitted By', r.submitted_by_employee)}
       ${row('Taxable Value', r.taxable_value ? `₹${parseFloat(r.taxable_value).toLocaleString('en-IN')}` : '—')}
       ${row('CGST / SGST / IGST', `${r.cgst ? 'CGST: ₹' + r.cgst : ''} ${r.sgst ? 'SGST: ₹' + r.sgst : ''} ${r.igst ? 'IGST: ₹' + r.igst : ''}`.trim() || '—')}
@@ -5892,7 +5938,7 @@
       if (billRet) {
         amountHtml += `
           <div style="font-size:10.5px; color:#b45309; text-decoration:line-through;">₹${origVal.toLocaleString('en-IN')}</div>
-          <div><span style="background:#fef3c7; color:#92400e; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; display:inline-block; margin-top:2px;" title="${billRet.reason || 'Goods Return'}">🔄 -₹${billRet.return_amount.toLocaleString('en-IN')} Ret</span></div>
+          <div><span style="background:#fef3c7; color:#92400e; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; display:inline-block; margin-top:2px;" title="${esc(billRet.reason || 'Goods Return')}">🔄 -₹${billRet.return_amount.toLocaleString('en-IN')} Ret</span></div>
         `;
       }
       if (r.taxable_value && parseFloat(r.taxable_value) > 0) {
@@ -5933,7 +5979,7 @@
           }
           return `
           <tr style="border-bottom:1px solid #e2e8f0; font-size:11.5px;">
-            <td style="padding:5px 8px; font-weight:600; color:#1e293b;">${it.item_name || it.name || '—'}${alertBadge}</td>
+            <td style="padding:5px 8px; font-weight:600; color:#1e293b;">${esc(it.item_name || it.name || '—')}${alertBadge}</td>
             <td style="padding:5px 8px; text-align:center; color:#475569;">${it.quantity || 1} ${it.unit || 'Pcs'}</td>
             <td style="padding:5px 8px; text-align:right; color:#475569;">₹${parseFloat(it.unit_price || it.rate || 0).toLocaleString('en-IN')}</td>
             <td style="padding:5px 8px; text-align:right; font-weight:700; color:#0f172a;">₹${parseFloat(it.total_amount || it.amount || 0).toLocaleString('en-IN')}</td>
@@ -5947,7 +5993,7 @@
               <div style="background:#fff; border:1px solid #c7d2fe; border-radius:6px; padding:8px 12px;">
                 <div style="font-size:11px; font-weight:700; color:#3730a3; text-transform:uppercase; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
                   <span>📦 Goods & Material Line Items (${count} items)</span>
-                  <span style="font-size:10px; color:#6366f1;">Invoice #${r.bill_no || '—'}</span>
+                  <span style="font-size:10px; color:#6366f1;">Invoice #${esc(r.bill_no || '—')}</span>
                 </div>
                 <table style="width:100%; border-collapse:collapse;">
                   <thead>
@@ -5978,12 +6024,12 @@
               <span>${dt}</span>
               <button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" title="Change Date (Admin Protected)" style="border:none; background:transparent; cursor:pointer; font-size:11px; padding:0 2px; color:#94a3b8; line-height:1;" onmouseover="this.style.color='#0284c7'" onmouseout="this.style.color='#94a3b8'">✏️</button>
             </div>
-            <div style="font-family:monospace; font-size:11px; color:#64748b; margin-top:2px;" title="Invoice No">${r.bill_no || '—'}</div>
+            <div style="font-family:monospace; font-size:11px; color:#64748b; margin-top:2px;" title="Invoice No">${esc(r.bill_no || '—')}</div>
             ${isDup ? `<div style="margin-top:2px;"><span style="background:#fee2e2; color:#991b1b; font-weight:800; font-size:9.5px; padding:1px 5px; border-radius:3px; border:1px solid #fca5a5; display:inline-flex; align-items:center; gap:2px;" title="Duplicate bill detected: ${dupConflict ? dupConflict.reason : 'Matches another record'}">⚠️ DUPLICATE</span></div>` : ''}
           </td>
           <td style="vertical-align:top;">
             <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
-              <span style="font-weight:700; color:#0f172a; font-size:13px;">${r.vendor_name || '—'}</span>
+              <span style="font-weight:700; color:#0f172a; font-size:13px;">${esc(r.vendor_name || '—')}</span>
               ${hasPriceSpike ? `<span style="background:#fef3c7; color:#92400e; font-weight:700; font-size:9.5px; padding:1px 5px; border-radius:3px; border:1px solid #fcd34d;" title="Price Hike Alert">📈 Rate Hike</span>` : ''}
             </div>
             ${gstinHtml}
@@ -5991,13 +6037,13 @@
           <td style="vertical-align:top;">
             <div style="font-weight:600; color:#1e293b; font-size:12.5px;">${incurred}</div>
             <div style="margin-top:3px;">
-              <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px;">${siteInfo.site.replace(' Site','')}</span>
+              <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px;">${esc(siteInfo.site.replace(' Site',''))}</span>
               ${sourceBadge}
             </div>
           </td>
           <td style="vertical-align:top;">
-            <div style="font-size:12px; color:#334155; max-width:260px; line-height:1.4;" title="${r.description || ''}">
-              ${r.description || '—'}
+            <div style="font-size:12px; color:#334155; max-width:260px; line-height:1.4;" title="${esc(r.description || '')}">
+              ${esc(r.description || '—')}
             </div>
             ${itemsBadgeHtml}
           </td>
@@ -6078,7 +6124,7 @@
         <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:11px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; transition:border-color 0.15s, box-shadow 0.15s; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
           <div style="flex:1; min-width:220px;">
             <div style="display:flex; align-items:center; gap:6px;">
-              <span style="font-weight:700; font-size:13.5px; color:#1e293b;">${m.name}</span>
+              <span style="font-weight:700; font-size:13.5px; color:#1e293b;">${esc(m.name)}</span>
               ${m.vendors && m.vendors.length > 1 ? `<span style="background:#e0e7ff; color:#4338ca; font-size:10px; font-weight:700; padding:1px 6px; border-radius:10px;" title="Supplied by multiple vendors">Multi-Vendor</span>` : ''}
             </div>
             <div style="font-size:11.5px; color:#64748b; margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
@@ -6096,7 +6142,7 @@
                 Avg: ₹${(m.avg_rate || m.latest_rate || 0).toLocaleString('en-IN')}
               </div>
             </div>
-            <button type="button" onclick="window.openMaterialRatesModal && window.openMaterialRatesModal('${encodedName}')" class="btn-ghost" style="font-size:11.5px; padding:5px 10px; color:#4f46e5; border:1px solid #c7d2fe; background:#f5f3ff; border-radius:6px; cursor:pointer; font-weight:600; white-space:nowrap;" title="Compare vendor prices for ${m.name}">
+            <button type="button" onclick="window.openMaterialRatesModal && window.openMaterialRatesModal('${encodedName}')" class="btn-ghost" style="font-size:11.5px; padding:5px 10px; color:#4f46e5; border:1px solid #c7d2fe; background:#f5f3ff; border-radius:6px; cursor:pointer; font-weight:600; white-space:nowrap;" title="Compare vendor prices for ${esc(m.name)}">
               📊 Compare
             </button>
           </div>
@@ -6241,7 +6287,7 @@
             const sourceBadge = isWhatsApp
               ? `<span style="display:inline-flex; align-items:center; background:#e8f5e9; color:#2e7d32; font-size:9.5px; padding:1px 5px; border-radius:8px; font-weight:600; margin-left:3px;" title="Uploaded via WhatsApp">WhatsApp</span>`
               : '';
-            return `<td><b>${incurred}</b> <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px; margin-left:3px;">${siteInfo.site.replace(' Site','')}</span>${sourceBadge}${proxyNote}</td>`;
+            return `<td><b>${incurred}</b> <span class="site-badge ${siteInfo.badgeClass}" style="font-size:10px; padding:1px 5px; margin-left:3px;">${esc(siteInfo.site.replace(' Site',''))}</span>${sourceBadge}${proxyNote}</td>`;
           }
           if (key === 'invoice_value') {
             const origVal = parseFloat(String(r[key] || '0').replace(/[^0-9.]/g, '')) || 0;
@@ -6253,7 +6299,7 @@
               return `<td>
                 <div style="font-weight:700; color:#0f172a;">₹${billRet.net_amount.toLocaleString('en-IN')}</div>
                 <div style="font-size:10.5px; color:#b45309; text-decoration:line-through;">₹${origVal.toLocaleString('en-IN')}</div>
-                <span style="background:#fef3c7; color:#92400e; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; display:inline-flex; align-items:center; gap:2px;" title="${billRet.reason || 'Goods Return'}">🔄 -₹${billRet.return_amount.toLocaleString('en-IN')}</span>
+                <span style="background:#fef3c7; color:#92400e; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; display:inline-flex; align-items:center; gap:2px;" title="${esc(billRet.reason || 'Goods Return')}">🔄 -₹${billRet.return_amount.toLocaleString('en-IN')}</span>
               </td>`;
             }
             return `<td><div style="display:flex; align-items:center; gap:4px;"><span>₹${origVal ? origVal.toLocaleString('en-IN') : (r[key] || '-')}</span><button type="button" class="btn-edit-bill-date" data-entry-id="${r.entry_id || ''}" data-bill-type="${activeTab}" title="Edit Voucher / Bill Details (Admin Protected)" style="border:none; background:transparent; cursor:pointer; font-size:11px; padding:0 2px; color:#94a3b8;">✏️</button></div></td>`;
@@ -7101,8 +7147,8 @@
       return `
         <tr>
           <td>
-            <div style="font-weight:600; color:var(--walnut);">${p.name}</div>
-            <div style="margin-top:2px;"><span class="site-badge ${p.badgeClass}">${p.site}</span></div>
+            <div style="font-weight:600; color:var(--walnut);">${esc(p.name)}</div>
+            <div style="margin-top:2px;"><span class="site-badge ${p.badgeClass}">${esc(p.site)}</span></div>
           </td>
           <td style="text-align:right;">
             ${p.calibratedDate ? `<b>${money(p.baseline)}</b><div style="font-size:10.5px; color:var(--walnut-light);">As of ${p.calibratedDate}</div>` : '<span style="color:var(--walnut-light); font-size:12px;">Not set</span>'}
@@ -7112,8 +7158,8 @@
           <td style="text-align:right; font-size:15px; font-weight:700; color:${balColor(p.currentCash)};">${money(p.currentCash)}</td>
           <td style="text-align:left;">${statusHtml}</td>
           <td style="text-align:center; white-space:nowrap;">
-            <button class="btn-ghost btn-sm calibrate-row-btn" data-person="${p.name}" style="padding:4px 8px; font-size:11.5px; margin-right:4px;" title="Update physical cash with this person as of today">⚡ Set Cash</button>
-            <button class="btn-primary btn-sm pay-row-btn" data-person="${p.name}" style="padding:4px 8px; font-size:11.5px;" title="Log cash given to this person">+ Pay</button>
+            <button class="btn-ghost btn-sm calibrate-row-btn" data-person="${esc(p.name)}" style="padding:4px 8px; font-size:11.5px; margin-right:4px;" title="Update physical cash with this person as of today">⚡ Set Cash</button>
+            <button class="btn-primary btn-sm pay-row-btn" data-person="${esc(p.name)}" style="padding:4px 8px; font-size:11.5px;" title="Log cash given to this person">+ Pay</button>
           </td>
         </tr>
       `;
@@ -8608,8 +8654,8 @@
       <div class="approval-card" data-id="${item.submission_id}">
         <div class="approval-head">
           <div>
-            <h3>${item.vendor_name || 'Unknown vendor'}</h3>
-            <div class="approval-meta">${isGst ? 'GST Bill' : 'Non-GST Bill'} · Invoice ${item.bill_no || '-'} · ${item.date || '-'}</div>
+            <h3>${esc(item.vendor_name || 'Unknown vendor')}</h3>
+            <div class="approval-meta">${isGst ? 'GST Bill' : 'Non-GST Bill'} · Invoice ${esc(item.bill_no || '-')} · ${item.date || '-'}</div>
           </div>
           ${payTag}
         </div>
@@ -8667,7 +8713,7 @@
           <div>
             <b>Submitted by</b>
             <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
-              <span>${item.submitted_by_employee || '-'}</span>
+              <span>${esc(item.submitted_by_employee || '-')}</span>
               ${(String(item.submitted_by_employee || '').toLowerCase().includes('whatsapp') || item.channel === 'whatsapp')
                 ? `<span style="display:inline-flex; align-items:center; gap:3px; background:#e8f5e9; color:#2e7d32; font-size:10.5px; padding:1px 6px; border-radius:10px; font-weight:600;">🟢 WhatsApp</span>`
                 : `<span style="display:inline-flex; align-items:center; gap:3px; background:#e0f2fe; color:#0369a1; font-size:10.5px; padding:1px 6px; border-radius:10px; font-weight:600;">🌐 Web App</span>`}
@@ -8682,7 +8728,7 @@
             <span>📦 Goods Breakdown (${item.items.length} items)</span>
           </div>
           <div style="color:#475569;">
-            ${item.items.slice(0, 3).map(it => `<div>• <b>${it.item_name}</b> x ${it.quantity} ${it.unit || ''} @ ₹${it.unit_price ? it.unit_price.toLocaleString('en-IN') : '-'}</div>`).join('')}
+            ${item.items.slice(0, 3).map(it => `<div>• <b>${esc(it.item_name)}</b> x ${it.quantity} ${it.unit || ''} @ ₹${it.unit_price ? it.unit_price.toLocaleString('en-IN') : '-'}</div>`).join('')}
             ${item.items.length > 3 ? `<div style="font-size:11px; color:#64748b; font-style:italic; margin-top:2px;">+ ${item.items.length - 3} more items</div>` : ''}
           </div>
         </div>` : ''}
@@ -8690,7 +8736,7 @@
         ${(item.price_alerts && item.price_alerts.length > 0) ? `
         <div style="margin-top:8px; padding:8px 12px; background:#fffbeb; border:1px solid #fde68a; border-radius:6px; font-size:11.5px; color:#92400e;">
           <div style="font-weight:700; margin-bottom:2px;">⚠️ Price Radar Alert:</div>
-          ${item.price_alerts.map(al => al.is_increase ? `<div>• ${al.item_name}: Rate increased +${al.percent_change}% vs last purchase</div>` : '').filter(Boolean).join('')}
+          ${item.price_alerts.map(al => al.is_increase ? `<div>• ${esc(al.item_name)}: Rate increased +${al.percent_change}% vs last purchase</div>` : '').filter(Boolean).join('')}
         </div>` : ''}
 
         ${(() => {
@@ -9727,8 +9773,8 @@
             ${spikes.slice(0, 6).map(sp => `
               <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; border-bottom:1px dashed #fcd34d; padding-bottom:4px;">
                 <div>
-                  <span style="font-weight:700; color:#1e293b;">${sp.item_name}</span>
-                  <span style="color:#64748b; font-size:10.5px;">(${sp.vendor_name})</span>
+                  <span style="font-weight:700; color:#1e293b;">${esc(sp.item_name)}</span>
+                  <span style="color:#64748b; font-size:10.5px;">(${esc(sp.vendor_name)})</span>
                 </div>
                 <div style="text-align:right;">
                   <span style="color:#b91c1c; font-weight:700;">+${sp.percent_increase}%</span>
@@ -9746,10 +9792,10 @@
         </div>
         <div style="display:flex; flex-direction:column; gap:8px;">
           ${items.map(it => `
-            <div class="material-card" data-name="${it.name.replace(/"/g, '&quot;')}" style="border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; background:#f8fafc; cursor:pointer; transition:all 0.15s ease;">
+            <div class="material-card" data-name="${esc(it.name.replace(/"/g, '&quot;'))}" style="border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; background:#f8fafc; cursor:pointer; transition:all 0.15s ease;">
               <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                 <div>
-                  <div style="font-weight:700; font-size:13px; color:#1e293b;">${it.name}</div>
+                  <div style="font-weight:700; font-size:13px; color:#1e293b;">${esc(it.name)}</div>
                   <div style="font-size:11px; color:#64748b; margin-top:2px;">
                     ${it.vendors.length} vendor${it.vendors.length > 1 ? 's' : ''}: ${it.vendors.slice(0, 3).join(', ')}${it.vendors.length > 3 ? '...' : ''}
                   </div>
@@ -9871,7 +9917,7 @@
               <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                 <div>
                   <div style="font-weight:800; font-size:14px; color:#1e293b; display:flex; align-items:center; gap:6px;">
-                    <span>${v.vendor_name}</span>
+                    <span>${esc(v.vendor_name)}</span>
                     ${isBest ? '<span style="background:#10b981; color:#fff; font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:10px;">★ CHEAPEST</span>' : ''}
                   </div>
                   <div style="font-size:11px; color:#64748b; margin-top:2px;">
@@ -9982,7 +10028,7 @@
         return `
           <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; border:1px solid #e2e8f0; padding:8px 10px; border-radius:6px; font-size:12px;">
             <div>
-              <b style="color:#1e293b;">${it.item_name}</b>
+              <b style="color:#1e293b;">${esc(it.item_name)}</b>
               <div style="font-size:10.5px; color:#64748b;">${qty} ${it.unit || 'unit'} @ ₹${uPrice}</div>
             </div>
             <div style="display:flex; align-items:center; gap:6px;">
@@ -10787,7 +10833,7 @@
         <td style="font-size:12px;">${t.bank_name||'—'}</td>
         <td style="font-size:12px; font-weight:600; color:${t.txn_type==='DEBIT'?'#c62828':'#2e7d32'};">${t.txn_type}</td>
         <td style="text-align:right; font-weight:600;">₹${parseFloat(t.amount||0).toLocaleString('en-IN')}</td>
-        <td style="font-size:12px; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${t.beneficiary||''}">${t.beneficiary||t.narration?.substring(0,30)||'—'}</td>
+        <td style="font-size:12px; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(t.beneficiary||'')}">${esc(t.beneficiary||t.narration?.substring(0,30)||'—')}</td>
         <td style="font-size:11px; color:#555;">${t.utr||'—'}</td>
         <td>${badge}</td>
         <td>${actionBtn}</td>
@@ -11213,21 +11259,21 @@
     if (btnBrs) {
       btnBrs.addEventListener('click', () => {
         const month = monthPicker.value || curMonth;
-        window.open(`${BACKEND_URL}/api/ca/download-brs?month=${month}&secret=${APP_SECRET}`, '_blank');
+        downloadWithCode(`${BACKEND_URL}/api/ca/download-brs?month=${month}`, `BRS_${month}_Studio5.csv`);
       });
     }
 
     if (btnGstr2b) {
       btnGstr2b.addEventListener('click', () => {
         const month = monthPicker.value || curMonth;
-        window.open(`${BACKEND_URL}/api/ca/download-gstr2b?month=${month}&secret=${APP_SECRET}`, '_blank');
+        downloadWithCode(`${BACKEND_URL}/api/ca/download-gstr2b?month=${month}`, `GSTR2B_${month}_Studio5.csv`);
       });
     }
 
     if (btnSite) {
       btnSite.addEventListener('click', () => {
         const month = monthPicker.value || curMonth;
-        window.open(`${BACKEND_URL}/api/ca/download-site-expenses?month=${month}&secret=${APP_SECRET}`, '_blank');
+        downloadWithCode(`${BACKEND_URL}/api/ca/download-site-expenses?month=${month}`, `Site_Petty_Cash_${month}_Studio5.csv`);
       });
     }
 
