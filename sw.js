@@ -5,7 +5,7 @@
 // pages are told so they can switch to it without a reinstall.
 // API calls to Render/Supabase are always direct network calls.
 
-const CACHE_NAME = 'studio5-bills-v68';
+const CACHE_NAME = 'studio5-bills-v69';
 // How long opening the app waits for the newest version before using the stored copy.
 const NAVIGATION_WAIT_MS = 3000;
 const APP_SHELL = [
